@@ -66,7 +66,7 @@
                     @endif
                 </li>
                 @if(Auth::guest())
-                    @if(User::count())
+                    @if(\App\User::count())
                         <li class="nav-item">
                             <a href="{{ url('/login') }}" class="nav-link">{{ __('auth.login') }}</a>
                         </li>
