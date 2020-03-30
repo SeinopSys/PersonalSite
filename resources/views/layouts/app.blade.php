@@ -87,12 +87,12 @@
     ]) !!}</span>
     <span>&copy; {{ config('app.name') }}, 2016-{{ date('Y') }}</span>
     <span>
-        {{ __('footer.revision') }}
-        <a href="{{ config('app.github_url') }}/commit/{{ $git_info['commit_id'] }}" title="{{ __('footer.commit') }}">
-            <code>{{ $git_info['commit_id'] }}</code>
-        </a>
-        {{ __('footer.created') }}
-        {!! $git_info['commit_time'] !!}
+        {{ __('footer.revision') }} {{--
+        --}}<a href="{{ config('app.github_url') }}/commit/{{ $git_info['commit_id'] }}" title="{{ __('footer.commit') }}">{{--
+            --}}<code>{{ $git_info['commit_id'] }}</code>{{--
+        --}}</a> {{--
+        --}}{{ __('footer.created') }} {{--
+        --}}{!! $git_info['commit_time'] !!}
     </span>
 </footer>
 
