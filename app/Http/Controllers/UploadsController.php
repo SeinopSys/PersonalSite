@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Input;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Intervention\Image\Facades\Image;
 use Session;
@@ -165,15 +166,20 @@ class UploadsController extends Controller
 
     public function upload(Request $request)
     {
-        $secondary_domain = config('app.secondary_domain');
-
-        $this->validate($request, [
+        $validation_rules = [
             'upload_key' => 'bail|required|string',
-            'domain' => ['string', Rule::in([$secondary_domain])],
+            'domain' => 'string',
             'file' => 'bail|required|image',
-        ]);
+        ];
+        $validator = Validator::make($request->all(array_keys($validation_rules)), $validation_rules);
+        if ($validator->fails()) {
+            return response()->json($validator->messages(), 400);
+        }
 
-        $upload_key = $request->upload_key;
+        $validated = $validator->valid();
+        $secondary_domain = isset($validated['domain']) && $validated['domain'] === config('app.secondary_domain');
+
+        $upload_key = $validated['upload_key'];
         /** @var $upload_allowed ImageUpload */
         $upload_allowed = ImageUpload::where('upload_key', $upload_key)->first();
         if (empty($upload_allowed)) {
@@ -188,7 +194,7 @@ class UploadsController extends Controller
             Response::Fail('Could not create upload directory');
         }
 
-        $file = $request->file('file');
+        $file = $validated['file'];
         $orig_file_size = $file->getSize();
         if ($this->_usedSpaceInBytes($user) + $orig_file_size > 524288000) { // 500 mib in bytes
             Response::Fail('Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again.');
@@ -216,7 +222,7 @@ class UploadsController extends Controller
         $upload->mimetype = $file->getMimeType();
         $upload->width = $image->width();
         $upload->height = $image->height();
-        $upload->secondary_domain = $request->domain === $secondary_domain;
+        $upload->secondary_domain = $secondary_domain;
 
         // Create preview
         $preview_dimensions = min($upload->width, min($upload->height, 300));
