@@ -1,0 +1,10 @@
+@import "vars";
+
+#inliner-styles, #inliner-markup {
+    font-family: $font-family-monospace;
+    tab-size: 4;
+}
+
+#import-html-file {
+    cursor: pointer;
+}

@@ -1,0 +1,39 @@
+#dialogContent {
+    > div {
+        &:not(:first-child):not(#dialogButtons) {
+            border-top: 1px solid;
+            padding-top: 5px;
+            margin-top: 4px;
+        }
+
+        > pre {
+            max-width: 100%;
+            display: block;
+            overflow: auto;
+            font-size: 12px;
+            padding: 3px;
+            margin: 5px 0 10px;
+            box-sizing: border-box;
+            border: 0;
+            border-radius: 0;
+            max-height: 20em;
+            white-space: pre-wrap;
+            word-break: normal;
+            word-wrap: normal;
+            @include l33th4x;
+
+            &:last-child {
+                margin-bottom: 0
+            }
+        }
+
+        .alert:last-child {
+            margin: 10px 0 0;
+            padding: 7px;
+        }
+    }
+}
+
+#dialogButtons {
+    text-align: center;
+}

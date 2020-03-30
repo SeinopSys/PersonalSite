@@ -1,0 +1,362 @@
+@import "vars";
+@import "../../node_modules/bootstrap/scss/functions";
+@import "../../node_modules/bootstrap/scss/variables";
+
+$DesktopTileSize: 110px;
+$DesktopTileIconSize: 32px;
+$MobileTileIconSize: round($DesktopTileIconSize * .8);
+$IconSpriteWidth: 512px;
+$IconSpriteHeight: 64px;
+$TileDefaultBG: #101010;
+$WideTileWidth: 205px;
+$RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)/2;
+
+// Don't forget to change cache-busting param in bg URL
+@mixin tiles($IconSize) {
+    &.pm {
+        background-color: #9596C6;
+
+        &:after {
+            background-position: 0 0
+        }
+    }
+    &.gh {
+        background-color: #191717;
+
+        &:after {
+            background-position: -$IconSize 0
+        }
+    }
+    &.so {
+        background-color: #f47920;
+
+        &:after {
+            background-position: -$IconSize*2 0
+        }
+    }
+    &.sei {
+        background-color: #7aa7f0;
+
+        &:after {
+            background-position: -$IconSize*3 0
+        }
+    }
+    &.vc {
+        background-color: #2C73B1;
+
+        &:after {
+            background-position: -$IconSize*4 0
+        }
+    }
+    &.dt:after {
+        background-position: -$IconSize*5 0
+    }
+    &.ytms:after {
+        background-position: -$IconSize*6 0
+    }
+    &.lr:after {
+        background-position: -$IconSize*7 0
+    }
+}
+
+// Mobile-only
+@media all and (max-width: 650px) {
+    #content {
+        .social .tiles > * {
+            display: block;
+            box-sizing: border-box !important;
+            $padding: 8px;
+            $MobileTileSize: $MobileTileIconSize + $padding*2;
+            height: $MobileTileSize;
+            padding: $padding;
+            margin: 0;
+
+            &:after {
+                height: $MobileTileIconSize;
+                width: $MobileTileIconSize;
+                background-size: #{$IconSpriteWidth*($MobileTileIconSize/$IconSpriteHeight)} $MobileTileIconSize !important;
+                margin: ($MobileTileSize - $MobileTileIconSize)/2;
+            }
+
+            @include tiles($MobileTileIconSize);
+
+            span {
+                height: $MobileTileSize;
+                line-height: $MobileTileSize;
+                padding: 0 $padding 0 $padding*3+$MobileTileIconSize;
+                font-size: 18px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+}
+
+@media all and (min-width: 450px) {
+    .detail br {
+        display: none
+    }
+    blockquote p {
+        &:before, &:after {
+            display: inline-block;
+            height: .9em;
+            overflow: hidden;
+            line-height: 1em;
+            font-size: 2em;
+            opacity: .5;
+            vertical-align: middle;
+            font-style: normal;
+            font-weight: bold;
+        }
+
+        &:before {
+            margin-right: 3px
+        }
+
+        &:after {
+            margin-left: 3px
+        }
+    }
+}
+
+@media all and (min-width: 465px) {
+    .tech br {
+        display: none
+    }
+}
+
+@media all and (max-width: 465px) {
+    .tech div {
+        margin-bottom: 10px
+    }
+}
+
+// Desktop-only
+@media all and (min-width: 650px) {
+    #content {
+        .social .tiles {
+            font-size: 0;
+
+            > * {
+                display: inline-block;
+                width: $DesktopTileSize;
+                height: $DesktopTileSize;
+                position: relative;
+                border: 2px solid transparent;
+                margin: 2px;
+
+                &.wide {
+                    width: $WideTileWidth;
+
+                    &:after {
+                        margin: $RegularMargin ($WideTileWidth - $DesktopTileIconSize)/2
+                    }
+                }
+
+                &:after {
+                    height: $DesktopTileIconSize;
+                    width: $DesktopTileIconSize;
+                    background-size: #{$IconSpriteWidth*($DesktopTileIconSize/$IconSpriteHeight)} $DesktopTileIconSize !important;
+                    margin: $RegularMargin;
+                }
+
+                &:hover:not(:active) {
+                    border-color: rgba(white, .5)
+                }
+
+                @include tiles($DesktopTileIconSize);
+
+                > span {
+                    $padding: 6px;
+                    padding: 0 $padding;
+                    margin-bottom: 6px;
+                    font-family: $font-family;
+                    font-size: 12px;
+                    text-overflow: ellipsis;
+                    max-height: 30px;
+                    line-height: 16px;
+
+                    &:after {
+                        right: $padding;
+                        bottom: 0;
+                        width: 20px;
+                    }
+                }
+            }
+        }
+    }
+}
+
+body {
+    margin: 0
+}
+
+#header {
+    height: 50vh;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+
+    .logo {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 50%, cover !important;
+        background-image: url('/img/logo.svg'), linear-gradient(to bottom, #BCD3F7 0%, #7AA7F0 100%);
+    }
+}
+
+#wrap {
+    padding: 0 !important;
+    font-family: $font-family;
+}
+
+#content {
+    position: relative;
+    z-index: 2 !important;
+    margin-top: 50vh;
+    background: #fff !important;
+    text-align: center;
+
+    .essentials {
+        position: relative;
+        $avatarSize: 25vh;
+        $top: -($avatarSize/2);
+        padding: -$top 15px 0;
+
+        > .avatar-wrap {
+            display: block;
+            position: absolute;
+            top: $top;
+            left: 0;
+            height: $avatarSize;
+            width: 100%;
+
+            img {
+                display: block;
+                width: $avatarSize;
+                height: $avatarSize;
+                margin: 0 auto;
+                border: 3px solid #fff;
+                box-sizing: border-box;
+                background: rgba(#fff, .8);
+                box-shadow: 0 0 5px rgba(#000, .3);
+                overflow: hidden;
+                border-radius: 10px;
+            }
+        }
+
+        > h1 {
+            margin: 10px 0 0 0;
+            font-size: 2.25em;
+            font-weight: bold;
+        }
+
+        > .detail {
+            display: inline-block;
+            margin-top: 5px;
+
+            > span {
+                display: inline-block;
+                font-size: 26px;
+                line-height: 1em;
+                margin: 5px;
+                vertical-align: top;
+
+                &:before, &:after {
+                    display: block;
+                    color: rgba(black, .6);
+                    white-space: pre-wrap;
+                    font-size: 14px;
+                    line-height: 1em;
+                }
+
+                &[data-prepend] {
+                    &:before {
+                        content: attr(data-prepend)
+                    }
+
+                    > * {
+                        margin-top: 4px
+                    }
+                }
+
+                &[data-append]:after {
+                    content: attr(data-append)
+                }
+
+                > * {
+                    display: block;
+                }
+            }
+
+            .loc > a {
+                background: url(/img/hungary.svg) no-repeat;
+                background-size: cover;
+                width: 39px;
+                height: 26px;
+                font-size: 0;
+                margin-left: auto;
+                margin-right: auto;
+                border: 2px solid black;
+                border-radius: 5px;
+            }
+        }
+    }
+
+    > .social {
+        background: #333;
+        padding: 15px;
+
+        > h2 {
+            color: #fff;
+            margin: 0 0 10px;
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+
+        .tiles > * {
+            color: #fff !important;
+            position: relative;
+            text-decoration: none;
+            text-align: left;
+            background: $TileDefaultBG;
+            box-sizing: initial;
+
+            &:after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 2;
+                display: block;
+                background: url('/img/icons.svg?last=ytms') no-repeat;
+            }
+
+            > span {
+                z-index: 2;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+        }
+
+        > p {
+            color: rgba(white, .5);
+            font-size: .8em;
+            margin: 5px 0 0;
+        }
+    }
+}

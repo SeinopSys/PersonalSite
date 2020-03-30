@@ -1,0 +1,114 @@
+$VinyManeBlue: #36c;
+$VinyManeTurq: #0EE;
+$Favcolor: #68b;
+$GlobalBorderRadius: 5px;
+$GlobalBorderColor: darken($VinyManeBlue, 10);
+$GlobalBGColor: #fff;
+$BGGradTop: $VinyManeBlue;
+$BGGradBot: darken($VinyManeBlue, 20);
+$font-family: 'Catamaran', sans-serif;
+
+@mixin container {
+    border-radius: $GlobalBorderRadius;
+    background-color: $GlobalBGColor;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+$Link: #1A1F61;
+$LinkColor: #2E66A7;
+$LinkHoverColor: lighten($LinkColor, 15);
+
+// Notices & buttons
+$NBlue: #07f;
+$NBlueBG: #def;
+$NDarkBlue: #04b;
+$NDarkBlueBG: #ddf;
+$NTeal: #09a;
+$NTealBG: #dff;
+$NGreen: #090;
+$NGreenBG: #dfd;
+$NRed: #d00;
+$NRedBG: #fdd;
+$NOrange: #d50;
+$NOrangeBG: #fed;
+$NYellow: #b70;
+$NYellowBG: #ffd;
+
+$Breakpoint: 768px;
+
+// Bootstrap
+$font-family-monospace: 'Source Code Pro Semibold', 'Consolas', monospace;
+$code-color: $NYellow;
+
+%footer {
+    bottom: 0;
+    padding: 10px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 0;
+
+    > span {
+        font-size: 1rem;
+
+        @media all and (max-width: $Breakpoint) {
+            display: block;
+
+            &:not(:last-child) {
+                margin-bottom: 5px;
+            }
+        }
+        @media all and (min-width: $Breakpoint) {
+            padding: 0 7px;
+            display: inline;
+
+            &:not(:last-child) {
+                border-right: 1px solid rgba(gray, .5);
+            }
+        }
+    }
+}
+
+
+$NoScrollbar: false;
+@mixin l33th4x($scrollbar:true) {
+    $Lime: #0c0;
+    background: #000;
+    color: $Lime;
+
+    @if ($scrollbar == true) {
+        &::-webkit-scrollbar {
+            background-color: transparent;
+            padding: 0;
+
+            &:vertical {
+                width: 7px
+            }
+
+            &:horizontal {
+                height: 7px
+            }
+        }
+        &::-webkit-scrollbar-button {
+            display: none
+        }
+        &::-webkit-scrollbar-thumb {
+            background-color: rgba($Lime, .7);
+            margin: 0 2px;
+
+            &:hover {
+                background-color: rgba($Lime, .8)
+            }
+
+            &:active {
+                background-color: rgba($Lime, .9)
+            }
+        }
+    }
+}
+
+%checker-background {
+    background: url('/img/transparency.svg') repeat;
+    background-size: 16px;
+}

@@ -1,0 +1,178 @@
+@import "vars";
+
+.network-input, #cidr-subnets {
+    text-align: center;
+    letter-spacing: .1em;
+    transition: color .2s linear;
+
+    &.fade {
+        color: transparent;
+    }
+}
+
+#vlsm {
+    #vlsm-network, #vlsm-subnets, #vlsm-ipver, #vlsm-output-simple {
+        font-family: $font-family-monospace;
+    }
+
+    #vlsm-subnets {
+        max-width: 100%;
+        resize: vertical;
+    }
+
+    #vlsm-output {
+        margin-top: 20px;
+
+        table {
+            th[colspan] {
+                font-size: 1.6em
+            }
+
+            th, td {
+                vertical-align: middle;
+                text-align: center;
+            }
+        }
+
+        > :last-child table {
+            margin-bottom: 0;
+        }
+    }
+
+    #vlsm-form > :last-child {
+        margin-bottom: 0
+    }
+
+    #vlsm-network-output td[id], #vlsm-subnets-output td {
+        font-family: $font-family-monospace
+    }
+
+    td.binary-ip {
+        font-size: .9em
+    }
+
+    #vlsm-subnets-output .sn-name {
+        font-size: 1.2em
+    }
+
+    #vlsm-output-mode {
+        margin-bottom: 10px;
+
+        li {
+            cursor: pointer;
+
+            &.disabled {
+                pointer-events: none;
+                font-weight: bold;
+            }
+
+            a {
+                padding: 5px 7px;
+            }
+        }
+    }
+
+    #vlsm-output-simple {
+        white-space: pre-wrap;
+        font-size: 1.1em;
+        margin-bottom: 0;
+
+        &:empty {
+            display: none;
+        }
+    }
+}
+
+#cidr {
+    #cidr-network, #cidr-output, #cidr-ipver {
+        font-family: $font-family-monospace;
+    }
+
+    #cidr-form > :last-child {
+        margin-bottom: 0
+    }
+
+    #cidr-output {
+        white-space: pre-wrap;
+        font-size: 1.1em;
+        margin-bottom: 0;
+
+        &:empty {
+            display: none
+        }
+
+        ol {
+            margin: 0;
+        }
+    }
+}
+
+#summary {
+    #summary-networks, #summary-output {
+        font-family: $font-family-monospace;
+    }
+
+    #summary-form > :last-child {
+        margin-bottom: 0
+    }
+
+    #summary-output {
+        text-align: center;
+        font-size: 2em;
+        margin-top: 15px;
+        margin-bottom: 0;
+
+        &:empty {
+            display: none
+        }
+    }
+}
+
+#prefix-list {
+    #prefix-list-show-output, #prefix-list-network {
+        font-family: $font-family-monospace;
+    }
+
+    #prefix-list-form > :last-child {
+        margin-bottom: 0
+    }
+
+    #prefix-list-output {
+        text-align: center;
+        font-size: 1.5em;
+        margin-top: 15px;
+
+        &, .alert {
+            margin-bottom: 0;
+        }
+
+        &:empty {
+            display: none
+        }
+    }
+}
+
+#masktable {
+    table {
+        td, th {
+            font-family: $font-family-monospace
+        }
+
+        tbody td, thead th {
+            &:nth-child(1) {
+                text-align: right;
+                width: 35%;
+            }
+
+            &:nth-child(2) {
+                text-align: center;
+                width: 30%;
+            }
+
+            &:nth-child(3) {
+                text-align: left;
+                width: 35%;
+            }
+        }
+    }
+}

@@ -1,0 +1,146 @@
+@import "vars";
+@import "../../node_modules/bootstrap/scss/bootstrap";
+@import "theme_dialog";
+@import url('https://fonts.googleapis.com/css?family=Catamaran:400,700&subset=latin-ext,latin&display=swap');
+
+.invisible {
+    visibility: hidden
+}
+
+.js-required {
+    display: inline-block;
+    background: url('/img/js.svg') no-repeat center;
+    background-size: contain;
+    width: .8em;
+    height: .8em;
+    margin-left: .3em;
+    cursor: help;
+    transform: rotate(5deg);
+    border: 1px solid black;
+}
+
+a, .btn {
+    .fa {
+        margin-right: .3rem;
+    }
+}
+
+* {
+    outline: none;
+}
+
+html {
+    font-size: 100%;
+    height: 100%;
+    background-color: #fff;
+}
+
+body {
+    margin: 0;
+    box-sizing: border-box;
+    font-family: $font-family;
+
+    #wrap {
+        background: #678ecb;
+    }
+
+    > footer {
+        @extend %footer
+    }
+}
+
+.pagination-wrapper {
+    text-align: center;
+}
+
+.alert-out-of-bounds {
+    margin-bottom: 0;
+}
+
+nav.navbar.fixed-top {
+    @include media-breakpoint-down(md) {
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+
+    + :not(.start-at-top) {
+        // height + border
+        margin-top: $nav-link-height + ($navbar-padding-y * 2);
+    }
+}
+
+nav {
+    .navbar-brand[href] {
+        padding: 0;
+        margin: 0;
+        height: $nav-link-height;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        background-image: url('/img/logo-dark.svg');
+        width: 2.8 * $nav-link-height;
+    }
+
+    .language-selector {
+        .language-flag {
+            display: inline;
+            height: 12px;
+            margin-right: .5em;
+        }
+
+        .current:after {
+            content: attr(data-current);
+            color: green;
+            font-size: .7em;
+            margin-left: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .dropdown-item {
+            display: flex;
+            flex-flow: row nowrap;
+            align-items: center;
+        }
+    }
+
+    .dropdown.user-dropdown {
+        .gravatar {
+            height: 1.4em;
+            display: inline;
+            vertical-align: middle;
+            border-radius: 50%;
+            margin-right: .3rem;
+        }
+    }
+}
+
+.card-body > {
+    :first-child {
+        margin-top: 0;
+    }
+
+    :last-child {
+        margin-bottom: 0;
+    }
+}
+
+.custom-control-label {
+    line-height: 1.7;
+}
+
+#copy-notify {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    opacity: 0;
+    z-index: 22000;
+    font-size: 1.75rem;
+}
+
+time[datetime][title] {
+    display: inline-block;
+    line-height: 1em;
+    border-bottom: 1px dotted;
+    cursor: help;
+}

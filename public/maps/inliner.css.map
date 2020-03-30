@@ -1,0 +1,1 @@
+{"version":3,"sources":["inliner.scss"],"names":[],"mappings":"AAEA,gBAAA,gBACI,YAAA,0BAAA,CAAA,QAAA,CAAA,UACA,cAAA,EAAA,YAAA,EAAA,SAAA,EAGJ,kBACI,OAAA","file":"../sass/inliner.css","sourcesContent":["@import \"vars\";\n\n#inliner-styles, #inliner-markup {\n    font-family: $font-family-monospace;\n    tab-size: 4;\n}\n\n#import-html-file {\n    cursor: pointer;\n}\n"]}

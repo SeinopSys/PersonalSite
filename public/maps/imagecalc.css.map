@@ -1,0 +1,1 @@
+{"version":3,"sources":["imagecalc.scss"],"names":[],"mappings":"AAEA,uBACI,YAAA,0BAAA,CAAA,QAAA,CAAA","file":"../sass/imagecalc.css","sourcesContent":["@import \"vars\";\n\n.font-family-monospace {\n    font-family: $font-family-monospace;\n}\n"]}
