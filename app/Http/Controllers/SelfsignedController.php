@@ -26,7 +26,7 @@ class SelfsignedController extends Controller
         return [$opensslVersion, $openssl];
     }
 
-    private function index(?ValidatorContract $errors = null, ?string $generr = null)
+    public function index(?ValidatorContract $errors = null, ?string $generr = null)
     {
         [$opensslVersion, $openssl] = $this->_opensslVersion();
         $haveZip = \extension_loaded('zip');
