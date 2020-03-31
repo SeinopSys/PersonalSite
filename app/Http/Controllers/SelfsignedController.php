@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Rules\Human;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
-use Illuminate\HTTP\Request as HTTPRequest;
+use Illuminate\HTTP\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Validator;
 use Webpatser\Uuid\Uuid;
 
@@ -26,16 +25,10 @@ class SelfsignedController extends Controller
         return [$opensslVersion, $openssl];
     }
 
-    public function index(?ValidatorContract $errors = null, ?string $generr = null)
+    public function index()
     {
         [$opensslVersion, $openssl] = $this->_opensslVersion();
         $haveZip = \extension_loaded('zip');
-
-        $ret = view('selfsigned', [
-            'openssl' => $openssl,
-            'opensslVersion' => $opensslVersion,
-            'zip' => $haveZip,
-        ]);
 
         // We want to get a monitoring error when this happens
         if (!$openssl || !$haveZip) {
@@ -43,13 +36,12 @@ class SelfsignedController extends Controller
             Log::critical(__METHOD__.': $openssl == '.($openssl ? 1 : 0).'; $haveZip == '.($haveZip ? 1 : 0));
         }
 
-        if ($errors !== null) {
-            $ret->withErrors($errors);
-        }
-        if ($generr !== null) {
-            $ret->with('generr', $generr);
-        }
-        return $ret;
+        return view('selfsigned', [
+            'openssl' => $openssl,
+            'opensslVersion' => $opensslVersion,
+            'zip' => $haveZip,
+            'css' => ['selfsigned'],
+        ]);
     }
 
 
@@ -83,70 +75,70 @@ class SelfsignedController extends Controller
         die();
     }
 
-    public function make(HTTPRequest $request)
+    public function make(Request $request)
     {
-        if (!Request::isMethod('post')) {
-            return redirect('/selfsigned');
-        }
-
         [, $openssl] = $this->_opensslVersion();
         if ($openssl === null) {
             abort(500);
         }
 
         /** @var $validator \Illuminate\Validation\Validator */
-        $input_data = $request->all(['commonName', 'subdomains', 'validFor']);
+        $input_data = $request->all(['common_name', 'subdomains', 'valid_for']);
         $input_data['human'] = $request->isHuman();
         $validator = Validator::make($input_data, [
-            'commonName' => 'bail|min:3|max:253|required|string|domain',
+            'common_name' => 'bail|min:3|max:253|required|string|domain',
             'subdomains' => 'bail|string|subdomains',
-            'validFor' => 'bail|int|min:1|max:3652|required',
+            'valid_for' => 'bail|int|min:1|max:3652|required',
             'human' => new Human(),
         ]);
         if ($validator->fails()) {
-            return $this->_index($validator);
+            return redirect()->route('selfsigned')->withErrors($validator)->withInput($validator->getData());
         }
 
-        $commonName = $request->input('commonName');
-        $validFor = $request->input('validFor');
-        $alternateNames = $this->_processAlternateNames($request->input('subdomains'), $commonName);
+        $common_name = strtolower($request->input('common_name'));
+        $valid_for = $request->input('valid_for');
+        $alternate_names = $this->_processAlternateNames($request->input('subdomains'), $common_name);
         $conf = str_replace(
             ['%SAN%', '%CN%'],
-            [$alternateNames, $commonName],
+            [$alternate_names, $common_name],
             file_get_contents(resource_path('openssl.cnf'))
         );
 
-        $TMP = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).'/selfsigned-'.Uuid::generate(4);
+        $generated_path = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).'/selfsigned-'.Uuid::generate(4);
 
-        file_put_contents("$TMP.cnf", $conf);
+        file_put_contents("$generated_path.cnf", $conf);
 
-        $RANDFILE = storage_path('.rnd-'.Uuid::generate(4));
-        putenv("RANDFILE=$RANDFILE");
+        $rand_file = storage_path('.rnd-'.Uuid::generate(4));
+        putenv("RANDFILE=$rand_file");
 
         $cafile = $this->_genCAFiles();
 
         $output = '';
-        $output .= shell_exec("openssl req -out $TMP.csr -new -newkey rsa:2048 -sha256 -nodes -keyout $TMP.key -subj \"/C=US/ST=CA/O=$commonName/CN=$commonName\" -reqexts x509_ext -config $TMP.cnf 2>&1");
-        $output .= shell_exec("openssl x509 -req -in $TMP.csr -CA $cafile.pem -CAkey $cafile.key -CAcreateserial -out $TMP.crt -days {$validFor} -extensions x509_ext -sha256 -extfile $TMP.cnf 2>&1");
-        @unlink($RANDFILE);
+        $output .= shell_exec("openssl req -out $generated_path.csr -new -newkey rsa:2048 -sha256 -nodes -keyout $generated_path.key -subj \"/C=US/ST=CA/O=$common_name/CN=$common_name\" -reqexts x509_ext -config $generated_path.cnf 2>&1");
+        $output .= shell_exec("openssl x509 -req -in $generated_path.csr -CA $cafile.pem -CAkey $cafile.key -CAcreateserial -out $generated_path.crt -days {$valid_for} -extensions x509_ext -sha256 -extfile $generated_path.cnf 2>&1");
+        @unlink($rand_file);
 
-        if (!file_exists("$TMP.key") || !file_exists("$TMP.crt")) {
-            $this->_makeCleanup($TMP);
-            return $this->_index(null, __('selfsigned.err_filefail'));
+        if (!file_exists("$generated_path.key") || !file_exists("$generated_path.crt")) {
+            $this->_makeCleanup($generated_path);
+            return redirect()->route('selfsigned')->withErrors([
+                'gen_err' => [__('selfsigned.err_filefail')],
+            ])->withInput($validator->getData());
         }
 
         $zip = new \ZipArchive();
-        $zipname = "$TMP.zip";
+        $zipname = "$generated_path.zip";
         if (($err = $zip->open($zipname, \ZipArchive::CREATE)) !== true) {
-            return $this->_index(null, __('selfsigned.err_zipfail', ['err' => $err]));
+            return redirect()->route('selfsigned')->withErrors([
+                'gen_err' => [__('selfsigned.err_zipfail', ['err' => $err])],
+            ])->withInput($validator->getData());
         }
-        $zip->addFile("$TMP.crt", "$commonName.crt");
-        $zip->addFile("$TMP.key", "$commonName.key");
+        $zip->addFile("$generated_path.crt", "$common_name.crt");
+        $zip->addFile("$generated_path.key", "$common_name.key");
         $zip->close();
-        $this->_makeCleanup($TMP);
+        $this->_makeCleanup($generated_path);
 
         header('Content-Type: application/zip');
-        header("Content-disposition: attachment; filename=$commonName.zip");
+        header("Content-disposition: attachment; filename=$common_name.zip");
         header('Content-Length: '.filesize($zipname));
         readfile($zipname);
         App::terminate();
@@ -162,19 +154,19 @@ class SelfsignedController extends Controller
 
     /**
      * @param  string|null  $subdomains
-     * @param  string  $commonName
+     * @param  string  $common_name
      * @return string
      */
-    private function _processAlternateNames($subdomains, string $commonName)
+    private function _processAlternateNames($subdomains, string $common_name)
     {
-        $list = "DNS.1 = $commonName";
+        $list = "DNS.1 = $common_name";
         if (\is_string($subdomains)) {
-            $newList = explode("\n", $subdomains);
+            $newList = explode("\n", strtolower($subdomains));
             natsort($newList);
             foreach ($newList as $i => $sd) {
                 $dns = trim($sd, "\t\n\r\0\x08.");
                 if (!preg_match('~\.$~', $sd)) {
-                    $dns .= ".$commonName";
+                    $dns .= ".$common_name";
                 }
                 $newList[$i] = 'DNS.'.($i + 2)." = $dns";
             }

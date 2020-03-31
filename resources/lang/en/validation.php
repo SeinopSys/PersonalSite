@@ -84,6 +84,8 @@ return [
     'uploaded' => 'The :attribute failed to upload.',
     'url' => 'The :attribute format is invalid.',
     'recaptcha' => 'reCAPTCHA believes this request was sent by a bot. Please try again if you feel this is incorrect.',
+    'domain' => 'The specified domain is invalid',
+    'subdomains' => 'The specified subdomain(s) are invalid',
 
     /*
     |--------------------------------------------------------------------------

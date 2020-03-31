@@ -26,9 +26,9 @@ Route::get('/cidr', function () {
 Route::get('/networking', 'ToolsController@networking')->name('networking');
 Route::get('/imagecalc', 'ToolsController@imagecalc')->name('imagecalc');
 Route::get('/self-signed', function () {
-    return redirect('/selfsigned', 301);
+    return redirect()->route('selfsigned', [], 301);
 });
-Route::get('/selfsigned', 'SelfsignedController@index');
+Route::get('/selfsigned', 'SelfsignedController@index')->name('selfsigned');
 Route::get('/selfsigned/rootCA', 'SelfsignedController@rootCA');
 Route::post('/selfsigned', 'SelfsignedController@make')->middleware(['recaptcha','throttle:25,5']);
 Route::get('/lrc', 'LRCController@index')->name('lrc');

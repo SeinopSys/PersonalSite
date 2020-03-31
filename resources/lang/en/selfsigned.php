@@ -2,8 +2,10 @@
 
 return [
     'title' => 'OpenSSL Self-Signed Certificate Generator',
-    'about' => [
-        'p1' => 'This tool lets you generate self-signed certificates:openssl (for development use) that contain the :san which Chrome 58 now requires.',
+    'about' => 'Quickly and easily generate self-signed SSL certificates',
+    'description' => [
+        'oprah' => 'You get a cert, and you get a cert, everybody gets a cert!',
+        'p1' => 'This tool lets you generate self-signed certificates (for development use):openssl that contain the :san which Chrome 58 now requires.',
         'using' => ' using OpenSSL v:ver',
         'p2' => [
             "When you click generate you'll get a ZIP archive with a certificate and RSA key file that you can simply extract into a folder and use in your web server setup. Just make sure to add it to the certificates that the system trusts.",

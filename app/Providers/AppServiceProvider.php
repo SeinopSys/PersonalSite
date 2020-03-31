@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
             return preg_match('~^[\da-z.-]{1,253}$~i', $value);
         });
         Validator::extend('subdomains', function ($attribute, $value, $parameters, $validator): bool {
-            return preg_match('~^([\da-z-]+|[\da-z-.]+\.)$~m', $value);
+            return preg_match('~^([\da-z-]+|[\da-z.-]+\.)$~mi', $value);
         });
     }
 

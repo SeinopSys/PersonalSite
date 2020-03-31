@@ -2,8 +2,10 @@
 
 return [
     'title' => 'OpenSSL Ön-Aláírt Tanúsítvány Generátor',
-    'about' => [
-        'p1' => 'Ezzel az eszközzel olyan önaláírt tanúsítványokat készíthetsz:openssl (fejlesztési célra), amelyek tartalmazzák a :san mezőt, amit a Chrome 58 már elvár.',
+    'about' => 'Generálj ön-aláírt SSL tanúsítványokat gyorsan és könnyedén',
+    'description' => [
+        'oprah' => 'Itt egy tanúsítvány, és neked is egy tanúsítvány, mindenki kap tanúsítványt!',
+        'p1' => 'Ezzel az eszközzel olyan önaláírt tanúsítványokat készíthetsz (fejlesztési célra):openssl, amelyek tartalmazzák a :san mezőt, amit a Chrome 58 már elvár.',
         'using' => ' az OpenSSL v:ver segítségével',
         'p2' => [
             'A generálás gombra kattintva kapsz egy ZIP állományt, mely tartalmaz egy tanúsítvány és egy RSA kulcs fájlt, amit egy mappába kibontva és a webszervernek megadva egyből használhatsz is. Csak ne felejtsd el hozzáadni a megbízható tanusítványokhoz a rendszeredben.',

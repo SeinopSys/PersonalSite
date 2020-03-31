@@ -88,6 +88,8 @@ return [
     'uploaded' => 'A(z) :attribute feltöltése sikertelen.',
     'url' => 'A(z) :attribute érvénytelen link.',
     'recaptcha' => 'A reCAPTCHA szerint a kérés robottól érkezett. Próbálkozz újra ha ezt hibásnak érzed.',
+    'domain' => 'A megadott domain érvénytelen',
+    'subdomains' => 'A megadott al-domain(ek) érvénytelen(ek)',
 
     /*
     |--------------------------------------------------------------------------

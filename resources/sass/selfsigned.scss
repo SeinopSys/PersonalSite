@@ -1,0 +1,13 @@
+.oprah-wrapper {
+    img {
+        display: block;
+        margin: 0 auto 1rem;
+        width: 310px;
+        max-width: 100%;
+
+        @media (min-width: 992px) {
+            float: right;
+            margin: 0 0 1rem 1rem;
+        }
+    }
+}
