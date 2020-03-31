@@ -8,7 +8,7 @@ $title = __('selfsigned.title'); ?>
 @section('panel-body')
     <h3>{{ $title }}{!! \App\Util\Core::JSIcon() !!}</h3>
     <div class="oprah-wrapper">
-        <img src="/img/oprah-CA-{{ App::getLocale() }}.png" alt="{{ __('selfsigned.description.oprah') }}">
+        <img src="/img/oprah-CA-{{ App::getLocale() }}.png" alt="{{ __('selfsigned.description.oprah') }}" width="310" height="232">
         <p>{!! __('selfsigned.description.p1',[
             'openssl' => isset($openssl) ? __('selfsigned.description.using',['ver' => $openssl]) : '',
             'san' => '<code>subjectAltName</code>',
