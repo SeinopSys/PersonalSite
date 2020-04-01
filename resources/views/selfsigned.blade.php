@@ -67,11 +67,9 @@ $title = __('selfsigned.title'); ?>
                 <div class="form-group recaptcha">
                     <label>{{ __('auth.field-antispam') }}</label>
 
-                    <div>
-	                <span class="invalid-feedback d-none">
-	                    <strong>{{ $errors->first('human') }}</strong>
-	                </span>
-                    </div>
+                    <span class="invalid-feedback d-block">
+                        <strong>{{ $errors->first('human') }}</strong>
+                    </span>
                 </div>
             @endif
 
