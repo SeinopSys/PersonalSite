@@ -56,7 +56,7 @@ class SelfsignedController extends Controller
             shell_exec("openssl genrsa -out $cafile.key 2048 2>&1");
         }
         if (!file_exists("$cafile.pem")) {
-            shell_exec("openssl req -x509 -new -nodes -key $cafile.key -sha256 -days 1024 -out $cafile.pem -subj \"/C=US/ST=CA/O=localhost/CN=localhost\" 2>&1");
+            shell_exec("openssl req -x509 -new -nodes -key $cafile.key -sha256 -days 3652 -out $cafile.pem -subj \"/C=US/ST=CA/O=localhost/CN=localhost\" 2>&1");
         }
         return $cafile;
     }
