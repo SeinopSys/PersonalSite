@@ -6,6 +6,7 @@ use App\Rules\Human;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\HTTP\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -36,10 +37,24 @@ class SelfsignedController extends Controller
             Log::critical(__METHOD__.': $openssl == '.($openssl ? 1 : 0).'; $haveZip == '.($haveZip ? 1 : 0));
         }
 
+        $cache_key = 'selfsigned_pem_expires';
+        $cached_ca_expires = Cache::get($cache_key);
+        if (empty($cached_ca_expires)) {
+            $pem_file = $this->_genCAFiles().'.pem';
+            $ca_expires = null;
+            if (file_exists($pem_file)) {
+                $pem_data = openssl_x509_parse("file://$pem_file");
+                $ca_expires = $pem_data['validTo_time_t'];
+                Cache::set($cache_key, $ca_expires, 3600);
+            }
+        }
+        else $ca_expires = (int) $cached_ca_expires;
+
         return view('selfsigned', [
             'openssl' => $openssl,
             'opensslVersion' => $opensslVersion,
             'zip' => $haveZip,
+            'ca_expires' => $ca_expires,
             'css' => ['selfsigned'],
         ]);
     }

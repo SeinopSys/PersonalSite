@@ -1,7 +1,7 @@
 <?php
-
 use Illuminate\Support\Facades\Input;
 
+/** @var $ca_expires int */
 $title = __('selfsigned.title'); ?>
 @extends('layouts.container')
 
@@ -12,8 +12,18 @@ $title = __('selfsigned.title'); ?>
         <p>{!! __('selfsigned.description.p1',[
             'openssl' => isset($openssl) ? __('selfsigned.description.using',['ver' => $openssl]) : '',
             'san' => '<code>subjectAltName</code>',
-        ]) !!}<br>{{ __('selfsigned.description.p2.0') }}<br>{{ __('selfsigned.description.p2.1') }}: <a href="/selfsigned/rootCA">rootCA.pem</a><br>{!! __('selfsigned.description.p3',['xca'=>'<a href="https://sourceforge.net/projects/xca/">XCA</a>']) !!}
+        ]) !!}<br>{{ __('selfsigned.description.p2.0') }}<br>{{ __('selfsigned.description.p2.1') }}: <a href="/selfsigned/rootCA">rootCA.pem</a>
+            @if($ca_expires)
+                ({{ __('selfsigned.description.p2.2') }} {!! \App\Util\Time::Tag($ca_expires) !!})
+            @endif
         </p>
+        <p class="text-danger">
+            <span class="fa fa-exclamation-triangle"></span>
+            {!! __('selfsigned.description.before_2020_01_04', [
+                'pem' => '<code>rootCA.pem</code>',
+            ]) !!}
+        </p>
+        <p>{!! __('selfsigned.description.p3',['xca'=>'<a href="https://sourceforge.net/projects/xca/">XCA</a>']) !!}</p>
     </div>
 
     @if($errors->has('gen_err'))
