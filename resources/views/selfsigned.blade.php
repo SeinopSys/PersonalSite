@@ -23,7 +23,7 @@ $title = __('selfsigned.title'); ?>
                 'pem' => '<code>rootCA.pem</code>',
             ]) !!}
         </p>
-        <p>{!! __('selfsigned.description.p3',['xca'=>'<a href="https://sourceforge.net/projects/xca/">XCA</a>']) !!}</p>
+        <p>{!! __('selfsigned.description.p3',['xca'=>'<a href="https://hohnstaedt.de/xca">XCA</a>']) !!}</p>
     </div>
 
     @if($errors->has('gen_err'))
