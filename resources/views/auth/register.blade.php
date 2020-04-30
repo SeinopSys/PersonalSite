@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.container', [ 'title' => 'Register'])
 
 @section('panel-heading')
 Register
