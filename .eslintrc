@@ -54,6 +54,9 @@
         "Time": true,
         "Laravel": true,
         "grecaptcha": "readonly",
-        "moment": "readonly"
+        "moment": "readonly",
+        "mk": "readonly",
+        "saveAs": "readonly",
+        "jsmediatags": "readonly"
     }
 }

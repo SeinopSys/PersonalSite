@@ -1,8 +1,7 @@
-/* global mk,$body,Key,Laravel,saveAs,jsmediatags */
 (function ($, undefined) {
     "use strict";
 
-    window.URL = window.URL || window.webkitURL;
+    if (!window.URL) window.URL = window.webkitURL;
 
     const pluginScope = {
         player: undefined,
