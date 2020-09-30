@@ -23,7 +23,7 @@ return [
     'field-email' => 'E-Mail Cím',
     'field-pass' => 'Jelszó',
     'field-passconf' => 'Jelszó Újra',
-    'field-antispam' => 'Spam-ellenes Ellenörzés',
+    'field-antispam' => 'Spam Védelem',
     'check-remember' => 'Emlékezzen Rám',
     'btn-login' => 'Belépés',
     'btn-register' => 'Regisztráció',

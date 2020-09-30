@@ -47,35 +47,56 @@
         return e.keyCode === Key;
     };
 
-    window.recaptchaReady = () => {
-        const {recaptchaKey} = Laravel;
+    window.hcaptchaReady = () => {
+        const {hcaptchaKey} = Laravel;
 
-        if (typeof recaptchaKey === 'undefined')
+        if (typeof hcaptchaKey === 'undefined')
             return;
 
-        if (recaptchaKey === '') {
-            console.error("You haven't set your Site Key for reCAPTCHA v3. Get it on https://g.co/recaptcha/admin.");
+        if (hcaptchaKey === '') {
+            console.error("You haven't set your Site Key for hCaptcha v3. Get it on https://hcaptcha.com.");
             return;
         }
 
-        $('form').filter('[data-recaptcha="true"]').each((_, form) => {
+        const relevantInputName = 'h-captcha-response';
+
+        const getKeyEl = $form => {
+            let $el = $form.find(`:input[name="${relevantInputName}"]`);
+            if (!$el.length) {
+                $el = $($.mk('textarea')).attr('name', relevantInputName).appendTo($form);
+            }
+            return $el;
+        };
+
+        const getSubmitEls = $form => $form.find(`button:not([type]), input[type="submit"]`);
+
+        $('form').filter('[data-hcaptcha="true"]').each((_, form) => {
             const $form = $(form);
-            let action = form.action.includes('://') ? (new URL(form.action)).pathname : form.action;
-            const getKey = () => {
-                grecaptcha.execute(recaptchaKey, {
-                    action: action
-                        .substring(action.indexOf('?'), action.length)
-                        .replace(/[^A-z/_]/gi, ''),
-                }).then(value => value &&
-                    $.mk('input').attr({
-                        type: 'hidden',
-                        name: '_recaptcha',
-                        value,
-                    }).appendTo($form),
-                );
-            };
-            getKey();
-            $form.on('submit', getKey);
+            const $container = $form.find('.h-captcha');
+            const widgetId = hcaptcha.render($container.get(0), {
+                sitekey: hcaptchaKey,
+                ...$container.data(),
+                callback: token => {
+                    const $key = getKeyEl($form);
+                    $key.val(token);
+                    form.submit();
+                    // Reset the key for the next submission
+                    $key.val('');
+                    getSubmitEls($form).attr('disabled', false);
+                }
+            });
+            $form.on('submit', e => {
+                const $key = getKeyEl($form);
+                console.log($key.val());
+                if ($key.val().length === 0) {
+                    e.preventDefault();
+                    getSubmitEls($form).attr('disabled', true);
+                    hcaptcha.execute(widgetId);
+                    return;
+                }
+                // Reset the key for the next submission
+                $key.val('');
+            });
         });
     };
 

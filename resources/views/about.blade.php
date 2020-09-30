@@ -12,7 +12,7 @@ use App\Util\Core; ?>
     <div id="content">
         <div class="essentials pb-4">
             <div class="avatar-wrap">
-                <img src="https://gravatar.com/avatar/{{ md5($email) }}?s=200&r=g" alt="{{ config('app.name') }}">
+                <img src="https://gravatar.com/avatar/{{ md5($email) }}?s=200&amp;r=g" alt="{{ config('app.name') }}">
             </div>
             <h1>{{ App::isLocale('hu') ? 'Guzsik Dávid József' : 'David Joseph Guzsik' }}</h1>
             <div class="detail">

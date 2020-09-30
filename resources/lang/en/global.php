@@ -58,5 +58,12 @@ return [
 
     'tool-not-found' => 'The tool you were linked to does not exist or has been removed. You can pick from the available tools above.',
     'page-out-of-bounds' => 'The selected page is out of bounds. Please select an existing page below.',
-    'hu_sunset' => 'The <code>seinopsys<strong>.hu</strong></code> domain is being <a href="https://whatis.techtarget.com/definition/sunsetting">sunset</a>. Please use <code>seinopsys<strong>.dev</strong></code> to avoid loading something unexpected once the domain expires :time.'
+    'hu_sunset' => 'The <code>seinopsys<strong>.hu</strong></code> domain is being <a href="https://whatis.techtarget.com/definition/sunsetting">sunset</a>. Please use <code>seinopsys<strong>.dev</strong></code> to avoid loading something unexpected once the domain expires :time.',
+    'hcaptcha_protecc' => [
+        'This site is protected by hCaptcha and its',
+        'Privacy Policy',
+        'and',
+        'Terms of Service',
+        'apply.'
+    ]
 ];

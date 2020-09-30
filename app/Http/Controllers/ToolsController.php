@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests;
-
 class ToolsController extends Controller
 {
     public function networking()

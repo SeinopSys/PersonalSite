@@ -1,5 +1,4 @@
 <?php
-use Illuminate\Support\Facades\Input;
 
 /** @var $ca_expires int */
 $title = __('selfsigned.title'); ?>
@@ -17,8 +16,8 @@ $title = __('selfsigned.title'); ?>
                 ({{ __('selfsigned.description.p2.2') }} {!! \App\Util\Time::Tag($ca_expires) !!})
             @endif
         </p>
-        <p class="text-danger">
-            <span class="fa fa-exclamation-triangle"></span>
+        <p class="text-info">
+            <span class="fa fa-info fa-fw"></span>
             {!! __('selfsigned.description.before_2020_01_04', [
                 'pem' => '<code>rootCA.pem</code>',
             ]) !!}
@@ -34,44 +33,36 @@ $title = __('selfsigned.title'); ?>
     @endif
 
     @if($openssl && $zip)
-        <form method="POST" data-recaptcha="true">
+        <form method="POST" action="{{ route('selfsigned.make') }}" data-hcaptcha="true">
             <div class="form-group">
                 <label for="common_name">{{ __('selfsigned.common_name') }}</label>
-                @if ($errors->has('common_name'))
-                    <p class="text-danger">{{ $errors->first('common_name') }}</p>
-                @endif
                 <input type="text" id="common_name" name="common_name" class="form-control" placeholder="example.com"
                        pattern="^[\da-z.-]{3,253}$" maxlength="253" required autocomplete="off" spellcheck="false"
-                       value="{{ Request::input('common_name') ?? old('common_name') }}">
+                       value="{{ request()->input('common_name') ?? old('common_name') }}">
+                @if ($errors->has('common_name'))
+                    <span class="invalid-feedback d-block">{{ $errors->first('common_name') }}</span>
+                @endif
             </div>
 
             <div class="form-group">
                 <label for="subdomains">{{ __('selfsigned.subdomains') }} ({{ __('global.optional') }})</label>
-                @if ($errors->has('subdomains'))
-                    <p class="text-danger">{{ $errors->first('subdomains') }}</p>
-                @endif
                 <p class="text-info"><span
                         class="fa fa-info-circle"></span> {!! __('selfsigned.subdomains_explain',['short' => '<code>www</code>', 'long' => '<code>www.example.com</code>']) !!}
                 </p>
                 <textarea class="form-control" id="subdomains" name="subdomains" rows="8"
-                          title="{{ __('selfsigned.subdomains_title') }}">{{ Request::input('subdomains') ?? old('subdomains') }}</textarea>
+                          title="{{ __('selfsigned.subdomains_title') }}">{{ request()->input('subdomains') ?? old('subdomains') }}</textarea>
+                @if ($errors->has('subdomains'))
+                    <span class="invalid-feedback d-block">{{ $errors->first('subdomains') }}</span>
+                @endif
             </div>
 
             <div class="form-group">
                 <label for="valid_for">{{ __('selfsigned.validity') }}</label>
                 <input type="number" id="valid_for" name="valid_for" class="form-control" step="1" min="1" max="3652"
-                       value="{{ Request::input('valid_for') ?? old('valid_for', '3652') }}" placeholder="3652">
+                       value="{{ request()->input('valid_for') ?? old('valid_for', '3652') }}" placeholder="3652">
             </div>
 
-            @if($errors->has('human'))
-                <div class="form-group recaptcha">
-                    <label>{{ __('auth.field-antispam') }}</label>
-
-                    <span class="invalid-feedback d-block">
-                        <strong>{{ $errors->first('human') }}</strong>
-                    </span>
-                </div>
-            @endif
+            <x-captcha :errors="$errors" />
 
             @csrf
 

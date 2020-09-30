@@ -8,7 +8,7 @@
     <meta property="og:description"
           content="{{ __(isset($title) && !empty($route = Request::route()) && ($routeName = $route->getName()) ? "$routeName.about" : 'about.briefdesc') }}">
     <meta property="og:image"
-          content="https://gravatar.com/avatar/ebbac7b82d21d98c2638233797a323c2?s=250&r=g">
+          content="https://gravatar.com/avatar/ebbac7b82d21d98c2638233797a323c2?s=250&amp;r=g">
     <meta name="description" content="{{ __('about.briefdesc') }}">
     <meta name="keywords"
           content="seinopsys,web,web development,webfejlesztés,web developer,webfejlesztő,php,css,linux,debian,hungary,magyar{{ isset($tags) ? ",$tags" : '' }}">
@@ -37,7 +37,7 @@
         $git_info = \App\Util\Core::GetFooterGitInfo();
 
         // Scripts
-        echo "\n\t<script>window.Laravel = ".App\Util\JSON::Encode([
+        echo "\n\t<script>window.Laravel = JSON.parse(".App\Util\JSON::Encode(App\Util\JSON::Encode([
             'csrfToken' => csrf_token(),
             'locale' => $currLang,
             'git' => $git_info,
@@ -71,7 +71,7 @@
                 ]
             ],
             'jsLocales' => new stdClass(),
-        ])."</script>\n";
+        ])).")</script>\n";
     @endphp
 </head>
 <body>
@@ -81,7 +81,7 @@
 
 <footer>
     <span>{!! __('footer.built-with', [
-        'laravel' => '<a href="https://laravel.com/">Laravel 6</a>',
+        'laravel' => '<a href="https://laravel.com/">Laravel 8</a>',
         'bootstrap' => '<a href="https://getbootstrap.com/">Bootstrap 4</a>',
         'fa' => '<a href="https://fontawesome.com/license/free">Font Awesome Free 5.11.2</a>'
     ]) !!}</span>
@@ -103,6 +103,10 @@
         integrity="sha256-x3YZWtRjM8bJqf48dFAv/qmgL68SI4jqNWeSLMZaMGA=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/js/bootstrap.min.js"
         integrity="sha256-WqU1JavFxSAMcLP2WIOI+GB2zWmShMI82mTpLDcqFUg=" crossorigin="anonymous"></script>
+@if(isset($hcaptcha))
+    <script src="https://hcaptcha.com/1/api.js?hl={{ $currLang }}&render=explicit&onload=hcaptchaReady" async defer></script>
+    <script>window.Laravel.hcaptchaKey = '{{ config('hcaptcha.sitekey') }}'</script>
+@endif
 @yield('js-locales')
 <?php
 echo \App\Util\Core::AssetURL('moment', 'js');

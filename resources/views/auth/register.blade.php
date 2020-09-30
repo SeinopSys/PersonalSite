@@ -6,7 +6,7 @@ Register
 
 @section('panel-body')
     <form class="form-horizontal" role="form" method="POST" action="{{ url('/register') }}"
-          data-recaptcha="true">
+          data-hcaptcha="true">
         @csrf
 
         <div class="form-group row{{ $errors->has('name') ? ' has-error' : '' }}">
@@ -33,8 +33,8 @@ Register
 
                 @if ($errors->has('email'))
                     <span class="help-block">
-                                        <strong>{{ $errors->first('email') }}</strong>
-                                    </span>
+                        <strong>{{ $errors->first('email') }}</strong>
+                    </span>
                 @endif
             </div>
         </div>
@@ -69,17 +69,7 @@ Register
             </div>
         </div>
 
-        @if($errors->has('human'))
-            <div class="form-group row recaptcha has-error">
-                <label>{{ __('auth.field-antispam') }}</label>
-
-                <div>
-                    <span class="help-block">
-                        <strong>{{ $errors->first('human') }}</strong>
-                    </span>
-                </div>
-            </div>
-        @endif
+        <x-captcha :errors="$errors" />
 
         <div class="form-group row">
             <div class="col-md-6 offset-md-4">

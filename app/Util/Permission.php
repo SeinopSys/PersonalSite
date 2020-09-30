@@ -2,8 +2,11 @@
 
 namespace App\Util;
 
-use App\Exception;
+use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
+use function is_string;
 
 class Permission
 {
@@ -19,10 +22,11 @@ class Permission
      * @param  string|null  $compareAgainst
      *
      * @return bool
+     * @throws Exception
      */
-    public static function Sufficient($role, $compareAgainst = null)
+    public static function Sufficient(string $role, ?string $compareAgainst = null): bool
     {
-        if (!\is_string($role)) {
+        if (!is_string($role)) {
             return false;
         }
 
@@ -30,7 +34,7 @@ class Permission
             if (Auth::guest()) {
                 return false;
             }
-            /** @var $user \App\User */
+            /** @var $user User */
             $user = Auth::user();
             $checkRole = $user->role;
         } else {
@@ -38,7 +42,7 @@ class Permission
         }
 
         if (!isset(self::ROLES[$role])) {
-            throw new Exception('Invalid role: '.$role);
+            throw new RuntimeException("Invalid role: $role");
         }
         $targetRole = $role;
 
@@ -61,8 +65,9 @@ class Permission
      * @param  string|null  $compareAgainst
      *
      * @return bool
+     * @throws Exception
      */
-    public static function Insufficient($role, $compareAgainst = null)
+    public static function Insufficient(string $role, ?string $compareAgainst = null): bool
     {
         return !self::Sufficient($role, $compareAgainst);
     }

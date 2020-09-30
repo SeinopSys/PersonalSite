@@ -23,7 +23,7 @@ return [
     'field-email' => 'E-Mail Address',
     'field-pass' => 'Password',
     'field-passconf' => 'Retype Password',
-    'field-antispam' => 'Anti-Spam Check',
+    'field-antispam' => 'Anti-Spam Protection',
     'check-remember' => 'Remember Me',
     'btn-login' => 'Log in',
     'btn-register' => 'Register',

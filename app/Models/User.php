@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,7 +34,6 @@ use Illuminate\Notifications\Notifiable;
  * @method static Builder|User whereRememberToken($value)
  * @method static Builder|User whereRole($value)
  * @method static Builder|User whereUpdatedAt($value)
- * @mixin \Eloquent
  * @property-read int|null $notifications_count
  * @property-read int|null $uploads_count
  * @method static Builder|User newModelQuery()
@@ -43,8 +42,7 @@ use Illuminate\Notifications\Notifiable;
  */
 class User extends Authenticatable
 {
-    use Notifiable;
-    use Uuids;
+    use Notifiable, Uuids;
 
     /**
      * Indicates if the IDs are auto-incrementing.
@@ -93,11 +91,11 @@ class User extends Authenticatable
      */
     public function imageUpload()
     {
-        return $this->hasOne('App\ImageUpload');
+        return $this->hasOne(ImageUpload::class);
     }
 
     public function uploads()
     {
-        return $this->hasMany('App\Upload', 'uploaded_by', 'id');
+        return $this->hasMany(Upload::class, 'uploaded_by', 'id');
     }
 }

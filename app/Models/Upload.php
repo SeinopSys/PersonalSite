@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use App\Util\Core;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,11 +33,10 @@ use Illuminate\Support\Str;
  * @method static Builder|Upload whereUploadedAt($value)
  * @method static Builder|Upload whereUploadedBy($value)
  * @method static Builder|Upload whereWidth($value)
- * @mixin \Eloquent
  * @method static Builder|Upload newModelQuery()
  * @method static Builder|Upload newQuery()
  * @method static Builder|Upload query()
- * @method static \Illuminate\Database\Eloquent\Builder|\App\Upload whereSecondaryDomain($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Upload whereSecondaryDomain($value)
  */
 class Upload extends Model
 {

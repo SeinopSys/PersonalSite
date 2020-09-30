@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Rules\Human;
-use App\User;
+use App\Rules\ValidHCaptcha;
+use App\Models\User;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Request;
-use Validator;
+use Illuminate\Support\Facades\Validator;
 
 class RegisterController extends Controller
 {
@@ -49,7 +48,6 @@ class RegisterController extends Controller
      */
     protected function validator(array $data)
     {
-        $data['human'] = Request::isHuman();
         $data['users'] = User::count();
 
         return Validator::make($data, [
@@ -57,7 +55,7 @@ class RegisterController extends Controller
             'name' => 'required|max:255',
             'email' => 'required|email|max:255|unique:users',
             'password' => 'required|min:8|confirmed',
-            'human' => new Human(),
+            'h-captcha-response' => ['required', new ValidHCaptcha()]
         ]);
     }
 
@@ -86,6 +84,6 @@ class RegisterController extends Controller
      */
     public function showRegistrationForm()
     {
-        return view('auth.register');
+        return view('auth.register', ['hcaptcha' => true]);
     }
 }

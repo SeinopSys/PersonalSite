@@ -2,21 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests;
-use App\ImageUpload;
-use App\Upload;
-use App\User;
+use App\Models\ImageUpload;
+use App\Models\Upload;
+use App\Models\User;
 use App\Util\Core;
 use App\Util\Permission;
 use App\Util\Response;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Input;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Intervention\Image\Facades\Image;
-use Session;
 
 class UploadsController extends Controller
 {
@@ -103,7 +100,7 @@ class UploadsController extends Controller
     {
         /** @var $user \App\User */
         $user = Auth::user();
-        /** @var $uploadAllowed \App\ImageUpload */
+        /** @var $uploadAllowed \App\Models\ImageUpload */
         $uploadAllowed = $user->imageUpload()->first();
         if (empty($uploadAllowed)) {
             Response::Fail(__('uploads.statustext', ['status' => __('global.off')]));

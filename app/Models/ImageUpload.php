@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read User $user
  * @method static Builder|ImageUpload whereUploadKey($value)
  * @method static Builder|ImageUpload whereUserId($value)
- * @mixin \Eloquent
  * @method static Builder|ImageUpload newModelQuery()
  * @method static Builder|ImageUpload newQuery()
  * @method static Builder|ImageUpload query()

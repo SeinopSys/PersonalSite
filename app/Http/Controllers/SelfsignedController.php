@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Rules\Human;
-use Illuminate\Contracts\Validation\Validator as ValidatorContract;
-use Illuminate\HTTP\Request;
+use App\Rules\ValidHCaptcha;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Webpatser\Uuid\Uuid;
@@ -47,8 +45,9 @@ class SelfsignedController extends Controller
                 $ca_expires = $pem_data['validTo_time_t'];
                 Cache::set($cache_key, $ca_expires, 3600);
             }
+        } else {
+            $ca_expires = (int) $cached_ca_expires;
         }
-        else $ca_expires = (int) $cached_ca_expires;
 
         return view('selfsigned', [
             'openssl' => $openssl,
@@ -56,6 +55,7 @@ class SelfsignedController extends Controller
             'zip' => $haveZip,
             'ca_expires' => $ca_expires,
             'css' => ['selfsigned'],
+            'hcaptcha' => true,
         ]);
     }
 
@@ -98,21 +98,17 @@ class SelfsignedController extends Controller
         }
 
         /** @var $validator \Illuminate\Validation\Validator */
-        $input_data = $request->all(['common_name', 'subdomains', 'valid_for']);
-        $input_data['human'] = $request->isHuman();
-        $validator = Validator::make($input_data, [
-            'common_name' => 'bail|min:3|max:253|required|string|domain',
-            'subdomains' => 'bail|string|subdomains',
-            'valid_for' => 'bail|int|min:1|max:3652|required',
-            'human' => new Human(),
+        $validator = Validator::make($request->all(), [
+            'common_name' => 'bail|required|string|min:3|max:253|domain',
+            'subdomains' => 'bail|nullable|string|subdomains',
+            'valid_for' => 'bail|required|int|min:1|max:3652',
+            'h-captcha-response' => ['required', new ValidHCaptcha()],
         ]);
-        if ($validator->fails()) {
-            return redirect()->route('selfsigned')->withErrors($validator)->withInput($validator->getData());
-        }
+        $input_data = $validator->validate();
 
-        $common_name = strtolower($request->input('common_name'));
-        $valid_for = $request->input('valid_for');
-        $alternate_names = $this->_processAlternateNames($request->input('subdomains'), $common_name);
+        $common_name = strtolower($input_data['common_name']);
+        $valid_for = $input_data['valid_for'];
+        $alternate_names = $this->_processAlternateNames($input_data['subdomains'], $common_name);
         $conf = str_replace(
             ['%SAN%', '%CN%'],
             [$alternate_names, $common_name],
@@ -160,19 +156,14 @@ class SelfsignedController extends Controller
         die();
     }
 
-    public function _makeCleanup(string $TMP)
+    public function _makeCleanup(string $TMP): void
     {
         foreach (['crt', 'cnf', 'key'] as $ext) {
             @unlink("$TMP.$ext");
         }
     }
 
-    /**
-     * @param  string|null  $subdomains
-     * @param  string  $common_name
-     * @return string
-     */
-    private function _processAlternateNames($subdomains, string $common_name)
+    private function _processAlternateNames(?string $subdomains, string $common_name): string
     {
         $list = "DNS.1 = $common_name";
         if (\is_string($subdomains)) {

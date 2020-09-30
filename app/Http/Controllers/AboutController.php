@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests;
-use Illuminate\Support\Facades\Config;
-
 class AboutController extends Controller
 {
     public function gotoIndex()

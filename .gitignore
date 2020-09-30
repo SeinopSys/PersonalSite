@@ -1,11 +1,14 @@
 /node_modules
 /public/storage
 /storage/rootCA.*
+/storage/*.key
 /vendor
 /.idea
 Homestead.json
 Homestead.yaml
 .env
+.env.backup
+.phpunit.result.cache
 /public/img/uploads/
 /public/files/
 .phpstorm.meta.php
@@ -13,3 +16,5 @@ _ide_helper*.php
 error.log
 public/*.html
 .php_cs.cache
+npm-debug.log
+yarn-error.log

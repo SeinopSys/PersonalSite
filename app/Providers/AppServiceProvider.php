@@ -3,13 +3,24 @@
 namespace App\Providers;
 
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        if ($this->app->environment() !== 'production') {
+            $this->app->register(IdeHelperServiceProvider::class);
+        }
+    }
+
     /**
      * Bootstrap any application services.
      *
@@ -26,17 +37,7 @@ class AppServiceProvider extends ServiceProvider
         Validator::extend('subdomains', function ($attribute, $value, $parameters, $validator): bool {
             return preg_match('~^([\da-z-]+|[\da-z.-]+\.)$~mi', $value);
         });
-    }
 
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        if ($this->app->environment() !== 'production') {
-            $this->app->register(IdeHelperServiceProvider::class);
-        }
+        Paginator::useBootstrap();
     }
 }
