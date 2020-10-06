@@ -11,7 +11,7 @@ use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * App\User
+ * App\Models\User
  *
  * @property string $id
  * @property string $name

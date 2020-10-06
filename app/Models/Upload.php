@@ -72,7 +72,7 @@ class Upload extends Model
      */
     public function uploader()
     {
-        return $this->hasOne('App\User', 'id', 'uploaded_by');
+        return $this->hasOne(User::class, 'id', 'uploaded_by');
     }
 
     public function generateRandomName()

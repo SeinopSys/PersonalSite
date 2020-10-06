@@ -98,11 +98,11 @@ class UploadsController extends Controller
 
     public function regen()
     {
-        /** @var $user \App\User */
+        /** @var $user User */
         $user = Auth::user();
         /** @var $uploadAllowed \App\Models\ImageUpload */
         $uploadAllowed = $user->imageUpload()->first();
-        if (empty($uploadAllowed)) {
+        if ($uploadAllowed === null) {
             Response::Fail(__('uploads.statustext', ['status' => __('global.off')]));
         }
 
