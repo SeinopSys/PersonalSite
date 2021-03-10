@@ -5,7 +5,7 @@
 $DesktopTileSize: 110px;
 $DesktopTileIconSize: 32px;
 $MobileTileIconSize: round($DesktopTileIconSize * .8);
-$IconSpriteWidth: 512px;
+$IconSpriteWidth: 576px;
 $IconSpriteHeight: 64px;
 $TileDefaultBG: #101010;
 $WideTileWidth: 205px;
@@ -56,6 +56,9 @@ $RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)/2;
     }
     &.lr:after {
         background-position: -$IconSize*7 0
+    }
+    &.dn:after {
+        background-position: -$IconSize*8 0
     }
 }
 
@@ -338,7 +341,7 @@ body {
                 left: 0;
                 z-index: 2;
                 display: block;
-                background: url('/img/icons.svg?last=sei') no-repeat;
+                background: url('/img/icons.svg?last=dn') no-repeat;
             }
 
             > span {

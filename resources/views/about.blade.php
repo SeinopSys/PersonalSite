@@ -55,6 +55,9 @@ use App\Util\Core; ?>
                 <a class="ytms" href="https://github.com/SeinopSys/YTMySubs">
                     <span>{{ __('about.yt_my_subs') }}</span>
                 </a>
+                <a class="dn" href="https://github.com/SeinopSys/Deviant-Notify">
+                    <span>Deviant-Notify</span>
+                </a>
                 <a class="pm" href="mailto:{{ $email }}">
                     <span>{{ __('about.sendmail') }}</span>
                 </a>
