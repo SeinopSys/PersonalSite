@@ -5,10 +5,11 @@
     "use strict";
 
     const
+        Fiber = require('fibers'),
         chalk = require('chalk'),
         gulp = require('gulp'),
         plumber = require('gulp-plumber'),
-        sass = require('gulp-sass'),
+        sass = require('gulp-sass')(require('sass')),
         autoprefixer = require('gulp-autoprefixer'),
         cleanCss = require('gulp-clean-css'),
         terser = require('gulp-terser'),
@@ -45,6 +46,7 @@
             }))
             .pipe(sourceMaps.init())
             .pipe(sass({
+                fiber: Fiber,
                 outputStyle: 'expanded',
                 errLogToConsole: true,
             }))

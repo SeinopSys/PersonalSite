@@ -29,6 +29,7 @@
           integrity="sha256-8DcgqUGhWHHsTLj1qcGr0OuPbKkN1RwDjIbZ6DKh/RA=" crossorigin="anonymous"/>
     @php
         /** @var string $currLang */
+        echo \App\Util\Core::AssetURL('bootstrap', 'css');
         echo \App\Util\Core::AssetURL('theme', 'css');
         if (!empty($css)){
             if (!is_array($css))

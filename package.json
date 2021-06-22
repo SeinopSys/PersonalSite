@@ -16,15 +16,17 @@
         "gulp-clean-css": "^3.0.0",
         "gulp-plumber": "^1.1.0",
         "gulp-rename": "^1.4.0",
-        "gulp-sass": "^4.1.0",
+        "gulp-sass": "mxmason/gulp-sass#feature/update-node-sass",
         "gulp-sourcemaps": "^2.6.5",
         "gulp-terser": "^1.4.1"
     },
     "devDependencies": {
         "@fortawesome/fontawesome-free": "^5.15.1",
-        "bootstrap": "^4.5.3",
+        "bootstrap": "^4.6.0",
         "eslint": "^7.15.0",
-        "eslint-plugin-react": "^7.21.5"
+        "eslint-plugin-react": "^7.21.5",
+        "fibers": "^5.0.0",
+        "sass": "^1.35.1"
     },
     "scripts": {
         "build": "gulp default",

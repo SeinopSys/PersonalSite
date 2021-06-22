@@ -127,7 +127,7 @@ $thumbBorder: 2px;
                 display: block;
                 width: 100%;
                 height: $progressHeight;
-                border-radius: $progressHeight/2;
+                border-radius: $progressHeight*0.5;
                 font-size: 0;
                 border: $progressBorder solid $progressBorderColor;
                 background-color: $progressBorderColor;
@@ -140,7 +140,7 @@ $thumbBorder: 2px;
                     left: $progressBorder;
                     max-width: calc(100% - #{$progressBorder} * 2);
                     overflow: hidden;
-                    border-radius: $fillHeight/2;
+                    border-radius: $fillHeight*0.5;
                 }
 
                 .fill {
@@ -159,7 +159,7 @@ $thumbBorder: 2px;
                         top: 0;
                         height: 100%;
                         background: rgba(black, .2);
-                        border-radius: $fillHeight/2;
+                        border-radius: $fillHeight*0.5;
                     }
                 }
 
@@ -190,15 +190,15 @@ $thumbBorder: 2px;
                     content: "";
                     display: block;
                     position: absolute;
-                    top: ($progressHeight - $thumbHeight)/2;
-                    left: -$thumbWidth/2;
+                    top: ($progressHeight - $thumbHeight)*0.5;
+                    left: -$thumbWidth*0.5;
                     width: $thumbWidth;
                     height: $thumbHeight;
                     border: $thumbBorder solid rgba(0, 0, 0, .4);
                     box-sizing: border-box;
                     background: rgba(0, 0, 0, .2);
                     box-shadow: 0 0 4px white;
-                    border-radius: $thumbWidth/2;
+                    border-radius: $thumbWidth*0.5;
                 }
             }
         }

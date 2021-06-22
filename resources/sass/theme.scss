@@ -1,5 +1,7 @@
 @import "vars";
-@import "../../node_modules/bootstrap/scss/bootstrap";
+@import "../../node_modules/bootstrap/scss/functions";
+@import "../../node_modules/bootstrap/scss/variables";
+@import "../../node_modules/bootstrap/scss/mixins";
 @import "theme_dialog";
 @import url('https://fonts.googleapis.com/css?family=Catamaran:400,700&subset=latin-ext,latin&display=swap');
 

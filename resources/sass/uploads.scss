@@ -1,3 +1,5 @@
+@use "sass:math";
+
 @import "vars";
 
 $images-per-row: 5;
@@ -28,7 +30,7 @@ $images-per-row: 5;
     .image-wrap {
         display: block;
         text-align: center;
-        width: 100% / $images-per-row;
+        width: math.div(100%, $images-per-row);
         border-width: $image-gap 0 0 $image-gap;
 
         &.selected .image {

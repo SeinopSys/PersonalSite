@@ -1,3 +1,5 @@
+@use "sass:math";
+
 @import "vars";
 @import "../../node_modules/bootstrap/scss/functions";
 @import "../../node_modules/bootstrap/scss/variables";
@@ -9,7 +11,7 @@ $IconSpriteWidth: 576px;
 $IconSpriteHeight: 64px;
 $TileDefaultBG: #101010;
 $WideTileWidth: 205px;
-$RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)/2;
+$RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)*0.5;
 
 // Don't forget to change cache-busting param in bg URL
 @mixin tiles($IconSize) {
@@ -77,8 +79,8 @@ $RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)/2;
             &:after {
                 height: $MobileTileIconSize;
                 width: $MobileTileIconSize;
-                background-size: #{$IconSpriteWidth*($MobileTileIconSize/$IconSpriteHeight)} $MobileTileIconSize !important;
-                margin: ($MobileTileSize - $MobileTileIconSize)/2;
+                background-size: #{$IconSpriteWidth*math.div($MobileTileIconSize, $IconSpriteHeight)} $MobileTileIconSize !important;
+                margin: ($MobileTileSize - $MobileTileIconSize)*0.5;
             }
 
             @include tiles($MobileTileIconSize);
@@ -153,14 +155,14 @@ $RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)/2;
                     width: $WideTileWidth;
 
                     &:after {
-                        margin: $RegularMargin ($WideTileWidth - $DesktopTileIconSize)/2
+                        margin: $RegularMargin ($WideTileWidth - $DesktopTileIconSize)*0.5
                     }
                 }
 
                 &:after {
                     height: $DesktopTileIconSize;
                     width: $DesktopTileIconSize;
-                    background-size: #{$IconSpriteWidth*($DesktopTileIconSize/$IconSpriteHeight)} $DesktopTileIconSize !important;
+                    background-size: #{$IconSpriteWidth*math.div($DesktopTileIconSize, $IconSpriteHeight)} $DesktopTileIconSize !important;
                     margin: $RegularMargin;
                 }
 
@@ -232,7 +234,7 @@ body {
     .essentials {
         position: relative;
         $avatarSize: 25vh;
-        $top: -($avatarSize/2);
+        $top: -($avatarSize*0.5);
         padding: -$top 15px 0;
 
         > .avatar-wrap {
