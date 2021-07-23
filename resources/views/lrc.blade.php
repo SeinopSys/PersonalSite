@@ -67,7 +67,7 @@ $title = __('global.lrc'); ?>
                     <button class="btn btn-primary" id="lrcmodebtn"
                             data-syncmode="{{ __('lrc.player_switch_syncmode') }}"
                             data-editmode="{{ __('lrc.player_switch_editmode') }}" disabled>
-                        <span class="fa"></span> <span class="modename">&hellip;</span>
+                        <span class="fa me-2"></span><span class="modename">&hellip;</span>
                     </button>
                     <div class="btn-group" role="group">
                         <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
