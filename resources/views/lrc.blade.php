@@ -215,7 +215,7 @@ $title = __('global.lrc'); ?>
 @endsection
 
 @section('js-locales')
-    {{ \App\Util\Core::ExportTranslations('lrc',[
+    {!! \App\Util\Core::ExportTranslations('lrc',[
         'dialog_pasteraw_title',
         'dialog_pasteraw_info',
         'dialog_pasteraw_action',
@@ -227,8 +227,8 @@ $title = __('global.lrc'); ?>
         'metadata_field_placeholders',
         'dialog_edit_meta_reset_info',
         'dialog_edit_meta_reset_btn',
-    ]) }}
-    {{ \App\Util\Core::ExportTranslations('global',[
+    ]) !!}
+    {!! \App\Util\Core::ExportTranslations('global',[
         'save',
-    ]) }}
+    ]) !!}
 @endsection

@@ -107,7 +107,3 @@
     </div>
 @endsection
 
-@section('js-locales')
-    {{ \App\Util\Core::ExportTranslations('imagecalc',[
-    ]) }}
-@endsection

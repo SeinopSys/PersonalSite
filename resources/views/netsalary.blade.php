@@ -50,7 +50,7 @@
 @endsection
 
 @section('js-locales')
-    {{ \App\Util\Core::ExportTranslations('netsalary',[
+    {!! \App\Util\Core::ExportTranslations('netsalary',[
         'deductions',
-    ]) }}
+    ]) !!}
 @endsection

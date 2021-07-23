@@ -132,7 +132,7 @@ class Core
         }
         $json = JSON::Encode($out);
         /** @noinspection BadExpressionStatementJS */
-        echo "<script>$.extend(window.Laravel.jsLocales, $json)</script>";
+        return "<script>$.extend(window.Laravel.jsLocales, $json)</script>";
     }
 
     public static function NavbarItem($ident, $text = null, $tag = 'li')

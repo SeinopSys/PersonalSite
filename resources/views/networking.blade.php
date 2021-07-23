@@ -252,7 +252,7 @@
 @endsection
 
 @section('js-locales')
-    {{ \App\Util\Core::ExportTranslations('networking',[
+    {!! \App\Util\Core::ExportTranslations('networking',[
         'network',
         'subnets',
         'error_ipv4_only',
@@ -288,5 +288,5 @@
         'prefix_list_error_ge_le',
         'prefix_list_nomatch',
         'prefix_list_match',
-    ]) }}
+    ]) !!}
 @endsection
