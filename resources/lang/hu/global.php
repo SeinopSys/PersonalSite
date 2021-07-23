@@ -58,7 +58,6 @@ return [
 
     'tool-not-found' => 'Az eszköz, amire ez a link mutat nem létezik vagy el lett távolítva. Fent választhatsz az elérhető eszközök közül.',
     'page-out-of-bounds' => 'A kiválasztott oldal nem tartalmaz elemeket. Kérlek, válassz egy érvényes oldalt alább.',
-    'hu_sunset' => 'A <code>seinopsys<strong>.hu</strong></code> domain kivezetés alatt van. Kérlek használd a <code>seinopsys<strong>.dev</strong></code> domain-t, hogy nehogy váratlan meglepetés érjen :time, amikor a domain lejár.',
     'hcaptcha_protecc' => [
         'Az oldalt a hCaptcha védi, ezért az',
         'Adatvédelmi Nyilatkozata',

@@ -124,7 +124,7 @@ class Core
         return ($n > 0 ? rtrim(number_format($n, $dec, '.', ''), '0.') : 0).' '.$size[$factor];
     }
 
-    public static function ExportTranslations(string $namespace, array $translation)
+    public static function ExportTranslations(string $namespace, array $translation): string
     {
         $out = [];
         foreach ($translation as $name) {

@@ -9,36 +9,36 @@
         <form class="form-horizontal" role="form" method="POST" action="{{ url('/login') }}">
             @csrf
 
-            <div class="form-group row{{ $errors->has('email') ? ' has-error' : '' }}">
-                <label for="email" class="col-md-4 col-form-label text-left text-md-right font-weight-bold">{{ __('auth.field-email') }}</label>
+            <div class="mb-3 row">
+                <label for="email" class="col-md-4 col-form-label text-left text-md-right fw-bold">{{ __('auth.field-email') }}</label>
 
                 <div class="col-md-6">
-                    <input id="email" type="email" class="form-control" name="email"
+                    <input id="email" type="email" class="form-control{{ $errors->has('email') ? ' is-invalid' : '' }}" name="email"
                            value="{{ old('email') }}" required autofocus>
 
                     @if ($errors->has('email'))
-                        <span class="help-block">
-										<strong>{{ $errors->first('email') }}</strong>
-									</span>
+                        <span class="invalid-feedback">
+                            <strong>{{ $errors->first('email') }}</strong>
+                        </span>
                     @endif
                 </div>
             </div>
 
-            <div class="form-group row{{ $errors->has('password') ? ' has-error' : '' }}">
-                <label for="password" class="col-md-4 col-form-label text-left text-md-right font-weight-bold">{{ __('auth.field-pass') }}</label>
+            <div class="mb-3 row{{ $errors->has('password') ? ' has-error' : '' }}">
+                <label for="password" class="col-md-4 col-form-label text-left text-md-right fw-bold">{{ __('auth.field-pass') }}</label>
 
                 <div class="col-md-6">
                     <input id="password" type="password" class="form-control" name="password" required>
 
                     @if ($errors->has('password'))
-                        <span class="help-block">
-										<strong>{{ $errors->first('password') }}</strong>
-									</span>
+                        <span class="invalid-feedback">
+                            <strong>{{ $errors->first('password') }}</strong>
+                        </span>
                     @endif
                 </div>
             </div>
 
-            <div class="form-group row">
+            <div class="mb-3 row">
                 <div class="col-md-6 offset-md-4">
                     <div class="checkbox">
                         <label>
@@ -48,7 +48,7 @@
                 </div>
             </div>
 
-            <div class="form-group row mb-0">
+            <div class="mb-3 row mb-0">
                 <div class="col-md-8 offset-md-4">
                     <button type="submit" class="btn btn-primary">
                         {{ __('auth.btn-login') }}

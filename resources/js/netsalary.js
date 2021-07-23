@@ -24,13 +24,11 @@
     $form.on('submit', e => {
         e.preventDefault();
 
-        const
-            grossSalary = parseInt($grossInput.val(), 10),
-            $formGroup = $grossInput.closest('.form-group');
+        const grossSalary = parseInt($grossInput.val(), 10);
         if (isNaN(grossSalary) || !isFinite(grossSalary)) {
-            $formGroup.addClass('has-error');
+            $grossInput.addClass('is-invalid');
             return;
-        } else $formGroup.removeClass('has-error');
+        } else $grossInput.removeClass('is-invalid');
 
         let
             totalDeducted = 0,

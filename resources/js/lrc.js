@@ -14,6 +14,12 @@
         return ($.roundTo(float, 5) * 100) + '%';
     }
 
+    function clearFocus() {
+        const activeELement = document.activeElement;
+        if (typeof activeELement === 'object' &&activeELement !== null && 'blur' in activeELement && typeof activeELement.blur === 'function')
+            activeELement.blur();
+    }
+
     function binarySearch(arr, compare) { // binary search, with custom compare function
         let l = 0,
             r = arr.length - 1;
@@ -262,6 +268,7 @@
 
                 this.stop();
                 this.updatePlaybackButtons();
+                clearFocus();
             });
             this.$playbackbtn.on('click', e => {
                 e.preventDefault();
@@ -273,6 +280,7 @@
                     this.play();
                 else this.pause();
                 this.updatePlaybackButtons();
+                clearFocus();
             });
             this.$volumedown.on('click', (e, shiftKey, altKey) => {
                 e.preventDefault();
@@ -280,6 +288,7 @@
                 const newvol = this.volume() - (e.altKey || altKey ? 0.01 : this.#volumeStep * (e.shiftKey || shiftKey ? 2 : 1));
                 this.updateVolumeButtons(newvol);
                 this.volume(newvol);
+                clearFocus();
             });
             this.$volumeup.on('click', (e, shiftKey, altKey) => {
                 e.preventDefault();
@@ -287,11 +296,13 @@
                 const newvol = this.volume() + (e.altKey || altKey ? 0.01 : this.#volumeStep * (e.shiftKey || shiftKey ? 2 : 1));
                 this.updateVolumeButtons(newvol);
                 this.volume(newvol);
+                clearFocus();
             });
             this.#$audiofilebtn.on('click', e => {
                 e.preventDefault();
 
                 this.#$filein.trigger('click');
+                clearFocus();
             });
             this.#$filein.on('change', () => {
                 const val = this.#$filein.val();
@@ -348,10 +359,10 @@
             this.$playbackbtn.attr('disabled', fileMissing);
             this.$stopbtn.attr('disabled', fileMissing);
             TimingEditor.getInstance().disableModeButton(fileMissing);
-            this.$playbackbtn.removeClass('btn-success btn-danger').children().removeClass('fa-play fa-pause');
+            this.$playbackbtn.children().removeClass('fa-play fa-pause');
             if (!this.#audio.paused)
-                this.$playbackbtn.addClass('btn-danger').children().addClass('fa-pause');
-            else this.$playbackbtn.addClass('btn-success').children().addClass('fa-play');
+                this.$playbackbtn.children().addClass('fa-pause');
+            else this.$playbackbtn.children().addClass('fa-play');
         }
 
         play() {
@@ -548,7 +559,6 @@
                 } else {
                     const trimmedEl = el.trim();
                     const metadata = trimmedEl.match(LRC_META_REGEX);
-                    console.log(trimmedEl);
                     if (metadata) {
                         this.metadata[metadata[1]] = metadata[2];
                     }
@@ -581,7 +591,7 @@
                         inputAttrs.value = '';
                 }
                 this.#$form.append(
-                    $.mk('div').attr('class', 'form-group').append(
+                    $.mk('div').attr('class', 'mb-3').append(
                         $.mk('label')
                             .attr({
                                 'for': id,
@@ -602,7 +612,10 @@
                     $.mk('button').attr({
                         'class': 'btn btn-info',
                         type: 'reset',
-                    }).text(Laravel.jsLocales.dialog_edit_meta_reset_btn).prepend('<i class="fa fa-undo"/>')
+                    }).append(
+                        '<i class="fa fa-undo"/>',
+                        $.mk('span').text(Laravel.jsLocales.dialog_edit_meta_reset_btn)
+                    )
                 )
             );
         }
@@ -669,15 +682,16 @@
                     return;
 
                 this.changeMode(null, e.altKey);
+                clearFocus();
             });
             this.#$lrcpastebtn.on('click', e => {
                 e.preventDefault();
 
                 const $form = $.mk('form', 'rawlyrics').append(
-                    `<div class="form-group">
+                    `<div class="mb-3">
 						<textarea class="form-control" rows="10"></textarea>
 					</div>
-					<p class="text-info"><span class="fa fa-info-circle"></span> ${Laravel.jsLocales.dialog_pasteraw_info}</p>`
+					<p class="text-info"><span class="fa fa-info-circle me-2"></span>${Laravel.jsLocales.dialog_pasteraw_info}</p>`
                 );
                 $.Dialog.request(Laravel.jsLocales.dialog_pasteraw_title, $form, Laravel.jsLocales.dialog_pasteraw_action, $form => {
                     $form.on('submit', e => {
@@ -799,11 +813,13 @@
 
                 if (this.#mode === 'sync')
                     this.passSyncHandle($entry);
+                clearFocus();
             });
             this.#$lrcfilebtn.on('click', e => {
                 e.preventDefault();
 
                 this.#$filein.trigger('click');
+                clearFocus();
             });
             this.#$filein.on('change', () => {
                 const val = this.#$filein.val();
@@ -1215,9 +1231,14 @@
                 pluginScope.player.$stopbtn.trigger('click');
                 break;
             case Key.Enter:
-                if (e.ctrlKey && !e.altKey)
-                    pluginScope.editor.syncBreakEntry();
-                else pluginScope.editor.syncEntry();
+                if (e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    pluginScope.editor.syncBreakEntry(e);
+                }
+                else {
+                    e.preventDefault();
+                    pluginScope.editor.syncEntry();
+                }
                 break;
             case Key.UpArrow:
                 pluginScope.editor.undoSync();

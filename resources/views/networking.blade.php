@@ -3,7 +3,7 @@
 @extends('layouts.container')
 
 @section('panel-body')
-    <h2>{{ __('global.networking') }}{!! \App\Util\Core::JSIcon() !!}</h2>
+    <h2>{{ __('global.networking') }}<x-js-icon></x-js-icon></h2>
     <p>{{ __('networking.about') }}</p>
     <ul class="nav nav-pills mb-3" id="main-tabs">
         <li class="nav-item"><a class="nav-link" href="#vlsm">VLSM</a></li>
@@ -12,20 +12,20 @@
         <li class="nav-item">
             <a href="#prefix-list" class="nav-link">
                 {{ __('networking.prefix-list') }}
-                <span class="badge badge-primary" title="{{ __('networking.ipv4-only') }}">v4</span>
+                <span class="badge bg-primary" title="{{ __('networking.ipv4-only') }}">v4</span>
             </a>
         </li>
         <li class="nav-item">
             <a href="#masktable" class="nav-link">
                 {{ __('networking.mask-table') }}
-                <span class="badge badge-primary" title="{{ __('networking.ipv4-only') }}">v4</span>
+                <span class="badge bg-primary" title="{{ __('networking.ipv4-only') }}">v4</span>
             </a>
         </li>
     </ul>
 
     <div id="vlsm" class="tab-panel d-none">
         <form id="vlsm-form">
-            <div class="form-group">
+            <div class="js-input-wrap mb-3">
                 <?php
                 $shortcut_class = __('networking.shortcut-clsss');
                 $shortcut_full = __('networking.shortcut-full');
@@ -39,23 +39,21 @@
                                                                                  class="ql-cf">{{ $shortcut_full }}</a>
                     </small></label>
                 <p class="text-danger" id="vlsm-network-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text ipver-indicator" id="vlsm-ipver">IPv?</span>
-                    </div>
+                    <span class="input-group-text ipver-indicator" id="vlsm-ipver">IPv?</span>
                     <input type="text" class="form-control input-lg network-input" id="vlsm-network"
                            pattern="^([\d.]+|[\da-fA-F:]+)/\d+$"
                            placeholder="10.0.0.0/8 {{ __('global.or') }} 2001:db8:85a3::1/64"
                            title="{{ __('networking.network-input-title') }}" required>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label class="control-label" for="vlsm-subnets">{{ __('networking.subnet-list') }}</label>
                 <p class="text-danger" id="vlsm-subnets-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <textarea class="form-control" id="vlsm-subnets"
@@ -127,7 +125,7 @@
     </div>
     <div id="cidr" class="tab-panel d-none">
         <form id="cidr-form">
-            <div class="form-group">
+            <div class="js-input-wrap mb-3">
                 <label class="control-label" for="cidr-network">{{ __('networking.network') }} &bull; <small>
                         {{ __('networking.shortcuts') }}:
                         A <a href="#" class="ql-acf">{{ $shortcut_class }}/{{ $shortcut_full }}</a>,
@@ -137,23 +135,21 @@
                                                                                  class="ql-cf">{{ $shortcut_full }}</a>
                     </small></label>
                 <p class="text-danger" id="cidr-network-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text ipver-indicator" id="cidr-ipver">IPv?</span>
-                    </div>
+                    <span class="input-group-text ipver-indicator" id="cidr-ipver">IPv?</span>
                     <input type="text" class="form-control input-lg network-input" id="cidr-network"
                            pattern="^([\d.]+|[\da-fA-F:]+)/\d+$"
                            placeholder="10.0.0.0/8 {{ __('global.or') }} 2001:db8:85a3::1/64"
                            title="{{ __('networking.network-input-title') }}" required>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label class="control-label" for="cidr-subnets">{{ __('networking.desired_subnets') }}</label>
                 <p class="text-danger" id="cidr-subnets-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <input type="number" class="form-control input-lg" id="cidr-subnets" placeholder="8" step="1" min="1"
@@ -176,11 +172,11 @@
     </div>
     <div id="summary" class="tab-panel d-none">
         <form id="summary-form">
-            <div class="form-group">
+            <div class="mb-3">
                 <label class="control-label" for="summary-networks">{{ __('networking.networks') }} &bull;
                     <small>{{ __('networking.networks-secondary') }}</small></label>
                 <p class="text-danger" id="summary-networks-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <textarea class="form-control" id="summary-networks" rows=8 cols=30
@@ -204,20 +200,20 @@
     </div>
     <div id="prefix-list" class="tab-panel d-none">
         <form id="prefix-list-form">
-            <div class="form-group">
+            <div class="mb-3">
                 <label class="control-label"
                        for="prefix-list-show-output">{!! __('networking.show-pl-output') !!}</label>
                 <p class="text-danger" id="prefix-list-show-output-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <textarea class="form-control" id="prefix-list-show-output" rows=8 cols=30
                           placeholder="{{ __('networking.show-pl-output-placeholder') }}" required></textarea>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label class="control-label" for="prefix-list-network">{{ __('networking.network-to-check') }}</label>
                 <p class="text-danger" id="prefix-list-network-alert" style="display:none">
-                    <span class="fa fa-exclamation-triangle"></span>
+                    <x-fa icon="exclamation-triangle" first></x-fa>
                     <span class="text">{{ __('networking.alert-placeholder') }}</span>
                 </p>
                 <input type="text" class="form-control input-lg network-input" id="prefix-list-network"
@@ -249,7 +245,7 @@
     </div>
     <div class="tab-panel not-found d-none">
         <div class="alert alert-info mb-0">
-            <span class="fa fa-info-circle"></span>
+            <x-fa icon="info-circle" first></x-fa>
             {{ __('global.tool-not-found') }}
         </div>
     </div>

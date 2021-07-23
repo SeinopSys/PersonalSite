@@ -5,9 +5,11 @@ $title = __('global.lrc'); ?>
 
 @section('panel-body')
     <h3 class="text-center">
-        {!! __('lrc.title', ['lrc' => '<a href="https://en.wikipedia.org/wiki/LRC_(file_format)">LRC</a>']).\App\Util\Core::JSIcon() !!}
-        <a title="{{ __('lrc.dialog_shortcut_info') }}" id="shortcut-info" href="#info"><span
-                class="fa fa-info-circle"></span></a>
+        {!! __('lrc.title', ['lrc' => '<a href="https://en.wikipedia.org/wiki/LRC_(file_format)">LRC</a>']) !!}
+        <x-js-icon></x-js-icon>
+        <button class="btn btn-link" title="{{ __('lrc.dialog_shortcut_info') }}" id="shortcut-info">
+            <x-fa icon="info-circle"></x-fa>
+        </button>
     </h3>
 
     <fieldset>
@@ -16,20 +18,22 @@ $title = __('global.lrc'); ?>
             <div class="controls">
                 <div class="btn-group">
                     <button class="btn btn-primary" id="audiofilebtn" title="{{ __('lrc.player_selectfile') }}">
-                        <span class="fa fa-upload"></span>
+                        <x-fa icon="upload"></x-fa>
                     </button>
-                    <button class="btn btn-success" id="playbackbtn" title="{{ __('lrc.player_playpause') }}" disabled>
-                        <span class="fa fa-play"></span>
+                    <button class="btn btn-secondary" id="playbackbtn" title="{{ __('lrc.player_playpause') }}" disabled>
+                        <x-fa icon="play"></x-fa>
                     </button>
-                    <button class="btn btn-warning" id="stopbtn" title="{{ __('lrc.player_stop') }}" disabled>
-                        <span class="fa fa-stop"></span>
+                    <button class="btn btn-secondary" id="stopbtn" title="{{ __('lrc.player_stop') }}" disabled>
+                        <x-fa icon="stop"></x-fa>
                     </button>
-                    <span class="btn btn-light active volume">
-						<span class="fa fa-volume-down" id="volumedown" title="{{ __('lrc.player_voldec') }}"></span>
-						&nbsp;
-						<span id="volumedisp">&hellip;</span>
-						&nbsp;
-						<span class="fa fa-volume-up" id="volumeup" title="{{ __('lrc.player_volinc') }}"></span>
+                    <span class="input-group-text volume">
+                        <button class="btn btn-secondary btn-sm" id="volumedown" title="{{ __('lrc.player_voldec') }}">
+                            <x-fa icon="volume-down" size="lg"></x-fa>
+                        </button>
+                        <span id="volumedisp" class="mx-2">&hellip;</span>
+                        <button class="btn btn-secondary btn-sm" id="volumeup" title="{{ __('lrc.player_volinc') }}">
+                            <x-fa icon="volume-up" size="lg"></x-fa>
+                        </button>
 					</span>
                 </div>
             </div>
@@ -59,29 +63,29 @@ $title = __('global.lrc'); ?>
         <legend>{{ __('lrc.timingeditor') }}</legend>
         <div id="timings">
             <div class="controls">
-                <div class="btn-group w-100">
+                <div class="btn-group w-100" role="group">
                     <button class="btn btn-primary" id="lrcmodebtn"
                             data-syncmode="{{ __('lrc.player_switch_syncmode') }}"
                             data-editmode="{{ __('lrc.player_switch_editmode') }}" disabled>
                         <span class="fa"></span> <span class="modename">&hellip;</span>
                     </button>
-                    <div class="btn-group">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
-                            <span class="fa fa-file-import"></span> {{ __('global.import') }}
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <x-fa icon="file-import" first></x-fa>{{ __('global.import') }}
                             <span class="caret"></span>
                         </button>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="#import-lrc" id="lrcfilebtn">
-                                <strong><span class="fa fa-file-upload"></span> {{ __('lrc.timing_import') }}</strong>
+                                <strong><x-fa icon="file-upload" first></x-fa>{{ __('lrc.timing_import') }}</strong>
                             </a>
                             <a class="dropdown-item" href="#paste-lyrics" id="lrcpastebtn">
-                                <span class="fa fa-clipboard"></span> {{ __('lrc.timing_pastelyrics') }}
+                                <x-fa icon="clipboard" first></x-fa>{{ __('lrc.timing_pastelyrics') }}
                             </a>
                         </div>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown">
-                            <span class="fa fa-file-export"></span> {{ __('global.export') }}
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <x-fa icon="file-export" first></x-fa>{{ __('global.export') }}
                             <span class="caret"></span>
                         </button>
                         <div class="dropdown-menu">
@@ -104,10 +108,10 @@ $title = __('global.lrc'); ?>
                         </div>
                     </div>
                     <button class="btn btn-secondary" id="lrcmetadatabtn">
-                        <span class="fa fa-compact-disc"></span> {{ __('lrc.timing_metadata') }}
+                        <x-fa icon="compact-disc" first></x-fa>{{ __('lrc.timing_metadata') }}
                     </button>
                     <button class="btn btn-danger" id="lrcclrbtn">
-                        <span class="fa fa-eraser"></span> {{ __('lrc.timing_wipe') }}
+                        <x-fa icon="eraser" first></x-fa>{{ __('lrc.timing_wipe') }}
                     </button>
                 </div>
             </div>
@@ -125,14 +129,18 @@ $title = __('global.lrc'); ?>
             <span class="text" contenteditable data-empty="{{ __('lrc.timing_entry_empty') }}"></span>
             <div class="tools btn-group">
                 <button class="btn btn-success addrow-up edit-only text-nowrap" title="{{ __('lrc.timing_addrowup') }}">
-                    <span class="fa fa-plus"></span><span class="fa fa-arrow-up"></span></button>
+                    <x-fa icon="plus" first></x-fa><x-fa icon="arrow-up"></x-fa>
+                </button>
                 <button class="btn btn-success addrow-down edit-only text-nowrap"
-                        title="{{ __('lrc.timing_addrowdown') }}"><span class="fa fa-plus"></span><span
-                        class="fa fa-arrow-down"></span></button>
-                <button class="btn btn-danger remrow edit-only text-nowrap" title="{{ __('lrc.timing_remrow') }}"
-                        disabled><span class="fa fa-minus"></span></button>
-                <button class="btn btn-warning goto text-nowrap" title="{{ __('lrc.timing_goto') }}" disabled><span
-                        class="fa fa-step-forward"></span></button>
+                        title="{{ __('lrc.timing_addrowdown') }}">
+                    <x-fa icon="plus" first></x-fa><span class="fa fa-arrow-down"></span>
+                </button>
+                <button class="btn btn-danger remrow edit-only text-nowrap" title="{{ __('lrc.timing_remrow') }}" disabled>
+                    <x-fa icon="minus"></x-fa>
+                </button>
+                <button class="btn btn-warning goto text-nowrap" title="{{ __('lrc.timing_goto') }}" disabled>
+                    <x-fa icon="step-forward"></x-fa>
+                </button>
             </div>
         </div>
     </div>

@@ -1,27 +1,29 @@
 @extends('layouts.container')
 
 @section('panel-body')
-    <h2>{{ __('global.netsalary') }}{!! \App\Util\Core::JSIcon() !!}</h2>
+    <h2>{{ __('global.netsalary') }}<x-js-icon></x-js-icon></h2>
 
     <p>{{ __('netsalary.about') }}</p>
 
-    <form id="net-salary-calc" class="form-inline">
-        <div class="form-group mb-2 mr-sm-2">
-            <label for="gross-salary" class="mr-2">{{ __('netsalary.gross_salary') }}:</label>
+    <form id="net-salary-calc" class="row gy-2 gx-3 align-items-end">
+        <div class="col">
+            <label for="gross-salary" class="me-2">{{ __('netsalary.gross_salary') }}</label>
             <div class="input-group">
                 <input type="number" class="form-control" id="gross-salary" step="1" max="99999999" min="0">
-                <div class="input-group-append">
-                    <span class="input-group-text">Ft</span>
-                </div>
+                <span class="input-group-text">Ft</span>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mb-2 mr-sm-2">{{ __('global.calculate') }}</button>
-        <button type="reset" class="btn btn-danger mb-2 mr-sm-2">{{ __('global.clear') }}</button>
-        <button type="button" class="btn btn-secondary mb-2 mr-sm-2" id="min-wage-btn">{{ __('global.demo') }}</button>
+        <div class="col-auto">
+            <div class="btn-group">
+            <button type="submit" class="btn btn-primary me-sm-2">{{ __('global.calculate') }}</button>
+            <button type="reset" class="btn btn-danger me-sm-2">{{ __('global.clear') }}</button>
+            <button type="button" class="btn btn-secondary me-sm-2" id="min-wage-btn">{{ __('global.demo') }}</button>
+            </div>
+        </div>
     </form>
 
-    <div id="net-output-wrap" class="table-responsive d-none">
+    <div id="net-output-wrap" class="table-responsive d-none mt-3">
         <table id="net-output" class="table table-bordered">
             <thead>
             <tr>

@@ -597,7 +597,6 @@
             const to = this.ge || 0;
             for (let l = from; l >= to; l--) {
                 const ip = network.mask.length === l ? network.ip : network.ip.networkAddress(new Netmask(l));
-                console.log(subnetIp, ip.toString(), l, network.mask.length);
                 if (subnetIp === ip.toString() && l === network.mask.length)
                     return true;
             }
@@ -617,7 +616,7 @@
 
         let $this = $(this),
             index = $this.attr('class').replace('ql-', ''),
-            $input = $this.parents('.form-group').find('input[id]');
+            $input = $this.parents('.js-input-wrap').find('input[id]');
         $input.addClass('fade');
         setTimeout(() => {
             $input.val(nets[index]).removeClass('fade').trigger('change');
@@ -1003,7 +1002,6 @@
             $showOutputAlert.hide();
 
             const keys = Object.keys(entries).sort();
-            console.log(entries, keys);
             let matchingEntry = null;
             for (let i = 0; i < keys.length; i++) {
                 const entry = entries[keys[i]];

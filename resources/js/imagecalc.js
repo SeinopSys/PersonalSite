@@ -166,9 +166,9 @@
             $output.removeClass('d-none');
             let output = result.join(':');
             if (output === '64:27') {
-                output += ` <small>(“21:9”)</small>`;
+                output += ` <small class="fw-normal">(“21:9”)</small>`;
             }
-            $output.empty().append($('<p class="display-4 mb-0 font-weight-bold" />').html(output));
+            $output.empty().append($('<p class="display-4 mb-0 fw-bold" />').html(output));
             if (result[0] !== result[1] && result[1] !== 1) {
                 $output.append(
                     $('<p class="font-family-monospace mb-0" />').text(`${result[0]} ÷ ${result[1]} = ${result[0] / result[1]}`)

@@ -1,0 +1,1 @@
+@if(!empty($icon))<span class="fa fa-{{ $icon }}{{ ($first ?? false) ? ' me-2' : (($last ?? false) ? ' ms-2' : '') }}{{ isset($size) ? " fa-{$size}" : '' }}{{ isset($fixedWidth) ?' fa-fw':'' }}"></span>@endif

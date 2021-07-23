@@ -59,6 +59,7 @@
                 }
             };
             this._$focusedElement = undefined;
+            this._modalInstance = undefined;
         }
 
         isOpen() {
@@ -107,12 +108,12 @@
             }
             if (appendingToRequest) {
                 $requestContentDiv = this.$dialogContent.children(':not(#dialogButtons)').last();
-                let $ErrorNotice = $requestContentDiv.children('.notice:last-child');
-                if (!$ErrorNotice.length) {
-                    $ErrorNotice = $.mk('div').append($.mk('p'));
-                    $requestContentDiv.append($ErrorNotice);
-                } else $ErrorNotice.show();
-                $ErrorNotice
+                let $errorNotice = $requestContentDiv.children('.notice:last-child');
+                if (!$errorNotice.length) {
+                    $errorNotice = $.mk('div').append($.mk('p').attr('class','mb-0'));
+                    $requestContentDiv.append($errorNotice);
+                } else $errorNotice.show();
+                $errorNotice
                     .attr('class', 'alert alert-' + noticeClasses[params.type])
                     .children('p').html(params.content).show();
                 this._controlInputs(params.type === 'wait');
@@ -182,29 +183,36 @@
                 });
                 this.$dialogButtons.append($button);
             });
-            this.$dialogOverlay.modal({
-                backdrop: 'static',
-                keyboard: false,
-            });
-            this.$dialogOverlay.one('shown.bs.modal', () => {
-                this._setFocus();
-                Time.update();
+            if (!append) {
+                if (this._modalInstance)
+                    this._modalInstance.dispose();
+                this._modalInstance = new bootstrap.Modal(this.$dialogOverlay, {
+                    backdrop: 'static',
+                    keyboard: false,
+                });
+                this._modalInstance.show();
+                this.$dialogOverlay.one('shown.bs.modal', () => {
+                    this._setFocus();
+                    Time.update();
 
-                $.callCallback(callback, [$requestContentDiv]);
-                if (append) {
-                    let $lastdiv = this.$dialogContent.children().last();
-                    if (appendingToRequest)
-                        $lastdiv = $lastdiv.children('.notice').last();
-                    this.$dialogOverlay.stop().animate(
-                        {
-                            scrollTop: '+=' +
-                                ($lastdiv.position().top + parseFloat($lastdiv.css('margin-top'), 10) + parseFloat($lastdiv.css('border-top-width'), 10))
-                        },
-                        'fast'
-                    );
-                }
-            });
-
+                    $.callCallback(callback, [$requestContentDiv]);
+                    if (append) {
+                        let $lastdiv = this.$dialogContent.children().last();
+                        if (appendingToRequest) {
+                            const $notice = $lastdiv.children('.notice').last();
+                            if ($notice.length)
+                                $lastdiv = $notice;
+                        }
+                        this.$dialogOverlay.stop().animate(
+                            {
+                                scrollTop: '+=' +
+                                    ($lastdiv.position().top + parseFloat($lastdiv.css('margin-top'), 10) + parseFloat($lastdiv.css('border-top-width'), 10))
+                            },
+                            'fast'
+                        );
+                    }
+                });
+            }
         }
 
         fail(title, content, force_new) {
@@ -340,14 +348,14 @@
         }
 
         close(callback) {
-            if (!this.isOpen())
+            if (!this.isOpen() || !this._modalInstance)
                 return $.callCallback(callback, false);
 
-            let classScope = this;
-            this.$dialogOverlay.modal('hide').one('hidden.bs.modal', function () {
-                classScope.$dialogOverlay.remove();
-                classScope._open = undefined;
-                classScope._restoreFocus();
+            this._modalInstance.hide();
+            this.$dialogOverlay.one('hidden.bs.modal', () => {
+                this.$dialogOverlay.remove();
+                this._open = undefined;
+                this._restoreFocus();
                 $.callCallback(callback);
             });
         }

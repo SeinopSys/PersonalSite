@@ -5,7 +5,7 @@ $title = __('selfsigned.title'); ?>
 @extends('layouts.container')
 
 @section('panel-body')
-    <h3>{{ $title }}{!! \App\Util\Core::JSIcon() !!}</h3>
+    <h3>{{ $title }}<x-js-icon></x-js-icon></h3>
     <div class="oprah-wrapper">
         <img src="/img/oprah-CA-{{ App::getLocale() }}.png" alt="{{ __('selfsigned.description.oprah') }}" width="310" height="232">
         <p>{!! __('selfsigned.description.p1',[
@@ -27,14 +27,14 @@ $title = __('selfsigned.title'); ?>
 
     @if($errors->has('gen_err'))
         <div class="alert alert-danger">
-            <span class="fa fa-exclamation-triangle"></span>
+            <x-fa icon="exclamation-triangle" first></x-fa>
             {{ __('selfsigned.err') }}: {{ $errors->first('gen_err') }}
         </div>
     @endif
 
     @if($openssl && $zip)
         <form method="POST" action="{{ route('selfsigned.make') }}" data-hcaptcha="true">
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="common_name">{{ __('selfsigned.common_name') }}</label>
                 <input type="text" id="common_name" name="common_name" class="form-control" placeholder="example.com"
                        pattern="^[\da-z.-]{3,253}$" maxlength="253" required autocomplete="off" spellcheck="false"
@@ -44,9 +44,9 @@ $title = __('selfsigned.title'); ?>
                 @endif
             </div>
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="subdomains">{{ __('selfsigned.subdomains') }} ({{ __('global.optional') }})</label>
-                <p class="text-info"><span
+                <p class="text-info my-2"><span
                         class="fa fa-info-circle"></span> {!! __('selfsigned.subdomains_explain',['short' => '<code>www</code>', 'long' => '<code>www.example.com</code>']) !!}
                 </p>
                 <textarea class="form-control" id="subdomains" name="subdomains" rows="8"
@@ -56,7 +56,7 @@ $title = __('selfsigned.title'); ?>
                 @endif
             </div>
 
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="valid_for">{{ __('selfsigned.validity') }}</label>
                 <input type="number" id="valid_for" name="valid_for" class="form-control" step="1" min="1" max="3652"
                        value="{{ request()->input('valid_for') ?? old('valid_for', '3652') }}" placeholder="3652">
@@ -66,18 +66,18 @@ $title = __('selfsigned.title'); ?>
 
             @csrf
 
-            <button class="btn btn-primary"><span class="fa fa-save"></span> {{ __('global.generate') }}
+            <button class="btn btn-primary"><x-fa icon="save" first></x-fa>{{ __('global.generate') }}
             </button>
         </form>
     @else
         @if(!$openssl)
-            <div class="alert alert-danger"><span class="fa fa-exclamation-triangle"></span> OpenSSL is not
+            <div class="alert alert-danger"><x-fa icon="exclamation-triangle" first></x-fa>OpenSSL is not
                 accessible. Please make sure it's installed and added to <code>PATH</code>.<br>
                 <pre><code>{{ $opensslVersion }}</code></pre>
             </div>
         @endif
         @if(!$zip)
-            <div class="alert alert-danger"><span class="fa fa-exclamation-triangle"></span> The <code>zip</code>
+            <div class="alert alert-danger"><x-fa icon="exclamation-triangle" first></x-fa>The <code>zip</code>
                 PHP extension is not installed, file generation would fail. Please contact the developer and let him
                 know to fix it.
             </div>

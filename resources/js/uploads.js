@@ -151,12 +151,12 @@
             }
             if (orderby)
                 params.push('orderby=' + (orderby.slice(1).join('+')));
-            $.post('/uploads/wipe' + (params.length ? '?' + (params.join('&')) : ''), {id: id}, $.mkAjaxHandler(function () {
-                if (!this.status) return $.Dialog.fail(false, this.message);
+            $.post('/uploads/wipe' + (params.length ? '?' + (params.join('&')) : ''), {id: id}, $.mkAjaxHandler(data => {
+                if (!data.status) return $.Dialog.fail(false, data.message);
 
-                let $newhtml = $(this.newhtml),
-                    newTotal = this.total,
-                    usedSpace = this.usedSpace;
+                let $newhtml = $(data.newhtml),
+                    newTotal = data.total,
+                    usedSpace = data.usedSpace;
 
                 $.Dialog.close(function () {
                     $image.closest('.image-wrap').fadeTo(500, 0, function () {

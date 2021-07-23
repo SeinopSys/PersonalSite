@@ -1,30 +1,30 @@
 <nav class="navbar navbar-expand-lg fixed-top navbar-light bg-light shadow">
-    <div class="container">
+  <div class="container">
         @if(Request::path() !== '/')
             <a class="navbar-brand" href="{{ url('/') }}" title="{{ __('global.home') }}"></a>
         @else
             <a class="navbar-brand">{{ __('global.greeting') }}</a>
         @endif
 
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#app-navbar-collapse"
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#app-navbar-collapse"
                 aria-controls="app-navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="app-navbar-collapse">
             <!-- Left Side Of Navbar -->
-            <ul class="navbar-nav mr-auto">
+            <ul class="navbar-nav me-auto">
                 {!! \App\Util\Core::NavbarItem('/', __('global.about')) !!}
                 @if(Auth::check())
                     {!! \App\Util\Core::NavbarItem('dashboard') !!}
                     {!! \App\Util\Core::NavbarItem('uploads') !!}
                 @endif
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="tooldsdd" role="button" data-toggle="dropdown"
+                    <a class="nav-link dropdown-toggle" href="#" id="tools-dd" role="button" data-bs-toggle="dropdown"
                        aria-haspopup="true" aria-expanded="false">
                         {{ __('global.tools') }}
                     </a>
-                    <div class="dropdown-menu" aria-labelledby="tooldsdd">
+                    <div class="dropdown-menu" aria-labelledby="tools-dd">
                         {!! \App\Util\Core::NavbarItem('lrc', null, 'a') !!}
                         {!! \App\Util\Core::NavbarItem('networking', null, 'a') !!}
                         {!! \App\Util\Core::NavbarItem('imagecalc', null, 'a') !!}
@@ -35,17 +35,17 @@
                 </li>
             </ul>
 
-            <ul class="nav navbar-nav navbar-right">
+            <ul class="navbar-nav">
                 <li class="nav-item dropdown">
                     @if(isset($lang_forced)){
-                    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
-                        <i class="fa fa-globe-americas"></i>
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                        <x-fa icon="globe-americas" first></x-fa>
                         {{ Config::get('languages')[App::getLocale()] }}
                         ({{ __('global.language-forced') }})
                     </a>
                     @else
-                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
-                            <i class="fa fa-globe-americas"></i>
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                            <x-fa icon="globe-americas" first></x-fa>
                             {{ Config::get('languages')[App::getLocale()] }}
                         </a>
                         <ul class="dropdown-menu language-selector" role="menu">
@@ -77,14 +77,14 @@
                     @endif
                 @else
                     <li class="nav-item dropdown user-dropdown">
-                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button"
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button"
                            aria-expanded="false">
                             <img src="{!! Auth::user()->getGravatar(20) !!}" class="gravatar" alt="user avatar">
                             {{ Auth::user()->name }}
                         </a>
                         <div class="dropdown-menu" role="menu">
                             <a class="dropdown-item" id="logout-link">
-                                <span class="fa fa-sign-out-alt"></span> {{ __('auth.logout') }}
+                                <x-fa icon="sign-out-alt" first></x-fa>{{ __('auth.logout') }}
                             </a>
                         </div>
                     </li>

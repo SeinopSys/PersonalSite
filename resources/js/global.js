@@ -240,17 +240,15 @@
         }
         $.Dialog.fail(false, `There was an error while processing your request.${details}`);
     });
-    $.mkAjaxHandler = function (f) {
-        return function (data) {
-            if (typeof data !== 'object') {
-                //noinspection SSBasedInspection
-                console.log(data);
-                $w.triggerHandler('ajaxerror');
-                return;
-            }
+    $.mkAjaxHandler = f => function (data) {
+        if (typeof data !== 'object') {
+            //noinspection SSBasedInspection
+            console.log(data);
+            $w.triggerHandler('ajaxerror');
+            return;
+        }
 
-            if (typeof f === 'function') f.call(data);
-        };
+        if (typeof f === 'function') f.call(data, data);
     };
 
     // Checks if a variable is a function and if yes, runs it

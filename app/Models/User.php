@@ -73,7 +73,7 @@ class User extends Authenticatable
 
     public function getGravatar($size = 50)
     {
-        return 'https://s.gravatar.com/avatar/'.md5($this->email)."?s=$size";
+        return sprintf("https://s.gravatar.com/avatar/%s?s=$size", md5($this->email));
     }
 
     public function getRelativeUploadDirectory($startingSlash = true)
