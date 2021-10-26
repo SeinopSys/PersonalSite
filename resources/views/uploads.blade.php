@@ -76,8 +76,8 @@
 @endsection
 
 @section('js-locales')
-    {{ \App\Util\Core::ExportTranslations('uploads',[
+    {!! \App\Util\Core::ExportTranslations('uploads',[
         'multiwipe_dialog_title',
         'multiwipe_dialog_text',
-    ]) }}
+    ]) !!}
 @endsection

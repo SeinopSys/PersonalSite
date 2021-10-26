@@ -1,61 +1,75 @@
 {
-    "parser": "babel-eslint",
-    "env": {
-        "browser": true,
-        "jquery": true,
-        "es6": true
+  "env": {
+    "browser": true,
+    "jquery": true,
+    "es6": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "airbnb",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:import/typescript",
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "ignorePatterns": [
+    "node_modules"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 6,
+    "ecmaFeatures": {
+      "jsx": true
     },
-    "extends": [
-        "eslint:recommended"
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "@typescript-eslint/no-useless-constructor": ["error"],
+    "arrow-parens": [
+      "error",
+      "as-needed"
     ],
-    "parserOptions": {
-        "sourceType": "script",
-        "ecmaVersion": 6,
-        "ecmaFeatures": {
-            "jsx": true
-        }
-    },
-    "rules": {
-        "camelcase": 0,
-        "curly": 0,
-        "wrap-iife": [
-            2,
-            "any"
-        ],
-        "linebreak-style": 2,
-        "comma-style": [
-            2,
-            "last"
-        ],
-        "new-cap": 2,
-        "strict": [
-            2,
-            "function"
-        ],
-        "no-undef": 2,
-        "no-unused-vars": 0,
-        "no-console": 0,
-        "arrow-parens": [
-            "error",
-            "as-needed"
+    "camelcase": 0,
+    "comma-style": [
+      2,
+      "last"
+    ],
+    "curly": 0,
+    "default-case": 0,
+    "func-names": "off",
+    "import/extensions": 0,
+    "import/prefer-default-export": 0,
+    "indent": [
+      "error",
+      2
+    ],
+    "linebreak-style": 2,
+    "max-len": ["error", 140],
+    "new-cap": 2,
+    "no-console": 0,
+    "no-minusminus": 0,
+    "no-nested-ternary": 0,
+    "no-plusplus": 0,
+    "no-undef": 0,
+    "no-undefined": 0,
+    "no-unused-vars": 0,
+    "no-useless-constructor": "off",
+    "no-void": 0,
+    "react/jsx-filename-extension": [
+      2,
+      {
+        "extensions": [
+          ".tsx"
         ]
-    },
-    "globals": {
-        "$w": true,
-        "$d": true,
-        "$header": true,
-        "$main": true,
-        "$footer": true,
-        "$body": true,
-        "$head": true,
-        "$": "readonly",
-        "jQuery": "readonly",
-        "Key": true,
-        "Time": true,
-        "Laravel": true,
-        "moment": "readonly",
-        "mk": "readonly",
-        "saveAs": "readonly",
-        "jsmediatags": "readonly"
-    }
+      }
+    ],
+    "react/prop-types": 0,
+    "react/react-in-jsx-scope": 0, "semi": "error",
+    "wrap-iife": [
+      2,
+      "any"
+    ]
+  }
 }
