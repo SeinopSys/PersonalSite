@@ -32,6 +32,7 @@ mix.webpackConfig({
   resolve: {
     fallback: {
       'react-native-fs': false,
+      fs: false,
     },
   },
 });

@@ -18,9 +18,9 @@ echo "$ $CMD_FETCH"
 eval ${CMD_FETCH}
 echo "$ $CMD_COMPOSER"
 eval ${CMD_COMPOSER}
-echo "$ CMD_NPM"
+echo "$ $CMD_NPM"
 eval ${CMD_NPM}
-echo "$ CMD_BUILD"
+echo "$ $CMD_BUILD"
 eval ${CMD_BUILD}
 echo "$ $CMD_LARAVEL_OPTIMIZE"
 eval ${CMD_LARAVEL_OPTIMIZE}
