@@ -98,6 +98,4 @@ return [
       'editor' => 'Szerkesztő vezérlése (Csak szinkronizáló módban)',
     ],
   ],
-
-  'updated' => 'Ez az eszköz nemrégiben frissítésre került egy nagyobb frontend kód átalakítás során. Ha bármi problémát tapasztalsz, kérlek vedd fel velem a kapcsolatot <a href="/">a főoldalon</a> található elérhetőségeken, és amíg nincs kijavítva, kérlek használd az <a href=":archive_url">archivált verziót a Wayback Machine-en</a>, ahol a korábbi működő állapot pillanatképe elérhető',
 ];

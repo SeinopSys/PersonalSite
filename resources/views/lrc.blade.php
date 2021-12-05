@@ -3,13 +3,6 @@
 $title = __('global.lrc'); ?>
 @extends('layouts.container')
 
-@section('panel-before')
-  <div class="container">
-    <div class="alert alert-info mb-0">
-      {!! __('lrc.updated', ['archive_url' => 'https://web.archive.org/web/20211101002945/https://seinopsys.dev/lrc']) !!}
-    </div>
-  </div>
-@endsection
 
 @section('panel-body')
   <h3 class="text-center">

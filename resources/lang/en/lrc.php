@@ -99,6 +99,4 @@ return [
       'editor' => 'Editor controls (Only in sync mode)',
     ],
   ],
-
-  'updated' => 'This tool was recently updated as part of a larger frontend code reorganization effort. If the tool is broken in any way please feel free to contact me using the details listed on <a href="/">the homepage</a>, and while this is broken, please use the <a href=":archive_url">archived version on Wayback Machine</a> which has a snapshot of the previous working state.',
 ];
