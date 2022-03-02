@@ -7,7 +7,7 @@
 $DesktopTileSize: 110px;
 $DesktopTileIconSize: 32px;
 $MobileTileIconSize: round($DesktopTileIconSize * .8);
-$IconSpriteWidth: 576px;
+$IconSpriteWidth: 512px;
 $IconSpriteHeight: 64px;
 $TileDefaultBG: #101010;
 $WideTileWidth: 205px;
@@ -58,9 +58,6 @@ $RegularMargin: ($DesktopTileSize - $DesktopTileIconSize)*0.5;
   }
   &.lr:after {
     background-position: -$IconSize*7 0
-  }
-  &.dn:after {
-    background-position: -$IconSize*8 0
   }
 }
 
