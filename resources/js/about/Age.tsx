@@ -1,4 +1,4 @@
-import { differenceInCalendarYears } from 'date-fns';
+import { differenceInYears } from 'date-fns';
 import { FunctionComponent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/compat';
 
@@ -17,6 +17,6 @@ export const Age: FunctionComponent<{ birthDateString: string | null }> = ({ bir
   if (!birthDate) return null;
 
   return (
-    <>{differenceInCalendarYears(now, birthDate)}</>
+    <>{differenceInYears(now, birthDate)}</>
   );
 };
