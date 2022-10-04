@@ -159,7 +159,7 @@ class DialogManager {
     const append = Boolean(this.open);
     const $contentAdd = $(document.createElement('div')).append(params.content);
     const appendingToRequest = append && this.open?.type === 'request' && ['fail', 'wait'].includes(params.type) && !forceNew;
-    let $requestContentDiv: T extends 'request' ? JQuery : JQuery | undefined;
+    let $requestContentDiv: JQuery | undefined;
 
     if (!append) {
       this.storeFocus();

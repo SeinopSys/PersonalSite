@@ -11,7 +11,7 @@
   >
   <meta
     property="og:image"
-    content="https://gravatar.com/avatar/ebbac7b82d21d98c2638233797a323c2?s=250&amp;r=g"
+    content="https://gravatar.com/avatar/f045e864fcd19a42e69f32581fe5020e?s=250&amp;r=g"
   >
   <meta name="description" content="{{ __('about.briefdesc') }}">
   <meta
@@ -97,7 +97,7 @@
 
 <footer>
     <span>{!! __('footer.built-with', [
-        'laravel' => '<a href="https://laravel.com/">Laravel 8</a>',
+        'laravel' => '<a href="https://laravel.com/">Laravel 9</a>',
         'bootstrap' => '<a href="https://getbootstrap.com/">Bootstrap 5</a>',
         'fa' => '<a href="https://fontawesome.com/license/free">Font Awesome Free</a>'
     ]) !!}</span>

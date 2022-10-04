@@ -55,8 +55,11 @@
     "no-undef": 0,
     "no-undefined": 0,
     "no-unused-vars": 0,
+    "no-shadow": 0,
+    "@typescript-eslint/no-shadow": ["error"],
     "no-useless-constructor": "off",
     "no-void": 0,
+    "react/function-component-definition": 0,
     "react/jsx-filename-extension": [
       2,
       {

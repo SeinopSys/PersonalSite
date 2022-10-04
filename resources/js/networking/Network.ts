@@ -9,11 +9,11 @@ export class Network {
   public mask: Netmask;
 
   constructor(cidr: string) {
-    const _split = cidr.split('/');
+    const split = cidr.split('/');
     const
-      ip = _split[0].trim();
+      ip = split[0].trim();
     const ipv6 = ipversion(cidr) === '6';
-    this.mask = new Netmask(_split[1].trim(), false, ipv6);
+    this.mask = new Netmask(split[1].trim(), false, ipv6);
     this.ip = (ipv6 ? new IPV6Address(ip) : new IPV4Address(ip)).networkAddress(this.mask);
   }
 

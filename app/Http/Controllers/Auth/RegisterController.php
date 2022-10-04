@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use PhpCsFixer\Config;
 
 class RegisterController extends Controller
 {
@@ -49,14 +50,16 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         $data['users'] = User::count();
-
-        return Validator::make($data, [
+        $rules = [
             'users' => 'required|integer|max:0',
             'name' => 'required|max:255',
             'email' => 'required|email|max:255|unique:users',
             'password' => 'required|min:8|confirmed',
-            'h-captcha-response' => ['required', new ValidHCaptcha()]
-        ]);
+        ];
+        if(config('hcaptcha.enabled') === true) {
+          $rules['h-captcha-response'] = ['required', new ValidHCaptcha()];
+        }
+        return Validator::make($data, $rules);
     }
 
     /**

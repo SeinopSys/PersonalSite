@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use PHPUnit\Framework\ExceptionWrapper;
 use Webpatser\Uuid\Uuid;
 
 class SelfsignedController extends Controller
@@ -97,13 +98,16 @@ class SelfsignedController extends Controller
             abort(500);
         }
 
-        /** @var $validator \Illuminate\Validation\Validator */
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'common_name' => 'bail|required|string|min:3|max:253|domain',
             'subdomains' => 'bail|nullable|string|subdomains',
             'valid_for' => 'bail|required|int|min:1|max:3652',
-            'h-captcha-response' => ['required', new ValidHCaptcha()],
-        ]);
+        ];
+        if(config('hcaptcha.enabled') === true) {
+          $rules['h-captcha-response'] = ['required', new ValidHCaptcha()];
+        }
+        /** @var $validator \Illuminate\Validation\Validator */
+        $validator = Validator::make($request->all(), $rules);
         $input_data = $validator->validate();
 
         $common_name = strtolower($input_data['common_name']);
@@ -148,12 +152,7 @@ class SelfsignedController extends Controller
         $zip->close();
         $this->_makeCleanup($generated_path);
 
-        header('Content-Type: application/zip');
-        header("Content-disposition: attachment; filename=$common_name.zip");
-        header('Content-Length: '.filesize($zipname));
-        readfile($zipname);
-        App::terminate();
-        die();
+        return response()->download($zipname, "$common_name.zip");
     }
 
     public function _makeCleanup(string $TMP): void
