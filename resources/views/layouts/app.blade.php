@@ -102,7 +102,8 @@
         'fa' => '<a href="https://fontawesome.com/license/free">Font Awesome Free</a>'
     ]) !!}</span>
   <span>&copy; {{ config('app.name') }}, 2016-{{ date('Y') }}</span>
-  <span>
+  @if($git_info)
+    <span>
         {{ __('footer.revision') }} {{--
         --}}<a
       href="{{ config('app.github_url') }}/commit/{{ $git_info['commit_id'] }}"
@@ -113,6 +114,7 @@
         --}}{{ __('footer.created') }} {{--
         --}}{!! $git_info['commit_time'] !!}
     </span>
+  @endif
 </footer>
 
 <!-- Scripts -->
