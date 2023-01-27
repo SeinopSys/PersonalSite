@@ -32,6 +32,9 @@ class Response
     private static function _respond(bool $status, string $message, $data)
     {
         header('Content-Type: application/json');
+        if (!$status) {
+          http_response_code(500);
+        }
         $response = ['status' => $status];
         if (!empty($message)) {
             $response['message'] = $message;
