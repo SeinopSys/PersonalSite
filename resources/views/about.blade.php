@@ -43,6 +43,9 @@ use App\Util\Core; ?>
         <a class="so" href="https://stackoverflow.com/users/1344955/seinopsys">
           <span>Stack Overflow</span>
         </a>
+        <a class="in" href="https://www.linkedin.com/in/seinopsys/">
+          <span>LinkedIn</span>
+        </a>
         <a class="sei" href="{{ config('app.github_url') }}">
           <span>{{ __('about.this_site') }}</span>
         </a>
