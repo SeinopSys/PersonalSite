@@ -30,7 +30,8 @@ $(() => {
       const widget = new WidgetInstance(containerEl, {
         sitekey: captchaKey,
         doneCallback: enableButtons,
-        errorCallback: disableButtons
+        errorCallback: disableButtons,
+        language: document.documentElement.lang as never,
       });
 
       $form.on('submit', () => {
