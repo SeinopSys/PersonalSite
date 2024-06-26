@@ -3,9 +3,9 @@
         <label class="mb-1">{{ __('auth.field-antispam') }}</label>
 
         <small class="form-text d-block mt-0">
-            {{ __('global.captcha_protecc.0') }}
-            <a href="https://friendlycaptcha.com/legal/privacy-end-users/">{{ __('global.captcha_protecc.1') }}</a>
-            {{ __('global.captcha_protecc.2') }}
+            {{ __('global.captcha_protecc.0') }}{{--
+            --}}<a href="https://friendlycaptcha.com/legal/privacy-end-users/">{{ __('global.captcha_protecc.1') }}</a>{{--
+            --}}{{ __('global.captcha_protecc.2') }}
         </small>
 
         <div class="frc-captcha"></div>
