@@ -87,7 +87,7 @@ return [
     'unique' => 'A(z) :attribute már foglalt.',
     'uploaded' => 'A(z) :attribute feltöltése sikertelen.',
     'url' => 'A(z) :attribute érvénytelen link.',
-    'hcaptcha' => 'Érvénytelen CAPTCHA. Be kell bizonyítanod, hogy nem vagy robot.',
+    'captcha' => 'Érvénytelen CAPTCHA. Be kell bizonyítanod, hogy nem vagy robot.',
     'domain' => 'A megadott domain érvénytelen',
     'subdomains' => 'A megadott al-domain(ek) érvénytelen(ek)',
 

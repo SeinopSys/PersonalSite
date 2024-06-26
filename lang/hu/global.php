@@ -58,11 +58,9 @@ return [
 
     'tool-not-found' => 'Az eszköz, amire ez a link mutat nem létezik vagy el lett távolítva. Fent választhatsz az elérhető eszközök közül.',
     'page-out-of-bounds' => 'A kiválasztott oldal nem tartalmaz elemeket. Kérlek, válassz egy érvényes oldalt alább.',
-    'hcaptcha_protecc' => [
-        'Az oldalt a hCaptcha védi, ezért az',
-        'Adatvédelmi Nyilatkozata',
-        'és',
-        'Felhasználási Feltételei',
-        'érvényesek.'
+    'captcha_protecc' => [
+        'Az oldalt a Friendly Captcha védi, az adatvédelmi nyilatkozata',
+        'itt található',
+        '.',
     ]
 ];

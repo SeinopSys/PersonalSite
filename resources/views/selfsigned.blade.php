@@ -33,7 +33,7 @@ $title = __('selfsigned.title'); ?>
     @endif
 
     @if($openssl && $zip)
-        <form method="POST" action="{{ route('selfsigned.make') }}" data-hcaptcha="true">
+        <form method="POST" action="{{ route('selfsigned.make') }}">
             <div class="mb-3">
                 <label for="common_name">{{ __('selfsigned.common_name') }}</label>
                 <input type="text" id="common_name" name="common_name" class="form-control" placeholder="example.com"

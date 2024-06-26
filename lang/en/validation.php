@@ -117,7 +117,7 @@ return [
     'uploaded' => 'The :attribute failed to upload.',
     'url' => 'The :attribute format is invalid.',
     'uuid' => 'The :attribute must be a valid UUID.',
-    'hcaptcha' => 'Invalid CAPTCHA. You need to prove you are human.',
+    'captcha' => 'Invalid CAPTCHA. You need to prove you are human.',
     'domain' => 'The specified domain is invalid',
     'subdomains' => 'The specified subdomain(s) are invalid',
 

@@ -129,19 +129,14 @@
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
-@if(isset($hcaptcha))
-  <script
-    src="https://hcaptcha.com/1/api.js?hl={{ $currLang }}&render=explicit&onload=hcaptchaReady"
-    async
-    defer
-  ></script>
-  <script>window.Laravel.hcaptchaKey = '{{ config('hcaptcha.sitekey') }}';</script>
-@endif
 @yield('js-locales')
 <script src="{{ mix('/js/global.js') }}"></script>
 @if(!empty($js) && is_array($js))
   @foreach ($js as $line)
     <script src="{{ mix("/js/$line.js") }}"></script>
+    @if($line === 'friendlycaptcha')
+      <script>window.Laravel.captchaKey = '{{ config('captcha.sitekey') }}';</script>
+    @endif
   @endforeach
 @endif
 </body>

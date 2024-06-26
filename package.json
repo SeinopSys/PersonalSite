@@ -6,6 +6,7 @@
     "@babel/plugin-proposal-object-rest-spread": "^7.18.9",
     "@babel/plugin-proposal-private-methods": "^7.18.6",
     "@babel/preset-env": "^7.19.3",
+    "@friendlycaptcha/sdk": "^0.1.8",
     "@types/jsmediatags": "^3.9.3",
     "@types/throttle-debounce": "^5.0.0",
     "acorn": "^8.8.0",
