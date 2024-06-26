@@ -1,11 +1,8 @@
-import type { Modal } from 'bootstrap';
 import { Dialog } from './dialog';
 import { Key } from './utils/Key';
-import { setElDisabled } from './utils';
 
 declare global {
   interface Window {
-    hcaptchaReady: VoidFunction;
     Laravel: {
       locale: 'hu' | 'en';
       csrfToken: string;
@@ -15,80 +12,11 @@ declare global {
       git: {
         commit_id: string;
       };
-      hcaptchaKey?: string;
+      captchaKey?: string;
     };
-    hcaptcha: {
-      render(el: HTMLElement, options: {
-        sitekey: string,
-        callback: (token: string) => void,
-      }): string;
-      execute(widgetId: string): void;
-    };
-    bootstrap: { Modal: Modal };
+    bootstrap: { Modal: import('bootstrap').Modal };
   }
 }
-
-window.hcaptchaReady = () => {
-  const { hcaptchaKey } = window.Laravel;
-  const { hcaptcha } = window;
-
-  if (typeof hcaptchaKey === 'undefined') return;
-
-  if (hcaptchaKey === '') {
-    console.error('You haven\'t set your Site Key for hCaptcha v3. Get it on https://hcaptcha.com.');
-    return;
-  }
-
-  const relevantInputName = 'h-captcha-response';
-
-  const getKeyEl = ($form: JQuery<HTMLFormElement>) => {
-    let $el = $form.find(`:input[name="${relevantInputName}"]`);
-    if (!$el.length) {
-      $el = $($(document.createElement('textarea')))
-        .attr('name', relevantInputName)
-        .appendTo($form);
-    }
-    return $el as JQuery<HTMLInputElement | HTMLTextAreaElement>;
-  };
-
-  const getSubmitEls = ($form: JQuery<HTMLFormElement>) => (
-    $form.find<HTMLButtonElement | HTMLInputElement>('button:not([type]), input[type="submit"]')
-  );
-
-  $<HTMLFormElement>('form')
-    .filter('[data-hcaptcha="true"]')
-    .each((_, form) => {
-      const $form = $<HTMLFormElement>(form);
-      const $container = $form.find('.h-captcha');
-      const containerEl = $container.get(0);
-      if (!containerEl) throw new Error('Missing containerEl');
-      const widgetId = hcaptcha.render(containerEl, {
-        sitekey: hcaptchaKey,
-        ...$container.data(),
-        callback: (token: string) => {
-          const $key = getKeyEl($form);
-          $key.val(token);
-          form.submit();
-          // Reset the key for the next submission
-          $key.val('');
-          setElDisabled(getSubmitEls($form), false);
-        },
-      });
-      $form.on('submit', e => {
-        const $key = getKeyEl($form);
-        const keyValue = $key.val();
-        console.log(keyValue);
-        if (typeof keyValue !== 'string' || keyValue.length === 0) {
-          e.preventDefault();
-          setElDisabled(getSubmitEls($form), true);
-          hcaptcha.execute(widgetId);
-          return;
-        }
-        // Reset the key for the next submission
-        $key.val('');
-      });
-    });
-};
 
 // Create AJAX response handling function
 $(window).on('ajaxerror', (...args) => {

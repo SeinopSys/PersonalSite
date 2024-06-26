@@ -58,11 +58,9 @@ return [
 
     'tool-not-found' => 'The tool you were linked to does not exist or has been removed. You can pick from the available tools above.',
     'page-out-of-bounds' => 'The selected page is out of bounds. Please select an existing page below.',
-    'hcaptcha_protecc' => [
-        'This site is protected by hCaptcha and its',
-        'Privacy Policy',
-        'and',
-        'Terms of Service',
-        'apply.'
+    'captcha_protecc' => [
+        'This site is protected by Friendly Captcha and its Privacy Policy',
+        'can be found here',
+        '.'
     ]
 ];
