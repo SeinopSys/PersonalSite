@@ -5,7 +5,7 @@ Register
 @endsection
 
 @section('panel-body')
-    <form class="form-horizontal frc-captcha" role="form" method="POST" action="{{ url('/register') }}">
+    <form class="form-horizontal" role="form" method="POST" action="{{ url('/register') }}">
         @csrf
 
         <div class="mb-3 row">
