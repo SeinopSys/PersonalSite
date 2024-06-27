@@ -52,12 +52,6 @@ use App\Util\Core; ?>
         <a class="vc" href="https://mlpvector.club/">
           <span>MLP Vector Club {{ __('about.website') }}</span>
         </a>
-        <a class="lr" href="https://github.com/SeinopSys/LightningReopen">
-          <span>{{ __('about.lightning_reopen') }}</span>
-        </a>
-        <a class="dt" href="https://github.com/SeinopSys/Derpi-NewTab">
-          <span>Derpi-New Tab</span>
-        </a>
         <a class="ytms" href="https://github.com/SeinopSys/YTMySubs">
           <span>{{ __('about.yt_my_subs') }}</span>
         </a>
