@@ -28,6 +28,7 @@ export class LRCParser {
         }
       }
     });
+    if (this.timings.length === 0) throw new Error(window.Laravel.jsLocales.dialog_parse_error_no_timing);
     this.timings.sort((a, b) => a.ts.seconds - b.ts.seconds);
   }
 }

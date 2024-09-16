@@ -36,6 +36,10 @@ export class TimingEditor {
 
   protected $lrcexportnometabtn: JQuery;
 
+  protected $lrcexportaudiobtn: JQuery;
+
+  protected $lrcimportaudiobtn: JQuery;
+
   protected $lrcmergetogglebtn: JQuery;
 
   protected $lrcclrbtn: JQuery;
@@ -82,6 +86,8 @@ export class TimingEditor {
     this.$lrcpastebtn = $('#lrcpastebtn');
     this.$lrcexportbtn = $('#lrcexportbtn');
     this.$lrcexportnometabtn = $('#lrcexportnometabtn');
+    this.$lrcexportaudiobtn = $('#lrcexportaudiobtn');
+    this.$lrcimportaudiobtn = $('#lrcimportaudiobtn');
     this.$lrcmergetogglebtn = $('#lrcmergetogglebtn');
     this.$lrcclrbtn = $('#lrcclrbtn');
     this.$lrcmetadatabtn = $('#lrcmetadatabtn');
@@ -116,14 +122,10 @@ export class TimingEditor {
     this.$lrcpastebtn.on('click', e => {
       e.preventDefault();
 
-      const $rawLyricsForm = $<HTMLFormElement>(document.createElement('form'))
-        .attr('id', 'rawlyrics')
-        .append(
-          `<div class="mb-3">
-            <textarea class="form-control" rows="10"></textarea>
-          </div>
-          <p class="text-info"><span class="fa fa-info-circle me-2"></span>${window.Laravel.jsLocales.dialog_pasteraw_info}</p>`,
-        );
+      const $rawLyricsForm = this.createLyricsImportForm('rawlyrics');
+      $rawLyricsForm.append(
+        `<p class="text-info"><span class="fa fa-info-circle me-2"></span>${window.Laravel.jsLocales.dialog_pasteraw_info}</p>`,
+      );
       Dialog.request({
         title: window.Laravel.jsLocales.dialog_pasteraw_title,
         content: $rawLyricsForm,
@@ -133,14 +135,7 @@ export class TimingEditor {
             se.preventDefault();
 
             Dialog.wait(false, 'Importing');
-            const lines: string[] = ($form.find<HTMLTextAreaElement>('textarea').prop('value') || '').trim().split(/\n+/g);
-            lines.push(''); // Add an empty line to account for an outro
-            this.timings = lines.map(el => new LRCString(el));
-            this.pluginScope.player
-              .updateEntrySticks();
-            this.regenEntries();
-            this.lastLRCFilename = undefined;
-
+            this.importFromText($form.find<HTMLTextAreaElement>('textarea').prop('value') || '');
             Dialog.close();
           });
         },
@@ -157,6 +152,21 @@ export class TimingEditor {
 
       this.storeTimings();
       this.exportLRCFile(false);
+    });
+    this.$lrcexportaudiobtn.on('click', e => {
+      e.preventDefault();
+
+      this.storeTimings();
+      this.exportEmbeddedAudioFile(this.getExportLrcFileText(false));
+    });
+    this.$lrcimportaudiobtn.on('click', e => {
+      e.preventDefault();
+
+      if (!this.pluginScope.player.hasFile()) {
+        Dialog.info(window.Laravel.jsLocales.dialog_import_audio_lyrics_title, window.Laravel.jsLocales.player_nofile);
+      }
+
+      this.pluginScope.player.resetInitialMetadata();
     });
     this.$lrcmergetogglebtn.on('click', e => {
       e.preventDefault();
@@ -277,7 +287,7 @@ export class TimingEditor {
       const timestampPrefix = timestampText.length > 0 ? `[${timestampText}] ` : '';
       $deletedLine.text(`${timestampPrefix}${entryText}`);
       Dialog.confirm({
-        title,
+        title: title.replace('…', ''),
         content: $content,
         handlerFunc: confirm => {
           if (confirm) {
@@ -306,17 +316,16 @@ export class TimingEditor {
       this.$filein.trigger('click');
       clearFocus();
     });
-    this.$filein.on('change', () => {
+    this.$filein.on('change', async () => {
       const val = this.$filein.val();
 
       if (!val) return;
 
       setElDisabled(this.$lrcfilebtn, true);
-      this.readLRCFile(this.$filein[0].files?.[0], success => {
-        if (success) this.regenEntries();
-        else this.$filein.val('');
-        setElDisabled(this.$lrcfilebtn, false);
-      });
+      const success = await this.readLRCFile(this.$filein[0].files?.[0]);
+      if (success) this.regenEntries();
+      else this.$filein.val('');
+      setElDisabled(this.$lrcfilebtn, false);
     });
 
     this.initBackup();
@@ -325,7 +334,7 @@ export class TimingEditor {
   private initBackup() {
     const backupLocalStorageKey = 'lrc-backup';
     $(window).on('beforeunload', (e: BeforeUnloadEvent) => {
-      if (this.$editor.text().trim().length > 0 || Object.keys(this.metadata).length > 0) {
+      if (!this.isEditorEmpty()) {
         const backupContents = this.createBackup();
         if (this.isUsefulBackupData(this.parseBackupData(backupContents))) {
           localStorage.setItem(backupLocalStorageKey, backupContents);
@@ -486,11 +495,57 @@ export class TimingEditor {
       if (value) this.initialMetadata[el] = value;
       else if (value === null) delete this.initialMetadata[el];
     });
+    if (metadata.lyrics) {
+      const $audioLyricsForm = this.createLyricsImportForm(
+        'audiolyrics',
+        window.Laravel.jsLocales.dialog_import_audio_lyrics_info,
+      );
+      const importText = metadata.lyrics;
+      $audioLyricsForm.find('.lyrics-textarea').attr('readonly', 'readonly').val(importText);
+      if (this.isEditorEmpty()) {
+        this.importFromText(importText, false);
+        return;
+      }
+
+      Dialog.request({
+        title: window.Laravel.jsLocales.dialog_import_audio_lyrics_title,
+        content: $audioLyricsForm,
+        confirmBtn: window.Laravel.jsLocales.dialog_import_audio_lyrics_action,
+        callback: $form => {
+          $form.on('submit', se => {
+            se.preventDefault();
+
+            Dialog.wait(false, 'Importing');
+            this.importFromText(importText, false);
+            Dialog.close();
+          });
+        },
+      });
+    }
+  }
+
+  private isEditorEmpty(): boolean {
+    return this.$editor.text().trim().length === 0 && Object.keys(this.metadata).length === 0;
+  }
+
+  private createLyricsImportForm(id: string, pretext?: string) {
+    const $audioLyricsForm = $<HTMLFormElement>(document.createElement('form')).attr('id', id);
+    if (pretext) {
+      $audioLyricsForm.append($(document.createElement('p')).text(pretext));
+    }
+    $audioLyricsForm.append(
+      `<div class="mb-3">
+          <textarea class="form-control lyrics-textarea" rows="10"></textarea>
+        </div>`,
+    );
+    return $audioLyricsForm;
   }
 
   setMetadata(metadata: LRCMetadata): void {
     this.metadata = metadata;
-    const metaCount = Object.keys(this.metadata).length;
+    const metaCount = Object.keys(this.metadata)
+      .filter(k => Boolean(this.metadata[k]) && this.initialMetadata[k] !== this.metadata[k])
+      .length;
     this.$lrcmetadatabtn.find('.metadata-count').text(metaCount > 0 ? metaCount : '');
   }
 
@@ -591,23 +646,29 @@ export class TimingEditor {
     $timestamp.trigger('keyup');
   }
 
-  readLRCFile(file: File | null | undefined, callback: (value: boolean) => void): void {
-    if (!file) throw new Error('Missing file');
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = new LRCParser(reader.result as string);
-        this.setTimings(parsed.timings);
-        this.setMetadata(parsed.metadata);
-      } catch (e) {
-        Dialog.fail(window.Laravel.jsLocales.dialog_parse_error, e instanceof Error ? e.message : undefined);
-        callback(false);
-        return;
-      }
-      this.lastLRCFilename = file.name.replace(/\.lrc$/, '');
-      callback(true);
-    };
-    reader.readAsText(file);
+  async readLRCFile(file: File | null | undefined): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      if (!file) throw new Error('Missing file');
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          this.readLRCFileText(reader.result as string);
+        } catch (e) {
+          Dialog.fail(window.Laravel.jsLocales.dialog_parse_error, e instanceof Error ? e.message : undefined);
+          resolve(false);
+          return;
+        }
+        this.lastLRCFilename = file.name.replace(/\.lrc$/, '');
+        resolve(true);
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  private readLRCFileText(result: string): void {
+    const parsed = new LRCParser(result as string);
+    this.setTimings(parsed.timings);
+    this.setMetadata(parsed.metadata);
   }
 
   static giveSyncHandleTo<El extends JQuery>($el: El): El {
@@ -793,6 +854,15 @@ export class TimingEditor {
   }
 
   exportLRCFile(includeMetadata = true): void {
+    const output = this.getExportLrcFileText(includeMetadata);
+    const basename = this.lastLRCFilename || this.pluginScope.player.getFileName() || 'Lyrics';
+    const filename = `${basename}.lrc`;
+
+    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, filename);
+  }
+
+  private getExportLrcFileText(includeMetadata = true): string {
     let outputArr: string[] = [];
     if (includeMetadata) {
       const metadata = this.getCurrentMetadata();
@@ -827,11 +897,51 @@ export class TimingEditor {
         ...this.timings.map(el => `[${el.ts.toString(true)}]${el.str}`),
       ];
     }
-    const output = `${outputArr.join('\n')}\n`;
-    const basename = this.lastLRCFilename || this.pluginScope.player.getFileName() || 'Lyrics';
-    const filename = `${basename}.lrc`;
+    return `${outputArr.join('\n')}\n`;
+  }
 
-    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
-    saveAs(blob, filename);
+  private exportEmbeddedAudioFile(lyrics: string) {
+    if (!this.pluginScope.player.hasFile()) {
+      Dialog.info(window.Laravel.jsLocales.dialog_import_audio_lyrics_title, window.Laravel.jsLocales.player_nofile);
+      return;
+    }
+
+    const mp3Tag = this.pluginScope.player.getMp3TagInstance();
+    if (!mp3Tag) {
+      Dialog.fail(window.Laravel.jsLocales.timing_export_audio);
+      return;
+    }
+
+    if (!mp3Tag.tags.v2) {
+      mp3Tag.tags.v2 = {};
+    }
+    mp3Tag.tags.v2.USLT = [{
+      language: 'eng',
+      text: lyrics,
+      descriptor: this.getCurrentMetadata().re,
+    }];
+
+    const buffer = mp3Tag.save();
+    const fileName = `${this.pluginScope.player.getFileName()}.${this.pluginScope.player.getFileExtension()}`;
+    saveAs(new Blob([buffer], { type: 'application/octet-stream' }), fileName);
+  }
+
+  importFromText(input: string, forcePlaintext = true) {
+    if (!forcePlaintext) {
+      try {
+        this.readLRCFileText(input);
+        return;
+      } catch (e) {
+        console.warn(e);
+        console.warn('Failed to parse input as LRC file, proceeding as plaintext');
+      }
+    }
+
+    const lines: string[] = input.trim().split(/\n+/g);
+    lines.push(''); // Add an empty line to account for an outro
+    this.timings = lines.map(el => new LRCString(el));
+    this.pluginScope.player.updateEntrySticks();
+    this.regenEntries();
+    this.lastLRCFilename = undefined;
   }
 }

@@ -1,14 +1,15 @@
-import { Reader } from 'jsmediatags';
 // eslint-disable-next-line import/no-unresolved
-import type { TagType } from 'jsmediatags/types';
 import { throttle } from 'throttle-debounce';
+import MP3Tag, { MP3Buffer } from 'mp3tag.js';
+import type { MP3TagTags } from 'mp3tag.js/types/tags';
+import { Reader as JsMediaTagsReader } from 'jsmediatags';
+import type { Tags as JsMediaTagsTags } from 'jsmediatags/types';
 import { Dialog } from '../dialog';
 import {
-  callCallback,
   pad, rangeLimit, roundTo, setElDisabled,
 } from '../utils';
 import { AudioPlaybackIndicator } from './AudioPlaybackIndicator';
-import { clearFocus } from './common';
+import { clearFocus, LRCMetadata, MinimalMediaTags } from './common';
 import { Duration } from './Duration';
 import type { TimingEditor } from './TimingEditor';
 
@@ -21,7 +22,7 @@ export class AudioPlayer {
 
   private audio: HTMLAudioElement;
 
-  private mediatags: Record<string, string>;
+  private mediaTags: Partial<Record<MinimalMediaTags, string>>;
 
   private volumeStep = 0.05;
 
@@ -38,6 +39,10 @@ export class AudioPlayer {
   private updateIndTimer?: ReturnType<typeof setTimeout>;
 
   private stateInd: AudioPlaybackIndicator;
+
+  private file: File | undefined;
+
+  private mp3TagInstance: MP3Tag | undefined;
 
   constructor(private pluginScope: { editor: TimingEditor }) {
     this.$player = $('#player');
@@ -71,7 +76,7 @@ export class AudioPlayer {
         this.setMetadataLength();
       });
 
-    this.mediatags = {};
+    this.mediaTags = {};
     this.$volumedisp = $('#volumedisp');
     this.$volumedown = $('#volumedown');
     this.$volumeup = $('#volumeup');
@@ -148,16 +153,21 @@ export class AudioPlayer {
       this.$filein.trigger('click');
       clearFocus();
     });
-    this.$filein.on('change', () => {
+    this.$filein.on('change', async () => {
       const val = this.$filein.val();
 
       if (!val) return;
 
       this.clearFile();
       setElDisabled(this.$audiofilebtn, true);
-      this.setFile(this.$filein[0].files?.[0], file => {
-        this.stateInd.setFileName(file.name, file.type);
-      });
+      try {
+        this.file = await this.setFile(this.$filein[0].files?.[0]);
+        this.stateInd.setFileName(this.file.name, this.file.type);
+      } catch (e) {
+        console.error(e);
+        this.clearFile();
+        setElDisabled(this.$audiofilebtn, true);
+      }
     });
   }
 
@@ -231,30 +241,68 @@ export class AudioPlayer {
     this.updateInd();
   }
 
-  setFile(file?: File | null, callback?: (f: File) => void): void {
+  async setFile(file?: File | null): Promise<File> {
     this.stop();
     this.stateInd.showThumb(false);
     this.updatePlaybackButtons();
-    if (!file || !/^audio\//.test(file.type)) {
+    if (!file || !/^(?:audio\/|video\/ogg)/.test(file.type)) {
       Dialog.fail(window.Laravel.jsLocales.dialog_format_error, window.Laravel.jsLocales.dialog_format_notaudio);
-      return;
+      return Promise.reject(new Error(`[setFile] Audio file expected, got ${file?.type}`));
     }
     this.audio.src = URL.createObjectURL(file);
-    new Reader(file)
-      .setTagsToRead(['title', 'artist', 'album'])
-      .read({
-        onSuccess: data => {
-          if (typeof data === 'object') {
-            this.setMediaTags(data.tags);
-          }
-        },
-        onError(error) {
-          console.log('Failed to read ID3 tags', error.type, error.info);
-        },
-      });
-    callCallback({
-      func: callback,
-      params: [file],
+    try {
+      console.info('[setFile] First attempt using using mp3tag.js');
+      const tags = await this.readMp3Metadata(file);
+      this.setMp3MediaTags(tags);
+      return file;
+    } catch (e) {
+      console.error(e);
+    }
+
+    console.info(`[setFile] File type is ${file.type}, falling back to jsmediatags`);
+    const tags = await this.readAudioMetadata(file);
+    this.setAudioMediaTags(tags);
+    return file;
+  }
+
+  private async readAudioMetadata(file: File): Promise<JsMediaTagsTags> {
+    return new Promise((res, rej) => {
+      new JsMediaTagsReader(file)
+        .setTagsToRead(['title', 'artist', 'album'])
+        .read({
+          onSuccess: data => {
+            if (typeof data === 'object') {
+              res(data.tags);
+            }
+          },
+          onError(error) {
+            console.log('Failed to read ID3 tags', error.type, error.info);
+            rej(error);
+          },
+        });
+    });
+  }
+
+  private readMp3Metadata(file: File): Promise<MP3TagTags> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const buffer = reader.result as MP3Buffer;
+
+        // MP3Tag Usage
+        this.mp3TagInstance = new MP3Tag(buffer);
+        this.mp3TagInstance.read();
+
+        // Handle error if there's any
+        if (this.mp3TagInstance.error !== '') {
+          reject(new Error(this.mp3TagInstance.error));
+          return;
+        }
+
+        resolve(this.mp3TagInstance.tags);
+      };
+
+      reader.readAsArrayBuffer(file);
     });
   }
 
@@ -268,12 +316,13 @@ export class AudioPlayer {
       URL.revokeObjectURL(this.audio.src);
     }
     this.audio.src = '';
+    this.file = undefined;
     this.clearMediaTags();
   }
 
   getFileName(): string {
-    const tags = this.mediatags;
-    if (tags.title) {
+    const tags = this.mediaTags;
+    if (tags?.title) {
       if (tags.artist) {
         return `${tags.artist} - ${tags.title}`;
       }
@@ -282,25 +331,64 @@ export class AudioPlayer {
     return this.stateInd.getFileName();
   }
 
+  getFileExtension(): string {
+    let extension = this.file?.name.replace(/^.*\.([^.]+)$/, '$1');
+    if (extension) {
+      return extension;
+    }
+    const fileType = this.file?.type;
+    if (fileType && fileType.includes('/')) {
+      extension = fileType.split('/').pop()?.toLowerCase();
+    }
+
+    return typeof extension === 'string' ? extension : 'bin';
+  }
+
+  getMp3TagInstance(): MP3Tag | undefined {
+    return this.mp3TagInstance;
+  }
+
   clearMediaTags(): void {
-    this.mediatags = {};
+    this.mediaTags = {};
+    this.mp3TagInstance = undefined;
     this.pluginScope.editor.setInitialMetadata({ length: undefined });
   }
 
-  setMediaTags(tags?: TagType['tags']): void {
-    if (typeof tags !== 'object') throw new Error(`setMediaTags: tags must be an object, ${typeof tags} given.`);
+  setMp3MediaTags(tags?: MP3TagTags): void {
+    if (typeof tags !== 'object') throw new Error(`setMp3MediaTags: tags must be an object, ${typeof tags} given.`);
 
-    this.mediatags = Object.keys(tags).reduce((acc, key) => {
-      const val = tags[key as keyof TagType['tags']];
-      if (typeof val === 'string') {
-        return {
-          ...acc,
-          [key]: val,
-        };
-      }
-      return acc;
-    }, {} as Record<string, string>);
-    this.pluginScope.editor.setInitialMetadata(this.mediatags);
+    this.mediaTags = {
+      album: tags?.album,
+      artist: tags?.artist,
+      title: tags?.title,
+      lyrics: tags?.v2?.USLT?.[0]?.text,
+    };
+    this.resetInitialMetadata();
+  }
+
+  setAudioMediaTags(tags?: JsMediaTagsTags): void {
+    if (typeof tags !== 'object') throw new Error(`setAudioMediaTags: tags must be an object, ${typeof tags} given.`);
+
+    this.mediaTags = {
+      album: tags?.album,
+      artist: tags?.artist,
+      title: tags?.title,
+      lyrics: tags?.lyrics,
+    };
+    this.resetInitialMetadata();
+  }
+
+  resetInitialMetadata() {
+    this.pluginScope.editor.setInitialMetadata(this.convertMediaTags());
+  }
+
+  private convertMediaTags(): Partial<LRCMetadata> {
+    return {
+      al: this.mediaTags?.album,
+      ar: this.mediaTags?.artist,
+      ti: this.mediaTags?.title,
+      lyrics: this.mediaTags?.lyrics,
+    };
   }
 
   private startUpdateIndTimer() {

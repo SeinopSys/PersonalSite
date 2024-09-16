@@ -97,6 +97,10 @@ $title = __('global.lrc'); ?>
               <a class="dropdown-item" href="#paste-lyrics" id="lrcpastebtn">
                 <x-fa icon="clipboard" first></x-fa>{{ __('lrc.timing_pastelyrics') }}
               </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#import-audio" id="lrcimportaudiobtn">
+                <x-fa icon="file-audio" first></x-fa>{{ __('lrc.timing_import_audio') }}
+              </a>
             </div>
           </div>
           <div class="btn-group">
@@ -105,16 +109,19 @@ $title = __('global.lrc'); ?>
               <span class="caret"></span>
             </button>
             <div class="dropdown-menu">
-              <a class="dropdown-item" href="#import-lrc" id="lrcexportbtn">
-                <strong><span
-                    class="fa fa-file-code"
-                  ></span> {{ __('lrc.timing_export').' '.__('lrc.timing_exportwithmeta') }}
+              <a class="dropdown-item" href="#export" id="lrcexportbtn">
+                <strong>
+                  <x-fa icon="file-code" first></x-fa>{{ __('lrc.timing_export').' '.__('lrc.timing_exportwithmeta') }}
                 </strong>
               </a>
-              <a class="dropdown-item" href="#paste-lyrics" id="lrcexportnometabtn">
-                                <span
-                                  class="fa fa-file"
-                                ></span> {{ __('lrc.timing_export').' '.__('lrc.timing_exportnometa') }}
+              <a class="dropdown-item" href="#export-nometa" id="lrcexportnometabtn">
+                 <x-fa icon="file" first></x-fa>{{ __('lrc.timing_export').' '.__('lrc.timing_exportnometa') }}
+              </a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#export-audio" id="lrcexportaudiobtn">
+                <strong>
+                  <x-fa icon="file-audio"></x-fa> {{ __('lrc.timing_export_audio') }}
+                </strong>
               </a>
               <div class="dropdown-divider"></div>
               <a class="dropdown-item" href="#toggle-merge" id="lrcmergetogglebtn">
@@ -138,9 +145,9 @@ $title = __('global.lrc'); ?>
       </div>
       <div class="editor-wrap">
         <div class="editor"></div>
-        <div class="alert alert-info editor-no-scroll"><span
-            class="fa fa-info-circle"
-          ></span> {{ __('lrc.editor_scroll_lock') }}</div>
+        <div class="alert alert-info editor-no-scroll">
+          <x-fa icon="info-circle" first></x-fa>{{ __('lrc.editor_scroll_lock') }}
+        </div>
       </div>
     </div>
   </fieldset>
@@ -151,21 +158,19 @@ $title = __('global.lrc'); ?>
       <span class="text" contenteditable data-empty="{{ __('lrc.timing_entry_empty') }}"></span>
       <div class="tools btn-group">
         <button class="btn btn-success addrow-up edit-only text-nowrap" title="{{ __('lrc.timing_addrowup') }}">
-          <x-fa icon="plus" first></x-fa>
-          <x-fa icon="arrow-up"></x-fa>
+          <x-fa icon="arrow-turn-up" fixedWidth=""></x-fa>
         </button>
         <button
           class="btn btn-success addrow-down edit-only text-nowrap"
           title="{{ __('lrc.timing_addrowdown') }}"
         >
-          <x-fa icon="plus" first></x-fa>
-          <span class="fa fa-arrow-down"></span>
+          <x-fa icon="arrow-turn-down" fixedWidth=""></x-fa>
         </button>
         <button class="btn btn-danger remrow edit-only text-nowrap" title="{{ __('lrc.timing_remrow') }}" disabled>
-          <x-fa icon="minus"></x-fa>
+          <x-fa icon="minus" fixedWidth=""></x-fa>
         </button>
         <button class="btn btn-warning goto text-nowrap" title="{{ __('lrc.timing_goto') }}" disabled>
-          <x-fa icon="step-forward"></x-fa>
+          <x-fa icon="step-forward" fixedWidth=""></x-fa>
         </button>
       </div>
     </div>
@@ -269,18 +274,24 @@ $title = __('global.lrc'); ?>
 
 @section('js-locales')
   {!! \App\Util\Core::ExportTranslations('lrc',[
-      'dialog_pasteraw_title',
-      'dialog_pasteraw_info',
-      'dialog_pasteraw_action',
-      'dialog_parse_error',
-      'dialog_parse_error_empty',
+      'confirm_navigation',
+      'dialog_edit_meta',
+      'dialog_edit_meta_reset_btn',
+      'dialog_edit_meta_reset_info',
       'dialog_format_error',
       'dialog_format_notaudio',
-      'dialog_edit_meta',
+      'dialog_import_audio_lyrics_action',
+      'dialog_import_audio_lyrics_info',
+      'dialog_import_audio_lyrics_title',
+      'dialog_parse_error',
+      'dialog_parse_error_empty',
+      'dialog_parse_error_no_timing',
+      'dialog_pasteraw_action',
+      'dialog_pasteraw_info',
+      'dialog_pasteraw_title',
       'metadata_field_placeholders',
-      'dialog_edit_meta_reset_info',
-      'dialog_edit_meta_reset_btn',
-      'confirm_navigation',
+      'player_nofile',
+      'timing_export_audio',
   ]) !!}
   {!! \App\Util\Core::ExportTranslations('global',[
       'save',

@@ -43,4 +43,5 @@ export const LRC_META_TAGS = {
 export const LRC_TS_REGEX = /\[([\d:.]+)]/g;
 export const LRC_META_REGEX = new RegExp(`^\\[(${Object.keys(LRC_META_TAGS).join('|')}):([^\\]]+)]$`);
 export type LRCMetadataKeys = keyof typeof LRC_META_TAGS;
-export type LRCMetadata = Partial<Record<LRCMetadataKeys, string>> & { [k: string]: string };
+export type LRCMetadata = Partial<Record<LRCMetadataKeys, string>> & { lyrics?: string } & { [k: string]: string };
+export type MinimalMediaTags = 'album' | 'artist' | 'title' | 'lyrics';

@@ -395,11 +395,6 @@ $thumbBorder: 2px;
   }
 }
 
-#rawlyrics textarea {
-  width: 100%;
-  resize: vertical;
-}
-
 #meta_input_length, #meta_input_offset, #meta_input_ve {
   font-family: $font-family-monospace;
 }
@@ -420,6 +415,17 @@ $thumbBorder: 2px;
   }
 }
 
-#dialogContent .backup-data {
-  white-space: pre-wrap;
+#dialogContent {
+  .backup-data {
+    white-space: pre-wrap;
+  }
+  .lyrics-textarea {
+    width: 100%;
+    resize: vertical;
+
+    &[readonly] {
+      cursor: default;
+      background-color: rgba(0,0,0,.1);
+    }
+  }
 }
