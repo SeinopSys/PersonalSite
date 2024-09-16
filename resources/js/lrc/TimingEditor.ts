@@ -226,6 +226,24 @@ export class TimingEditor {
       this.pluginScope.player
         .updateEntrySticks();
     });
+    this.$editor.on('keydown', '.timestamp', e => {
+      if (this.mode !== 'edit' || !isCtrlKeyPressed(e)) return;
+
+      const $entry = $(e.target).closest('.time-entry');
+      const keyId = e.key || e.keyCode;
+      switch (keyId) {
+        case "ArrowUp":
+        case Key.UpArrow:
+          e.preventDefault();
+          this.adjustEntryTime($entry, 0.1);
+          break;
+        case "ArrowDown":
+        case Key.DownArrow:
+          e.preventDefault();
+          this.adjustEntryTime($entry, -0.1);
+          break;
+      }
+    });
     this.$editor.on('click', '.addrow-up, .addrow-down', e => {
       e.preventDefault();
 
@@ -525,8 +543,15 @@ export class TimingEditor {
   private adjustEntryTime($entry: JQuery, by: number): void {
     const $timestamp = $entry.find('.timestamp');
     let currentValue = $timestamp.text().trim();
-    const currentDuration = new Duration(currentValue);
+    const currentDuration = new Duration(currentValue || 0);
+    if (!currentDuration.valid) {
+      return;
+    }
     const newDuration =  new Duration(currentDuration.seconds + by);
+    if (!newDuration.valid) {
+      return;
+    }
+
     this.updateTimestamp($timestamp, newDuration);
     this.storeTimings();
     this.hlEntry(this.pluginScope.player.getPlaybackPosition());

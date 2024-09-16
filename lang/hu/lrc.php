@@ -33,6 +33,7 @@ return [
   'timing_sync' => 'Jelenlegi időpont rögzítése a sorba és ugrás egyet le',
   'timing_sync_break' => 'Szünet sor hozzáadás a jelenlegi fölé a mostani időponttal és ugrás egyet le',
   'timing_sync_jump' => 'Következő/előző sorra ugrás',
+  'timing_sync_adjust' => 'Időpont léptetése 100ms lépésenként (csak az időpont mezőt fókuszálva működik)',
   'timing_sync_remove' => 'Jelenlegi elem időpontjának törlése és ugrás egyet le',
   'timing_goto' => 'Időpontra ugrás',
   'timing_metadata' => 'Metaadatok',
@@ -109,7 +110,11 @@ return [
         'volstep' => 'Alapesetben :in-os lépésekben, :shift lenyomásával 10%, :alt lenyomásával 1%.',
         'seekstep' => 'Alapesetben 2.5 másodperces lépésekben, :shift lenyomásával 5 másodperc.',
       ],
-      'editor' => 'Szerkesztő vezérlése (Csak szinkronizáló módban)',
+      'editor' => [
+        'title' => 'Szerkesztő vezérlése',
+        'edit_mode_only' => 'Csak szerkesztő módban',
+        'sync_mode_only' => 'Csak szinkronizáló módban',
+      ],
     ],
   ],
   'confirm_delete' => [

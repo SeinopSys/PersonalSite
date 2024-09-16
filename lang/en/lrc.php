@@ -34,6 +34,7 @@ return [
   'timing_sync' => 'Set timestamp to current audio position & move down',
   'timing_sync_break' => 'Add break entry above with current timestamp & move down',
   'timing_sync_jump' => 'Move to next/previous entry',
+  'timing_sync_adjust' => 'Step timestamp by 100ms increments (only works when timestamp input is in focus)',
   'timing_sync_remove' => 'Clear timestamp of current entry & move down',
   'timing_goto' => 'Jump to timestamp',
   'timing_metadata' => 'Metadata',
@@ -110,7 +111,11 @@ return [
         'volstep' => 'Steps of :in by default, holding :shift changes step to 10%, :alt to 1%.',
         'seekstep' => 'Steps of 2.5 seconds by default, holding :shift changes step to 5 seconds.',
       ],
-      'editor' => 'Editor controls (Only in sync mode)',
+      'editor' => [
+        'title' => 'Editor controls',
+        'edit_mode_only' => 'Only in edit mode',
+        'sync_mode_only' => 'Only in sync mode',
+      ],
     ],
   ],
   'confirm_delete' => [

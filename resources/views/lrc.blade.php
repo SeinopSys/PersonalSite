@@ -229,7 +229,12 @@ $title = __('global.lrc'); ?>
 				]) !!}
       </li>
     </ul>
-    <h4>{{ __('lrc.howto.shortcuts.editor') }}</h4>
+    <h4>{{ __('lrc.howto.shortcuts.editor.title') }}</h4>
+    <h5>{{ __('lrc.howto.shortcuts.editor.edit_mode_only') }}</h5>
+    <ul>
+      <li><kbd>{{ __('kbd.ctrl') }}</kbd> + <kbd>&#x1f815;</kbd> / <kbd>&#x1f817;</kbd>&#x2003;{{ __('lrc.timing_sync_adjust') }}</li>
+    </ul>
+    <h5>{{ __('lrc.howto.shortcuts.editor.sync_mode_only') }}</h5>
     <ul>
       <li><kbd>&#x23ce;&nbsp;{{ __('kbd.enter') }}</kbd>&#x2003;{{ __('lrc.timing_sync') }}</li>
       <li><kbd>{{ __('kbd.ctrl') }}</kbd>
