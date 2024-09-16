@@ -7,7 +7,7 @@ export const ipv6trim = (ipv6: string): string => ipv6.replace(/(^|:)0(:0)*:0(:|
 export const decbin = (dec: string | string[] | number[], separator: string, ipv6 = false): string => {
   const binary: string[] = [];
   const localDec = typeof dec === 'string' ? dec.split(separator) : dec;
-  localDec.forEach((el) => {
+  localDec.forEach(el => {
     binary.push((ipv6 ? blockPad : octetPad)((typeof el === 'string' ? parseInt(el, 10) : el).toString(2)));
   });
   return binary.join(separator);

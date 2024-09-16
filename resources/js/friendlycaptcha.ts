@@ -1,5 +1,5 @@
-import { setElDisabled } from './utils';
 import { WidgetInstance } from 'friendly-challenge';
+import { setElDisabled } from './utils';
 
 $(() => {
   const { captchaKey } = window.Laravel;
@@ -41,4 +41,3 @@ $(() => {
       });
     });
 });
-

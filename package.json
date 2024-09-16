@@ -53,6 +53,7 @@
     "build": "mix --production",
     "build:dev": "mix",
     "lint": "eslint \"**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"**/*.{ts,tsx}\" --fix",
     "watch": "mix watch"
   }
 }

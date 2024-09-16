@@ -27,6 +27,8 @@
   },
   "rules": {
     "@typescript-eslint/no-useless-constructor": ["error"],
+    "no-empty-function": 0,
+    "@typescript-eslint/no-empty-function": ["error"],
     "arrow-parens": [
       "error",
       "as-needed"
@@ -59,6 +61,7 @@
     "@typescript-eslint/no-shadow": ["error"],
     "no-useless-constructor": "off",
     "no-void": 0,
+    "class-methods-use-this": 0,
     "react/function-component-definition": 0,
     "react/jsx-filename-extension": [
       2,

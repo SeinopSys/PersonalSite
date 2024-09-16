@@ -140,6 +140,7 @@ export const copy = (text: string, e: { clientY: number, clientX: number }): boo
 
   try {
     success = document.execCommand('copy');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) { /* ignore */
   }
 

@@ -22,7 +22,7 @@ export class Duration {
    * Guard against negative values
    */
   private setSeconds(value: number) {
-    this.seconds = isNaN(value) || !isFinite(value) ? NaN : Math.max(value, 0);
+    this.seconds = Number.isNaN(value) || !Number.isFinite(value) ? NaN : Math.max(value, 0);
   }
 
   toString(padMinutes = false): string {
@@ -62,6 +62,6 @@ export class Duration {
       return true;
     }
     const value = parseFloat(ts);
-    return isFinite(value) && !isNaN(value) && value < 60;
+    return Number.isFinite(value) && !Number.isNaN(value) && value < 60;
   }
 }

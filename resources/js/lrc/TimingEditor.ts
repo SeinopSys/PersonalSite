@@ -13,7 +13,6 @@ import { LRCParser } from './LRCParser';
 import { LRCString, LRCStringJsonValue } from './LRCString';
 import { MetadataEditingForm } from './MetadataEditingForm';
 import { isCtrlKeyPressed, isShiftKeyPressed, Key } from '../utils/Key';
-import { da } from 'date-fns/locale';
 
 interface ValidBackupData {
   metadata: Record<string, unknown>;
@@ -195,7 +194,7 @@ export class TimingEditor {
             $.each(LRC_META_TAGS, key => {
               this.setMetadata({
                 ...this.metadata,
-                [key]: (data[key] || '').trim()
+                [key]: (data[key] || '').trim(),
               });
             });
             Dialog.close();
@@ -232,16 +231,16 @@ export class TimingEditor {
       const $entry = $(e.target).closest('.time-entry');
       const keyId = e.key || e.keyCode;
       switch (keyId) {
-        case "ArrowUp":
-        case Key.UpArrow:
-          e.preventDefault();
-          this.adjustEntryTime($entry, 0.1);
-          break;
-        case "ArrowDown":
-        case Key.DownArrow:
-          e.preventDefault();
-          this.adjustEntryTime($entry, -0.1);
-          break;
+      case 'ArrowUp':
+      case Key.UpArrow:
+        e.preventDefault();
+        this.adjustEntryTime($entry, 0.1);
+        break;
+      case 'ArrowDown':
+      case Key.DownArrow:
+        e.preventDefault();
+        this.adjustEntryTime($entry, -0.1);
+        break;
       }
     });
     this.$editor.on('click', '.addrow-up, .addrow-down', e => {
@@ -358,10 +357,10 @@ export class TimingEditor {
           try {
             this.importBackup(backupData as string);
             Dialog.close();
-          } catch (e) {
-            Dialog.fail(window.Laravel.jsLocales.backup_load_error, e instanceof Error ? e.message : undefined);
+          } catch (err) {
+            Dialog.fail(window.Laravel.jsLocales.backup_load_error, err instanceof Error ? err.message : undefined);
           }
-        }
+        },
       });
     });
     this.$clearBackupBtn.on('click', e => {
@@ -381,7 +380,7 @@ export class TimingEditor {
             this.toggleBackupButtons(false);
           }
           Dialog.close();
-        }
+        },
       });
     });
   }
@@ -389,8 +388,7 @@ export class TimingEditor {
   private toggleBackupButtons(enabled: boolean) {
     if (enabled) {
       this.$restoreBackupBtn.parent().removeClass('d-none');
-    }
-    else {
+    } else {
       this.$restoreBackupBtn.parent().addClass('d-none');
     }
   }
@@ -399,7 +397,7 @@ export class TimingEditor {
     this.storeTimings(true);
     return JSON.stringify({
       metadata: this.metadata,
-      timings: this.timings.map(t => t.toJsonValue())
+      timings: this.timings.map(t => t.toJsonValue()),
     });
   }
 
@@ -409,16 +407,16 @@ export class TimingEditor {
     this.setTimings(backup.timings.map((t: LRCStringJsonValue) => new LRCString(t)));
   }
 
-  private parseBackupData(data: unknown): any | null {
-     if (typeof data === 'string' && data.trim().length > 0) {
+  private parseBackupData(data: unknown): unknown | null {
+    if (typeof data === 'string' && data.trim().length > 0) {
       try {
         return JSON.parse(data);
       } catch (e) {
         console.error(e);
       }
-     }
+    }
 
-     return null;
+    return null;
   }
 
   private isUsefulBackupData(data: unknown): data is ValidBackupData {
@@ -528,7 +526,7 @@ export class TimingEditor {
     const $clone = this.$entryTemplate.clone();
     const $cloneChildren = $clone.children();
     const $timestamp = $cloneChildren.filter('.timestamp');
-    this.updateTimestamp($timestamp, lrcString.ts.toString())
+    this.updateTimestamp($timestamp, lrcString.ts.toString());
     $cloneChildren.filter('.text').text(lrcString.str);
     return $clone;
   }
@@ -542,12 +540,12 @@ export class TimingEditor {
 
   private adjustEntryTime($entry: JQuery, by: number): void {
     const $timestamp = $entry.find('.timestamp');
-    let currentValue = $timestamp.text().trim();
+    const currentValue = $timestamp.text().trim();
     const currentDuration = new Duration(currentValue || 0);
     if (!currentDuration.valid) {
       return;
     }
-    const newDuration =  new Duration(currentDuration.seconds + by);
+    const newDuration = new Duration(currentDuration.seconds + by);
     if (!newDuration.valid) {
       return;
     }
