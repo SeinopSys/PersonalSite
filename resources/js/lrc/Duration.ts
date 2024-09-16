@@ -28,12 +28,15 @@ export class Duration {
   toString(padMinutes = false): string {
     if (!this.valid) return '';
     let time = this.seconds;
+    const hours = Math.floor(time / (60 * 60));
+    if (hours > 0) time -= hours * 60 * 60;
+    const hoursStr = hours > 0 ? `${hours}:` : '';
     const mins = Math.floor(time / 60);
     if (mins > 0) time -= mins * 60;
-    const minsStr = padMinutes ? pad(mins) : String(mins);
+    const minsStr = padMinutes || hours > 0 ? pad(mins) : String(mins);
 
     const [secsStr, msStr] = time.toFixed(LRC_TS_DECIMALS).split('.');
-    return `${minsStr}:${pad(secsStr)}${this.ignoreMs ? '' : `.${msStr}`}`;
+    return `${hoursStr}${minsStr}:${pad(secsStr)}${this.ignoreMs ? '' : `.${msStr}`}`;
   }
 
   private fromString(ts: string | null) {
