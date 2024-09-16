@@ -409,3 +409,17 @@ $thumbBorder: 2px;
   overflow: hidden;
   white-space: normal;
 }
+
+#lrcmetadatabtn {
+  .metadata-count {
+    margin-left: .75em;
+
+    &:empty {
+      display: none;
+    }
+  }
+}
+
+#dialogContent .backup-data {
+  white-space: pre-wrap;
+}

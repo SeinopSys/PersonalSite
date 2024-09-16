@@ -10,9 +10,15 @@ import {
 } from './common';
 import { Duration } from './Duration';
 import { LRCParser } from './LRCParser';
-import { LRCString } from './LRCString';
+import { LRCString, LRCStringJsonValue } from './LRCString';
 import { MetadataEditingForm } from './MetadataEditingForm';
-import { isShiftKeyPressed } from '../utils/Key';
+import { isCtrlKeyPressed, isShiftKeyPressed, Key } from '../utils/Key';
+import { da } from 'date-fns/locale';
+
+interface ValidBackupData {
+  metadata: Record<string, unknown>;
+  timings: LRCStringJsonValue[];
+}
 
 export class TimingEditor {
   protected mergedOutputStrategy: boolean;
@@ -37,17 +43,25 @@ export class TimingEditor {
 
   protected $lrcmetadatabtn: JQuery;
 
+  protected $restoreBackupBtn: JQuery;
+
+  protected $clearBackupBtn: JQuery;
+
   protected $editor: JQuery;
 
   protected $entryTemplate: JQuery;
 
   protected $confirmDeleteTemplate: JQuery;
 
+  protected $restoreBackupTemplate: JQuery;
+
+  protected $clearBackupTemplate: JQuery;
+
   protected lastLRCFilename?: string;
 
   protected mode: 'edit' | 'sync' = 'edit';
 
-  protected metadata: LRCMetadata;
+  protected metadata: LRCMetadata = {};
 
   protected initialMetadata: LRCMetadata;
 
@@ -72,18 +86,21 @@ export class TimingEditor {
     this.$lrcmergetogglebtn = $('#lrcmergetogglebtn');
     this.$lrcclrbtn = $('#lrcclrbtn');
     this.$lrcmetadatabtn = $('#lrcmetadatabtn');
+    this.$restoreBackupBtn = $('#restore-backup');
+    this.$clearBackupBtn = $('#clear-backup');
     this.$editor = this.$timings.find('.editor');
     this.$entryTemplate = $('#editor-entry-template').children();
     this.$confirmDeleteTemplate = $('#confirm-delete-template').children();
+    this.$restoreBackupTemplate = $('#restore-backup-template').children();
+    this.$clearBackupTemplate = $('#clear-backup-template').children();
     this.changeMode('edit', false, true);
     this.initialMetadata = {
       offset: '0',
       re: `${window.location.href} - SeinopSys' LRC Editor`,
       ve: window.Laravel.git.commit_id,
     };
-    this.metadata = {};
     // Insert a blank entry on first start
-    this.$editor.append(this.makeEntryDiv(new LRCString()));
+    this.$editor.append(this.makeEntryDiv());
 
     this.lastLRCFilename = undefined;
     this.mergedOutputStrategy = TimingEditor.getMergedOutputStrategyDefault();
@@ -156,7 +173,7 @@ export class TimingEditor {
           if (!sure) return;
 
           this.$editor.empty();
-          this.$editor.append(this.makeEntryDiv(new LRCString()));
+          this.$editor.append(this.makeEntryDiv());
           this.storeTimings();
           Dialog.close();
         },
@@ -176,14 +193,17 @@ export class TimingEditor {
 
             const data = mkData($form);
             $.each(LRC_META_TAGS, key => {
-              this.metadata[key] = (data[key] || '').trim();
+              this.setMetadata({
+                ...this.metadata,
+                [key]: (data[key] || '').trim()
+              });
             });
             Dialog.close();
           });
           $form.on('reset', re => {
             re.preventDefault();
 
-            this.metadata = {};
+            this.setMetadata({});
             const newMetadata = this.getCurrentMetadata();
             $.each(LRC_META_TAGS, key => {
               $form.find(`input[name=${key}]`).val(newMetadata[key]);
@@ -281,6 +301,117 @@ export class TimingEditor {
         setElDisabled(this.$lrcfilebtn, false);
       });
     });
+
+    this.initBackup();
+  }
+
+  private initBackup() {
+    const backupLocalStorageKey = 'lrc-backup';
+    $(window).on('beforeunload', (e: BeforeUnloadEvent) => {
+      if (this.$editor.text().trim().length > 0 || Object.keys(this.metadata).length > 0) {
+        const backupContents = this.createBackup();
+        if (this.isUsefulBackupData(this.parseBackupData(backupContents))) {
+          localStorage.setItem(backupLocalStorageKey, backupContents);
+        }
+        e.preventDefault();
+        e.returnValue = window.Laravel.jsLocales.confirm_navigation;
+      }
+    });
+    const backupData = localStorage.getItem(backupLocalStorageKey);
+    const parsedBackupData = this.parseBackupData(backupData);
+    const hasBackupData = this.isUsefulBackupData(parsedBackupData);
+    this.toggleBackupButtons(hasBackupData);
+    this.$restoreBackupBtn.on('click', e => {
+      e.preventDefault();
+
+      if (!hasBackupData) return;
+
+      const $content = this.$restoreBackupTemplate.clone(true, true);
+      $content.filter('.backup-data').text(JSON.stringify(parsedBackupData, null, 2));
+      const title = this.$restoreBackupBtn.attr('title') as string;
+      Dialog.confirm({
+        title: title.replace('…', ''),
+        content: $content,
+        handlerFunc: confirm => {
+          if (!confirm) {
+            Dialog.close();
+            return;
+          }
+          try {
+            this.importBackup(backupData as string);
+            Dialog.close();
+          } catch (e) {
+            Dialog.fail(window.Laravel.jsLocales.backup_load_error, e instanceof Error ? e.message : undefined);
+          }
+        }
+      });
+    });
+    this.$clearBackupBtn.on('click', e => {
+      e.preventDefault();
+
+      if (!hasBackupData) return;
+
+      const $content = this.$clearBackupTemplate.clone(true, true);
+      $content.filter('.backup-data').text(JSON.stringify(parsedBackupData, null, 2));
+      const title = this.$clearBackupBtn.attr('title') as string;
+      Dialog.confirm({
+        title: title.replace('…', ''),
+        content: $content,
+        handlerFunc: confirm => {
+          if (confirm) {
+            localStorage.removeItem(backupLocalStorageKey);
+            this.toggleBackupButtons(false);
+          }
+          Dialog.close();
+        }
+      });
+    });
+  }
+
+  private toggleBackupButtons(enabled: boolean) {
+    if (enabled) {
+      this.$restoreBackupBtn.parent().removeClass('d-none');
+    }
+    else {
+      this.$restoreBackupBtn.parent().addClass('d-none');
+    }
+  }
+
+  private createBackup(): string {
+    this.storeTimings(true);
+    return JSON.stringify({
+      metadata: this.metadata,
+      timings: this.timings.map(t => t.toJsonValue())
+    });
+  }
+
+  private importBackup(backupStr: string) {
+    const backup = JSON.parse(backupStr);
+    this.setMetadata(backup.metadata);
+    this.setTimings(backup.timings.map((t: LRCStringJsonValue) => new LRCString(t)));
+  }
+
+  private parseBackupData(data: unknown): any | null {
+     if (typeof data === 'string' && data.trim().length > 0) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        console.error(e);
+      }
+     }
+
+     return null;
+  }
+
+  private isUsefulBackupData(data: unknown): data is ValidBackupData {
+    return typeof data === 'object'
+      && data !== null
+      && 'metadata' in data
+      && typeof data.metadata === 'object'
+      && data.metadata !== null
+      && 'timings' in data
+      && Array.isArray(data.timings)
+      && data.timings.every(item => LRCString.isValidJsonData(item));
   }
 
   disableModeButton(disable: boolean): void {
@@ -343,19 +474,21 @@ export class TimingEditor {
 
   setMetadata(metadata: LRCMetadata): void {
     this.metadata = metadata;
+    const metaCount = Object.keys(this.metadata).length;
+    this.$lrcmetadatabtn.find('.metadata-count').text(metaCount > 0 ? metaCount : '');
   }
 
   getCurrentMetadata(): Record<string, string> {
     return $.extend({}, this.initialMetadata, this.metadata);
   }
 
-  storeTimings(): void {
+  storeTimings(backup = false): void {
     const $children = this.$editor.children();
     const timings: LRCString[] = [];
     $children.each(function () {
       const $entry = $(this);
       const ts = $entry.children('.timestamp').text().trim();
-      if (!ts.length || !Duration.isValid(ts)) return;
+      if (!backup && (!ts.length || !Duration.isValid(ts))) return;
 
       const text = $entry.children('.text').text().trim().split('\n');
 
@@ -368,17 +501,17 @@ export class TimingEditor {
       });
     });
     this.timings = timings;
-    this.pluginScope.player.updateEntrySticks();
+    if (!backup) {
+      this.pluginScope.player.updateEntrySticks();
+    }
   }
 
-  makeEntryDiv(lrcString: LRCString): JQuery {
+  makeEntryDiv(lrcString: LRCString = new LRCString()): JQuery {
     const $clone = this.$entryTemplate.clone();
-    $clone.children()
-      .first()
-      .text(lrcString.ts.toString())
-      .trigger('keyup')
-      .next()
-      .text(lrcString.str);
+    const $cloneChildren = $clone.children();
+    const $timestamp = $cloneChildren.filter('.timestamp');
+    this.updateTimestamp($timestamp, lrcString.ts.toString())
+    $cloneChildren.filter('.text').text(lrcString.str);
     return $clone;
   }
 
@@ -389,13 +522,27 @@ export class TimingEditor {
     this.hlEntry(this.pluginScope.player.getPlaybackPosition());
   }
 
+  private adjustEntryTime($entry: JQuery, by: number): void {
+    const $timestamp = $entry.find('.timestamp');
+    let currentValue = $timestamp.text().trim();
+    const currentDuration = new Duration(currentValue);
+    const newDuration =  new Duration(currentDuration.seconds + by);
+    this.updateTimestamp($timestamp, newDuration);
+    this.storeTimings();
+    this.hlEntry(this.pluginScope.player.getPlaybackPosition());
+  }
+
   regenEntries(): void {
     this.$editor.empty();
-    $.each(this.timings, (i, el) => {
-      const $node = this.makeEntryDiv(el);
-      this.timings[i].$domNode = $node;
-      this.$editor.append($node);
-    });
+    if (this.timings.length > 0) {
+      $.each(this.timings, (i, el) => {
+        const $node = this.makeEntryDiv(el);
+        this.timings[i].$domNode = $node;
+        this.$editor.append($node);
+      });
+    } else {
+      this.$editor.append(this.makeEntryDiv());
+    }
     this.passSyncHandle(this.$editor.children().first());
     this.updateEntryActionButtons();
   }
@@ -410,6 +557,15 @@ export class TimingEditor {
         .text()
         .trim());
     }), false);
+  }
+
+  private updateTimestamp($timestamp: JQuery, newValue: string | Duration | null): void {
+    if (newValue === null) {
+      $timestamp.empty();
+    } else {
+      $timestamp.text(newValue instanceof Duration ? newValue.toString() : newValue);
+    }
+    $timestamp.trigger('keyup');
   }
 
   readLRCFile(file: File | null | undefined, callback: (value: boolean) => void): void {
@@ -498,7 +654,7 @@ export class TimingEditor {
         return;
       }
 
-      $handle.find('.timestamp').text(pos || '').trigger('keyup');
+      this.updateTimestamp($handle.find('.timestamp'), pos || '');
     }
     this.passSyncHandle(null, resetOnEnd);
     this.storeTimings();
@@ -541,7 +697,9 @@ export class TimingEditor {
     if (this.mode === 'edit') return;
 
     const $handle = this.getSyncHandle();
-    if ($handle) $handle.find('.timestamp').empty().trigger('keyup');
+    if ($handle) {
+      this.updateTimestamp($handle.find('.timestamp'), null);
+    }
     this.passSyncHandle();
     this.storeTimings();
     this.pluginScope.player.updateEntrySticks();

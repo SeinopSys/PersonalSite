@@ -22,3 +22,7 @@ export const isKey = <E extends { keyCode: number }>(key: Key, e: E) => e.keyCod
 export function isShiftKeyPressed(e: JQuery.Event): boolean {
   return e.shiftKey === true && !e.ctrlKey && !e.altKey;
 }
+
+export function isCtrlKeyPressed(e: JQuery.Event): boolean {
+  return e.ctrlKey === true && !e.shiftKey && !e.altKey;
+}

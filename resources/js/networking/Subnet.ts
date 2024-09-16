@@ -19,14 +19,14 @@ export class Subnet {
       this.empty = true;
       return;
     }
-    let splitMatch = split.match(/^\s*(.*)\s+(\d+|\/\d{1,3})(?:\s+(gép|eszköz|ips?|pcs?|devices?))?\s*$/i);
-    if (!splitMatch) throw new ValidationError(
+    let initialMatch = split.match(/^\s*(.*)\s+(\d+|\/\d{1,3})(?:\s+(gép|eszköz|ips?|pcs?|devices?))?\s*$/i);
+    if (!initialMatch) throw new ValidationError(
       translatePlaceholders(window.Laravel.jsLocales.vlsm_error_subnet_line_invalid, {
         line,
         why: window.Laravel.jsLocales.vlsm_error_subnet_line_invalid_format,
       }),
     );
-    splitMatch = splitMatch.slice(1);
+    let splitMatch = initialMatch.slice(1);
     if (splitMatch.length < 2) throw new ValidationError(
       translatePlaceholders(window.Laravel.jsLocales.vlsm_error_subnet_line_invalid, {
         line,

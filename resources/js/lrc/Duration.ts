@@ -36,7 +36,15 @@ export class Duration {
     }
     const parts = ts.split(':');
     let dur = parseFloat(parts.pop() as string);
-    if (parts.length > 0) dur += parseInt(parts.pop() as string, 10) * 60;
+    switch (parts.length) {
+      case 2:
+        dur += parseInt(parts.pop() as string, 10) * 60;
+        break;
+      case 3:
+        dur += parseInt(parts.pop() as string, 10) * 60;
+        dur += parseInt(parts.pop() as string, 10) * 60 * 60;
+        break;
+    }
     this.seconds = dur;
     this.valid = true;
   }

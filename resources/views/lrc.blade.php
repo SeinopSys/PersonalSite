@@ -11,6 +11,18 @@ $title = __('global.lrc'); ?>
     <button class="btn btn-link" title="{{ __('lrc.dialog_shortcut_info') }}" id="shortcut-info">
       <x-fa icon="info-circle"></x-fa>
     </button>
+    <div class="btn-group d-none">
+      <button class="btn btn-success" title="{{ __('lrc.backup.title', [
+          'action' => __('lrc.backup_action_restore.title')
+      ]) }}" id="restore-backup">
+        <x-fa icon="trash-can-arrow-up"></x-fa>
+      </button>
+      <button class="btn btn-warning" title="{{ __('lrc.backup.title', [
+          'action' => __('lrc.backup_action_clear.title')
+      ]) }}" id="clear-backup">
+        <x-fa icon="trash-can"></x-fa>
+      </button>
+    </div>
   </h3>
 
   <fieldset>
@@ -28,13 +40,13 @@ $title = __('global.lrc'); ?>
             <x-fa icon="stop"></x-fa>
           </button>
           <span class="input-group-text volume">
-                        <button class="btn btn-secondary btn-sm" id="volumedown" title="{{ __('lrc.player_voldec') }}">
-                            <x-fa icon="volume-down" size="lg"></x-fa>
-                        </button>
-                        <span id="volumedisp" class="mx-2">&hellip;</span>
-                        <button class="btn btn-secondary btn-sm" id="volumeup" title="{{ __('lrc.player_volinc') }}">
-                            <x-fa icon="volume-up" size="lg"></x-fa>
-                        </button>
+            <button class="btn btn-secondary btn-sm" id="volumedown" title="{{ __('lrc.player_voldec') }}">
+                <x-fa icon="volume-down" size="lg"></x-fa>
+            </button>
+            <span id="volumedisp" class="mx-2">&hellip;</span>
+            <button class="btn btn-secondary btn-sm" id="volumeup" title="{{ __('lrc.player_volinc') }}">
+                <x-fa icon="volume-up" size="lg"></x-fa>
+            </button>
 					</span>
         </div>
       </div>
@@ -115,8 +127,9 @@ $title = __('global.lrc'); ?>
               </a>
             </div>
           </div>
-          <button class="btn btn-secondary" id="lrcmetadatabtn">
+          <button class="btn btn-secondary position-relative" id="lrcmetadatabtn">
             <x-fa icon="compact-disc" first></x-fa>{{ __('lrc.timing_metadata') }}
+            <span class="badge rounded-pill bg-primary metadata-count"></span>
           </button>
           <button class="btn btn-danger" id="lrcclrbtn">
             <x-fa icon="eraser" first></x-fa>{{ __('lrc.timing_wipe') }}
@@ -233,6 +246,20 @@ $title = __('global.lrc'); ?>
         'shift' => '<kbd>&#x21E7;&nbsp;'.__('kbd.shift').'</kbd>',
     ]) !!}</p>
   </div>
+
+  <div id="restore-backup-template" class="d-none">
+    <p>{{ __('lrc.backup.question', [
+        'action' => __('lrc.backup_action_restore.question')
+    ]) }}</p>
+    <pre class="backup-data"></pre>
+  </div>
+
+  <div id="clear-backup-template" class="d-none">
+    <p>{{ __('lrc.backup.question', [
+        'action' => __('lrc.backup_action_clear.question')
+    ]) }}</p>
+    <pre class="backup-data"></pre>
+  </div>
 @endsection
 
 @section('js-locales')
@@ -248,6 +275,7 @@ $title = __('global.lrc'); ?>
       'metadata_field_placeholders',
       'dialog_edit_meta_reset_info',
       'dialog_edit_meta_reset_btn',
+      'confirm_navigation',
   ]) !!}
   {!! \App\Util\Core::ExportTranslations('global',[
       'save',

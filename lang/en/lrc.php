@@ -49,6 +49,20 @@ return [
   'dialog_edit_meta' => 'Edit LRC metadata fields',
   'dialog_edit_meta_reset_info' => "If you've made any changes but want to use the metadata from the current audio file then use this.",
   'dialog_edit_meta_reset_btn' => 'Restore default values',
+  'confirm_navigation' => 'Are you sure you want to close the page? All data that hasn\'t been exported will be lost.',
+  'backup' => [
+    'title' => ':action automatic backup…',
+    'question' => 'The data below was automatically saved upon closing your browser, would you like to :action it?',
+  ],
+  'backup_action_restore' => [
+    'title' => 'Restore',
+    'question' => 'restore',
+  ],
+  'backup_action_clear' => [
+    'title' => 'Discard',
+    'question' => 'discard',
+  ],
+  'backup_load_error' => 'Backup restore failed.',
 
   'metadata_field_placeholders' => [
     'artist' => 'Artist',

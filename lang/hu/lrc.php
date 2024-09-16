@@ -48,6 +48,20 @@ return [
   'dialog_edit_meta' => 'LRC metaadat mezők szerkesztése',
   'dialog_edit_meta_reset_info' => 'Ha módosítottad a mezőket de a jelenlegi hangfájl adatait szeretnéd használni, akkor használd ezt.',
   'dialog_edit_meta_reset_btn' => 'Alapértelmezett értékek visszaállítása',
+  'confirm_navigation' => 'Biztosan be akarod zárni az oldalt? Minden nem exportált adat el fog veszni.',
+  'backup' => [
+    'title' => 'Automata mentés :action…',
+    'question' => 'Az alábbi adatok a böngésző bezárásakor automatikusan mentésre kerültek, szeretnéd :action őket?',
+  ],
+  'backup_action_restore' => [
+    'title' => 'visszaállítása',
+    'question' => 'visszaállítani',
+  ],
+  'backup_action_clear' => [
+    'title' => 'törlése',
+    'question' => 'törölni',
+  ],
+  'backup_load_error' => 'Biztonsági mentés visszaállítása sikertelen.',
 
   'metadata_field_placeholders' => [
     'artist' => 'Szerző',
