@@ -164,7 +164,7 @@ $title = __('global.lrc'); ?>
 			'lrcff' => '<a href="'.__('lrc.fileformat_url').'">'.__('lrc.fileformat').'</a>'
 		]) !!}</p>
 
-    <h3></h3>
+    <h3>{{ __('lrc.howto.limitations.title') }}</h3>
     <ul>
       <li>{!! __('lrc.howto.limitations.0', ['t' => '<code>&lt;auido&gt;</code>']) !!}</li>
       <li>{!! __('lrc.howto.limitations.1', [
@@ -224,6 +224,14 @@ $title = __('global.lrc'); ?>
       <li><kbd>&#x1f815;</kbd> / <kbd>&#x1f817;</kbd>&#x2003;{{ __('lrc.timing_sync_jump') }}</li>
       <li><kbd>{{ __('kbd.delete') }}</kbd>&#x2003;{{ __('lrc.timing_sync_remove') }}</li>
     </ul>
+  </div>
+
+  <div id="confirm-delete-template" class="d-none">
+    <p>{{ __('lrc.confirm_delete.question') }}</p>
+    <blockquote class="blockquote deleted-line"></blockquote>
+    <p>{!! __('lrc.confirm_delete.skip_hint', [
+        'shift' => '<kbd>&#x21E7;&nbsp;'.__('kbd.shift').'</kbd>',
+    ]) !!}</p>
   </div>
 @endsection
 

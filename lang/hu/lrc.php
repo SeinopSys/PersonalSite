@@ -98,4 +98,8 @@ return [
       'editor' => 'Szerkesztő vezérlése (Csak szinkronizáló módban)',
     ],
   ],
+  'confirm_delete' => [
+    'question' => 'Biztosan törölni akarod ezt a sort?',
+    'skip_hint' => '(A gombra kattintás közben nyomd a :shift-et az átugráshoz)'
+  ],
 ];

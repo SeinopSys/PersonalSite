@@ -12,6 +12,7 @@ import { Duration } from './Duration';
 import { LRCParser } from './LRCParser';
 import { LRCString } from './LRCString';
 import { MetadataEditingForm } from './MetadataEditingForm';
+import { isShiftKeyPressed } from '../utils/Key';
 
 export class TimingEditor {
   protected mergedOutputStrategy: boolean;
@@ -39,6 +40,8 @@ export class TimingEditor {
   protected $editor: JQuery;
 
   protected $entryTemplate: JQuery;
+
+  protected $confirmDeleteTemplate: JQuery;
 
   protected lastLRCFilename?: string;
 
@@ -71,6 +74,7 @@ export class TimingEditor {
     this.$lrcmetadatabtn = $('#lrcmetadatabtn');
     this.$editor = this.$timings.find('.editor');
     this.$entryTemplate = $('#editor-entry-template').children();
+    this.$confirmDeleteTemplate = $('#confirm-delete-template').children();
     this.changeMode('edit', false, true);
     this.initialMetadata = {
       offset: '0',
@@ -219,13 +223,32 @@ export class TimingEditor {
     this.$editor.on('click', '.remrow', e => {
       e.preventDefault();
 
-      const $entry = $(e.target).closest('.time-entry');
+      const $button = $(e.target).closest('.remrow');
+      const $entry = $button.closest('.time-entry');
       if ($entry.siblings().length === 0) return;
 
-      $entry.remove();
-      this.updateEntryActionButtons();
-      this.storeTimings();
-      this.hlEntry(this.pluginScope.player.getPlaybackPosition());
+      const entryText = $entry.find('.text').text().trim();
+      const timestampText = $entry.find('.timestamp').text().trim();
+      if (isShiftKeyPressed(e) || (entryText.length === 0 && timestampText.length === 0)) {
+        this.removeEntry($entry);
+        return;
+      }
+
+      const title = $button.attr('title') as string;
+      const $content = this.$confirmDeleteTemplate.clone(true, true);
+      const $deletedLine = $content.filter('.deleted-line');
+      const timestampPrefix = timestampText.length > 0 ? `[${timestampText}] ` : '';
+      $deletedLine.text(`${timestampPrefix}${entryText}`);
+      Dialog.confirm({
+        title,
+        content: $content,
+        handlerFunc: confirm => {
+          if (confirm) {
+            this.removeEntry($entry);
+          }
+          Dialog.close();
+        },
+      });
     });
     this.$editor.on('click', '.goto', e => {
       e.preventDefault();
@@ -357,6 +380,13 @@ export class TimingEditor {
       .next()
       .text(lrcString.str);
     return $clone;
+  }
+
+  private removeEntry($entry: JQuery): void {
+    $entry.remove();
+    this.updateEntryActionButtons();
+    this.storeTimings();
+    this.hlEntry(this.pluginScope.player.getPlaybackPosition());
   }
 
   regenEntries(): void {

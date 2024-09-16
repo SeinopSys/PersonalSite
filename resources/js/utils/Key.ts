@@ -18,3 +18,7 @@ export enum Key {
 }
 
 export const isKey = <E extends { keyCode: number }>(key: Key, e: E) => e.keyCode === key;
+
+export function isShiftKeyPressed(e: JQuery.Event): boolean {
+  return e.shiftKey === true && !e.ctrlKey && !e.altKey;
+}

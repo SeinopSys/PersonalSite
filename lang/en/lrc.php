@@ -99,4 +99,8 @@ return [
       'editor' => 'Editor controls (Only in sync mode)',
     ],
   ],
+  'confirm_delete' => [
+    'question' => 'Are you sure you want to remove this row?',
+    'skip_hint' => '(Hold :shift while clicking the button to skip this prompt)'
+  ],
 ];
