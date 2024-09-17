@@ -39,6 +39,8 @@ return [
   'timing_sync_adjust' => 'Step timestamp by 100ms increments (only works when timestamp input is in focus)',
   'timing_sync_remove' => 'Clear timestamp of current entry & move down',
   'timing_goto' => 'Jump to timestamp',
+  'timing_step_forward' => 'Step forward 100ms',
+  'timing_step_backward' => 'Step backward 100ms',
   'timing_metadata' => 'Metadata',
 
   'dialog_pasteraw_title' => 'Paste raw lyrics',

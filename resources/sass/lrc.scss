@@ -304,16 +304,14 @@ $thumbBorder: 2px;
       }
 
       &.new {
-        animation: flash .2s cubic-bezier(0.215, 0.61, 0.355, 1);
+        animation: flash .35s cubic-bezier(0.215, 0.61, 0.355, 1);
 
         @keyframes flash {
           from {
-            transform: scale(0);
-            opacity: 0;
+            transform: rotateX(90deg);
           }
           to {
-            transform: scale(1);
-            opacity: 1;
+            transform: rotateX(0deg);
           }
         }
       }
@@ -379,7 +377,22 @@ $thumbBorder: 2px;
       }
 
       .tools {
-        margin-left: $spacing;
+        &.tools-end {
+          > :first-child {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+          }
+        }
+
+        .step-buttons {
+          .btn {
+            border-radius: 0;
+            font-size: .6em;
+            padding: 0 .75em;
+            border: 0;
+            margin: 0;
+          }
+        }
       }
     }
   }

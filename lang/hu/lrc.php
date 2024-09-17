@@ -38,6 +38,8 @@ return [
   'timing_sync_adjust' => 'Időpont léptetése 100ms lépésenként (csak az időpont mezőt fókuszálva működik)',
   'timing_sync_remove' => 'Jelenlegi elem időpontjának törlése és ugrás egyet le',
   'timing_goto' => 'Időpontra ugrás',
+  'timing_step_forward' => 'Léptetés 100ms-t előre',
+  'timing_step_backward' => 'Léptetés 100ms-t hátra',
   'timing_metadata' => 'Metaadatok',
 
   'dialog_pasteraw_title' => 'Nyers dalszöveg beillesztése',

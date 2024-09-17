@@ -68,6 +68,10 @@ export class TimingEditor {
 
   protected initialMetadata: LRCMetadata;
 
+  protected spinnerTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  protected spinnerIterations = 0;
+
   protected timings: LRCString[] = [];
 
   constructor(private pluginScope: { player: AudioPlayer }) {
@@ -231,9 +235,8 @@ export class TimingEditor {
       const val = $ts.text().trim();
       const valInvalid = !Duration.isValid(val);
       $ts[val.length && valInvalid ? 'addClass' : 'removeClass']('invalid');
-      setElDisabled($ts.siblings('.tools').children('.goto'), valInvalid);
-      this.pluginScope.player
-        .updateEntrySticks();
+      setElDisabled($ts.siblings('.tools').find('.goto'), valInvalid);
+      this.pluginScope.player.updateEntrySticks();
     });
     this.$editor.on('keydown', '.timestamp', e => {
       if (this.mode !== 'edit' || !isCtrlKeyPressed(e)) return;
@@ -244,12 +247,12 @@ export class TimingEditor {
       case 'ArrowUp':
       case Key.UpArrow:
         e.preventDefault();
-        this.adjustEntryTime($entry, 0.1);
+        this.adjustEntryTime($entry, 1);
         break;
       case 'ArrowDown':
       case Key.DownArrow:
         e.preventDefault();
-        this.adjustEntryTime($entry, -0.1);
+        this.adjustEntryTime($entry, -1);
         break;
       }
     });
@@ -329,6 +332,7 @@ export class TimingEditor {
     });
 
     this.initBackup();
+    this.initSpinners();
   }
 
   private initBackup() {
@@ -392,6 +396,54 @@ export class TimingEditor {
         },
       });
     });
+  }
+
+  private initSpinners() {
+    const maxDelay = 400;
+    const minDelay = 125;
+    const stepsToReachMinDelay = 5;
+    this.$editor.on('mousedown', '.step-forward, .step-backward', e => {
+      e.preventDefault();
+
+      const $button = $(e.target).closest('button');
+      const elClass = $button.attr('class') || '';
+      const mathDirection = elClass.match(/step-(for|back)ward/);
+      const direction = mathDirection && mathDirection[1] === 'for' ? 1 : -1;
+      const $row = $button.closest('.time-entry');
+
+      this.adjustEntryTime($row, direction);
+
+      this.clearSpinnerTimeout();
+      this.spinnerTimeout = setTimeout(() => {
+        this.spinnerIterations++;
+        this.createSpinnerTimeout(maxDelay, minDelay, stepsToReachMinDelay, () => {
+          this.adjustEntryTime($row, direction);
+        });
+      }, maxDelay);
+    });
+    $(window).on('mouseup blur contextmenu', () => {
+      this.clearSpinnerTimeout();
+    });
+  }
+
+  private createSpinnerTimeout(maxDelay: number, minDelay: number, stepsToReachMax: number, adjustFn: () => void) {
+    const progressToMaxIterationsPercent = this.spinnerIterations / stepsToReachMax;
+    const delayReduction = (maxDelay - minDelay) * progressToMaxIterationsPercent;
+    this.spinnerTimeout = setTimeout(() => {
+      adjustFn();
+      if (this.spinnerIterations < stepsToReachMax) {
+        this.spinnerIterations++;
+      }
+      this.createSpinnerTimeout(maxDelay, minDelay, stepsToReachMax, adjustFn);
+    }, maxDelay - delayReduction);
+  }
+
+  private clearSpinnerTimeout() {
+    if (this.spinnerTimeout) {
+      clearTimeout(this.spinnerTimeout);
+      this.spinnerTimeout = null;
+    }
+    this.spinnerIterations = 0;
   }
 
   private toggleBackupButtons(enabled: boolean) {
@@ -593,14 +645,14 @@ export class TimingEditor {
     this.hlEntry(this.pluginScope.player.getPlaybackPosition());
   }
 
-  private adjustEntryTime($entry: JQuery, by: number): void {
+  private adjustEntryTime($entry: JQuery, direction: 1 | -1, secondsAmount: number = 0.1): void {
     const $timestamp = $entry.find('.timestamp');
     const currentValue = $timestamp.text().trim();
     const currentDuration = new Duration(currentValue || 0);
     if (!currentDuration.valid) {
       return;
     }
-    const newDuration = new Duration(currentDuration.seconds + by);
+    const newDuration = new Duration(currentDuration.seconds + (secondsAmount * direction));
     if (!newDuration.valid) {
       return;
     }
@@ -684,8 +736,7 @@ export class TimingEditor {
     if (!$children.length) return undefined;
 
     let $handle = this.$editor.children('.sync-handle');
-    const $nowplaying = this.$editor.children('.nowplaying')
-      .removeClass('nowplaying');
+    const $nowplaying = this.$editor.children('.nowplaying').removeClass('nowplaying');
     if (nowplayingAsHandle && !$handle.length) {
       $handle = $nowplaying;
       if ($handle.length) $handle.addClass('sync-handle');

@@ -154,9 +154,22 @@ $title = __('global.lrc'); ?>
 
   <div id="editor-entry-template" class="d-none">
     <div class="time-entry">
+      <div class="tools tools-start btn-group">
+        <button class="btn btn-warning goto text-nowrap" title="{{ __('lrc.timing_goto') }}" disabled>
+          <x-fa icon="step-forward"></x-fa>
+        </button>
+        <div class="btn-group-vertical step-buttons">
+          <button class="btn btn-primary step-forward text-nowrap" title="{{ __('lrc.timing_step_forward') }}">
+            <x-fa icon="caret-up"></x-fa>
+          </button>
+          <button class="btn btn-primary step-backward text-nowrap" title="{{ __('lrc.timing_step_backward') }}">
+            <x-fa icon="caret-down"></x-fa>
+          </button>
+        </div>
+      </div>
       <span class="timestamp" contenteditable data-empty="0:00.000"></span>
       <span class="text" contenteditable data-empty="{{ __('lrc.timing_entry_empty') }}"></span>
-      <div class="tools btn-group">
+      <div class="tools tools-end btn-group">
         <button class="btn btn-success addrow-up edit-only text-nowrap" title="{{ __('lrc.timing_addrowup') }}">
           <x-fa icon="arrow-turn-up" fixedWidth=""></x-fa>
         </button>
@@ -167,7 +180,7 @@ $title = __('global.lrc'); ?>
           <x-fa icon="arrow-turn-down" fixedWidth=""></x-fa>
         </button>
         <button class="btn btn-danger remrow edit-only text-nowrap" title="{{ __('lrc.timing_remrow') }}" disabled>
-          <x-fa icon="minus" fixedWidth=""></x-fa>
+          <x-fa icon="trash" fixedWidth=""></x-fa>
         </button>
         <button class="btn btn-warning goto text-nowrap" title="{{ __('lrc.timing_goto') }}" disabled>
           <x-fa icon="step-forward" fixedWidth=""></x-fa>
