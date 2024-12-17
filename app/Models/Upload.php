@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
  * @property bool $secondary_domain
  * @property-read User $uploader
  * @property-read string $host
- * @property-read string $total_size
+ * @property-read string $original_size
  * @method static Builder|Upload whereExtension($value)
  * @method static Builder|Upload whereFilename($value)
  * @method static Builder|Upload whereHeight($value)
@@ -91,9 +91,14 @@ class Upload extends Model
         return 'https://i.'.Core::getDomain($this->secondary_domain);
     }
 
-    public function getTotalSizeAttribute(): string
+    /**
+     * Original size is the total size minus additional sizes
+     *
+     * @return string
+     */
+    public function getOriginalSizeAttribute(): string
     {
-        return $this->size + $this->additional_size;
+        return $this->size - $this->additional_size;
     }
 
     public function getFilenames(): array {
@@ -126,11 +131,11 @@ class Upload extends Model
             'jpeg' => UploadUtil::getFileSize($file_paths['jpeg']),
             'preview' => UploadUtil::getFileSize($file_paths['preview']),
         ];
-        $this->size = $full_file_size === false ? 0 : $full_file_size;
         $this->additional_size = array_reduce(
             $additional_file_sizes,
             fn($carry, $item) => $carry + ($item === false ? 0 : $item),
             0
         );
+        $this->size = $this->additional_size + ($full_file_size === false ? 0 : $full_file_size);
     }
 }

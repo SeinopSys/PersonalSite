@@ -30,7 +30,7 @@ class UploadsController extends Controller
 
     private function _usedSpace(User $user): string
     {
-        return Core::ReadableFilesize($user->uploads()->sum('size'));
+        return Core::ReadableFilesize($this->_usedSpaceInBytes($user));
     }
 
     const ORDERING = ['uploaded_at', 'size'];
