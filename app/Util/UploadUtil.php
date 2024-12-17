@@ -36,4 +36,12 @@ class UploadUtil
     {
         return ($startingSlash ? '/' : '') . 'uploads';
     }
+
+    public static function getFileSize(string $path): int
+    {
+        if (!is_file($path)) return 0;
+
+        $size = filesize($path);
+        return $size === false ? 0 : $size;
+    }
 }

@@ -116,15 +116,15 @@ class Upload extends Model
         return min($this->width, $this->height, 300);
     }
 
-    public function calculateFileSizes(?array $file_paths = null) {
+    public function calculateFileSizes(?array $file_paths = null): void {
         if ($file_paths === null) {
             $file_paths = $this->getFilePaths(UploadUtil::getUploadDirectory(), $this->getFilenames());
         }
 
-        $full_file_size = filesize($file_paths['full']);
+        $full_file_size = UploadUtil::getFileSize($file_paths['full']);
         $additional_file_sizes = [
-            'jpeg' => filesize($file_paths['jpeg']),
-            'preview' => filesize($file_paths['preview']),
+            'jpeg' => UploadUtil::getFileSize($file_paths['jpeg']),
+            'preview' => UploadUtil::getFileSize($file_paths['preview']),
         ];
         $this->size = $full_file_size === false ? 0 : $full_file_size;
         $this->additional_size = array_reduce(
