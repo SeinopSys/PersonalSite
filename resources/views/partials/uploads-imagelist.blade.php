@@ -1,7 +1,7 @@
 @if($haveResults)
     <div id="upload-list">
         @php
-        /** @var $image  \App\Upload */
+        /** @var $image  \App\Models\Upload */
         @endphp
         @foreach ($images as $image)
         <div class="image-wrap embed-responsive embed-responsive-1by1">
@@ -10,7 +10,7 @@
                     <span class="orig_name"
                           title="{{ $image->orig_filename }}">{{ \App\Util\Core::TruncateFilename($image->orig_filename) }}</span>
                     <span
-                        class="sizes">{{ $image->width }}×{{ $image->height }} &bull; {!! \App\Util\Core::ReadableFilesize($image->size) !!}</span>
+                        class="sizes">{{ $image->width }}×{{ $image->height }} &bull; <abbr title="{!! \App\Util\Core::ReadableFilesize($image->size) !!} &plus; {!! \App\Util\Core::ReadableFilesize($image->additional_size) !!}">{!! \App\Util\Core::ReadableFilesize($image->total_size) !!}</abbr></span>
                     <span
                         class="uploaded">{!! __('uploads.uploaded-at',['at' => \App\Util\Time::Tag($image->uploaded_at)]) !!}</span>
                 </div>

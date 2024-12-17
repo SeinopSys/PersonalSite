@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static Builder|ImageUpload newModelQuery()
  * @method static Builder|ImageUpload newQuery()
  * @method static Builder|ImageUpload query()
+ * @mixin \Eloquent
  */
 class ImageUpload extends Model
 {

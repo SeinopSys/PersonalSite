@@ -16,7 +16,7 @@ return [
     'sort-uploaded_at' => 'Feltöltés dátuma',
     'sortasc-uploaded_at' => 'Legrégebbi elől',
     'sortdesc-uploaded_at' => 'Legújabb elől',
-    'sort-size' => 'Fájlméret',
+    'sort-size' => 'Eredeti fájlméret',
     'sortasc-size' => 'Legkisebb elől',
     'sortdesc-size' => 'Legnagyobb elől',
     'uploaded-at' => 'Feltöltve: :at',

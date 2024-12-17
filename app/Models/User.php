@@ -39,6 +39,9 @@ use Illuminate\Notifications\Notifiable;
  * @method static Builder|User newModelQuery()
  * @method static Builder|User newQuery()
  * @method static Builder|User query()
+ * @property string|null $email_verified_at
+ * @method static Builder|User whereEmailVerifiedAt($value)
+ * @mixin \Eloquent
  */
 class User extends Authenticatable
 {

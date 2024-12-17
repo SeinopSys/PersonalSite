@@ -172,7 +172,7 @@ return [
          * Package Service Providers...
          */
 
-        Intervention\Image\ImageServiceProvider::class,
+        Intervention\Image\Laravel\ServiceProvider::class,
 
         /*
          * Application Service Providers...

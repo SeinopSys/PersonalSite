@@ -6,6 +6,7 @@ use App\Models\ImageUpload;
 use App\Models\Upload;
 use App\Models\User;
 use App\Util\Core;
+use App\Util\UploadUtil;
 use App\Util\Permission;
 use App\Util\Response;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Laravel\Facades\Image;
 
 class UploadsController extends Controller
 {
@@ -51,16 +52,6 @@ class UploadsController extends Controller
             $out['orderby'] = "{$this->_orderby_field} {$this->_orderby_dir}";
             Session::put('orderby', $out['orderby']);
         }
-    }
-
-    public function getRelativeUploadDirectory(bool $startingSlash = true): string
-    {
-        return ($startingSlash ? '/' : '').'uploads';
-    }
-
-    public function getUploadDirectory(): string
-    {
-        return storage_path("app/public/{$this->getRelativeUploadDirectory(false)}");
     }
 
     /** @var string */
@@ -118,7 +109,7 @@ class UploadsController extends Controller
         $user = Auth::user();
         /** @var $uploadAllowed ImageUpload */
         $uploadAllowed = $user->imageUpload()->first();
-        $uploadsFolderPath = $this->getUploadDirectory();
+        $uploadsFolderPath = UploadUtil::getUploadDirectory();
         switch ($action) {
             case 'enable':
                 if (!empty($uploadAllowed->upload_key)) {
@@ -186,7 +177,7 @@ class UploadsController extends Controller
         /** @var $user User */
         $user = $upload_allowed->user()->first();
 
-        $uploaddir = $this->getUploadDirectory();
+        $uploaddir = UploadUtil::getUploadDirectory();
         if (!@mkdir($uploaddir, 0777, true) && !is_dir($uploaddir)) {
             Response::Fail('Could not create upload directory');
         }
@@ -205,14 +196,9 @@ class UploadsController extends Controller
         if ($not_animated) {
             $extension = 'png';
         }
-        $filenames = [
-            'full' => $upload->filename.'.'.$extension,
-            'preview' => $upload->filename.'p.png',
-        ];
 
-        /** @var $image \Intervention\Image\Image */
-        $image = Image::make($file);
-
+        // Set metadata
+        $image = Image::read($file);
         $upload->uploaded_by = $user->id;
         $upload->extension = $extension;
         $upload->orig_filename = $file->getClientOriginalName();
@@ -220,21 +206,30 @@ class UploadsController extends Controller
         $upload->width = $image->width();
         $upload->height = $image->height();
         $upload->secondary_domain = $secondary_domain;
-
-        // Create preview
-        $preview_dimensions = min($upload->width, min($upload->height, 300));
-        $image->fit($preview_dimensions)->encode('png')->save("$uploaddir/{$filenames['preview']}");
+        $filenames = $upload->getFilenames();
+        $file_paths = $upload->getFilePaths($uploaddir, $filenames);
 
         // Save original
         $file->move($uploaddir, $filenames['full']);
+
+        // Create preview
+        UploadUtil::createPreviewImage($file_paths['full'], $upload->getPreviewDimensions(), $file_paths['preview']);
+        UploadUtil::createJpegCopy($file_paths['full'], $file_paths['jpeg']);
+
+        // Re-encode original
         if ($not_animated) {
-            Image::make("$uploaddir/{$filenames['full']}")->encode('png', 0)->save("$uploaddir/{$filenames['full']}");
+            UploadUtil::reencodeAsPng($file_paths['full']);
         }
-        $upload->size = filesize("$uploaddir/{$filenames['full']}") + filesize("$uploaddir/{$filenames['preview']}");
+        $upload->calculateFileSizes($file_paths);
         $upload->save();
 
+        // Return jpeg URL in case size is > 500 KB
+        $return_filename = $upload->size <= 512000
+            ? $filenames['full']
+            : $filenames['jpeg'];
+
         return [
-            'full' => "{$upload->host}/{$filenames['full']}",
+            'full' => "{$upload->host}/$return_filename",
             'preview' => "{$upload->host}/{$filenames['preview']}",
         ];
     }
@@ -254,8 +249,9 @@ class UploadsController extends Controller
 
         /** @var $user User */
         $user = $upload->uploader()->first();
-        $uploadsFolderPath = $this->getUploadDirectory();
+        $uploadsFolderPath = UploadUtil::getUploadDirectory();
         @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
+        @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
         @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
 
         $upload->delete();

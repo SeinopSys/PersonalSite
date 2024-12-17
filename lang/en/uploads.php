@@ -16,7 +16,7 @@ return [
     'sort-uploaded_at' => 'Upload date',
     'sortasc-uploaded_at' => 'Oldest first',
     'sortdesc-uploaded_at' => 'Newest first',
-    'sort-size' => 'File size',
+    'sort-size' => 'Original filesize',
     'sortasc-size' => 'Smallest first',
     'sortdesc-size' => 'Largest first',
     'uploaded-at' => 'Uploaded :at',

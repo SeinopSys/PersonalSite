@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\UploadsController;
 use App\Util\Core;
+use App\Util\UploadUtil;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -17,12 +19,14 @@ use Illuminate\Support\Str;
  * @property string $extension
  * @property string $mimetype
  * @property int $size
+ * @property int $additional_size
  * @property string|null $uploaded_at
  * @property int|null $width
  * @property int|null $height
  * @property bool $secondary_domain
  * @property-read User $uploader
  * @property-read string $host
+ * @property-read string $total_size
  * @method static Builder|Upload whereExtension($value)
  * @method static Builder|Upload whereFilename($value)
  * @method static Builder|Upload whereHeight($value)
@@ -37,6 +41,8 @@ use Illuminate\Support\Str;
  * @method static Builder|Upload newQuery()
  * @method static Builder|Upload query()
  * @method static \Illuminate\Database\Eloquent\Builder|\App\Models\Upload whereSecondaryDomain($value)
+ * @method static Builder|Upload whereAdditionalSize($value)
+ * @mixin \Eloquent
  */
 class Upload extends Model
 {
@@ -83,5 +89,48 @@ class Upload extends Model
     public function getHostAttribute(): string
     {
         return 'https://i.'.Core::getDomain($this->secondary_domain);
+    }
+
+    public function getTotalSizeAttribute(): string
+    {
+        return $this->size + $this->additional_size;
+    }
+
+    public function getFilenames(): array {
+        return [
+            'full' => "{$this->filename}.{$this->extension}",
+            'jpeg' => "{$this->filename}.jpg",
+            'preview' => "{$this->filename}p.png",
+        ];
+    }
+
+    public function getFilePaths(string $uploaddir, array $filenames): array {
+        return [
+            'full' => "$uploaddir/{$filenames['full']}",
+            'jpeg' => "$uploaddir/{$filenames['jpeg']}",
+            'preview' => "$uploaddir/{$filenames['preview']}",
+        ];
+    }
+
+    public function getPreviewDimensions(): int {
+        return min($this->width, $this->height, 300);
+    }
+
+    public function calculateFileSizes(?array $file_paths = null) {
+        if ($file_paths === null) {
+            $file_paths = $this->getFilePaths(UploadUtil::getUploadDirectory(), $this->getFilenames());
+        }
+
+        $full_file_size = filesize($file_paths['full']);
+        $additional_file_sizes = [
+            'jpeg' => filesize($file_paths['jpeg']),
+            'preview' => filesize($file_paths['preview']),
+        ];
+        $this->size = $full_file_size === false ? 0 : $full_file_size;
+        $this->additional_size = array_reduce(
+            $additional_file_sizes,
+            fn($carry, $item) => $carry + ($item === false ? 0 : $item),
+            0
+        );
     }
 }
