@@ -49,9 +49,6 @@ use App\Util\Core; ?>
         <a class="sei" href="{{ config('app.github_url') }}">
           <span>{{ __('about.this_site') }}</span>
         </a>
-        <a class="vc" href="https://mlpvector.club/">
-          <span>MLP Vector Club {{ __('about.website') }}</span>
-        </a>
         <a class="ytms" href="https://github.com/SeinopSys/YTMySubs">
           <span>{{ __('about.yt_my_subs') }}</span>
         </a>
