@@ -27,12 +27,12 @@
     "tslib": "^2.7.0"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^6.6.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@types/bootstrap": "^5.2.5",
     "@types/file-saver": "^2.0.5",
     "@types/html-minifier": "^4.0.2",
     "@types/jquery": "^3.5.14",
-    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
     "babel-preset-preact": "^2.0.0",
     "eslint": "^8.57.1",
     "eslint-config-airbnb": "^19.0.4",
@@ -48,7 +48,7 @@
     "sass-loader": "^13.0.2",
     "tar": ">=4.4.18",
     "ts-loader": "^9.4.1",
-    "typescript": "~5.5.4"
+    "typescript": "~5.8.3"
   },
   "scripts": {
     "build": "mix --production",

@@ -89,7 +89,7 @@
 
 <footer>
     <span>{!! __('footer.built-with', [
-        'laravel' => '<a href="https://laravel.com/">Laravel 9</a>',
+        'laravel' => '<a href="https://laravel.com/">Laravel 12</a>',
         'bootstrap' => '<a href="https://getbootstrap.com/">Bootstrap 5</a>',
         'fa' => '<a href="https://fontawesome.com/license/free">Font Awesome Free</a>'
     ]) !!}</span>
