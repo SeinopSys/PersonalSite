@@ -19,6 +19,8 @@ return [
 
     'secondary_domain' => env('SECONDARY_DOMAIN', null),
 
+    'lrc_site_url' => env('APP_LRC_SITE_URL', null),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

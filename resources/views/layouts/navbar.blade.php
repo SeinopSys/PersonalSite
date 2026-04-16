@@ -25,7 +25,14 @@
                         {{ __('global.tools') }}
                     </a>
                     <div class="dropdown-menu" aria-labelledby="tools-dd">
+                        @php
+                        $lrcSiteUrl = config('app.lrc_site_url');
+                        @endphp
+                        @if($lrcSiteUrl)
+                            <a href='{{$lrcSiteUrl}}' class="dropdown-item" target="_blank">{{ __('global.lrc') }}<span class="fa fa-external-link ms-2"></span></a>
+                        @else
                         {!! \App\Util\Core::NavbarItem('lrc', null, 'a') !!}
+                        @endif
                         {!! \App\Util\Core::NavbarItem('networking', null, 'a') !!}
                         {!! \App\Util\Core::NavbarItem('imagecalc', null, 'a') !!}
                         {!! \App\Util\Core::NavbarItem('selfsigned', null, 'a') !!}
