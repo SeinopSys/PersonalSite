@@ -32,7 +32,13 @@ class AvailabilityController extends Controller
 
         $busyEvents = $this->parseIcsEvents($icsContent, $rangeStart, $rangeEnd, $tz);
         $settings = $user->availability_settings ?? [];
-        $freeSlots = $this->computeRangeFreeSlots($busyEvents, $settings, $rangeStart, $rangeEnd, $tz);
+        $freeSlots = $this->computeRangeFreeSlots(
+            $busyEvents,
+            $settings,
+            $rangeStart->copy()->subDay(),
+            $rangeEnd->copy()->addDay(),
+            $tz
+        );
 
         return response()->json([
             'timezone' => $tz,
@@ -87,9 +93,9 @@ class AvailabilityController extends Controller
         }
 
         foreach ($calendar->VEVENT as $event) {
-            $start = Carbon::instance($event->DTSTART->getDateTime())->setTimezone($tz);
+            $start = $this->parseEventDateTime($event->DTSTART, $tz);
             $end = isset($event->DTEND)
-                ? Carbon::instance($event->DTEND->getDateTime())->setTimezone($tz)
+                ? $this->parseEventDateTime($event->DTEND, $tz)
                 : $start->copy()->addHour();
 
             $events[] = ['start' => $start, 'end' => $end];
@@ -98,6 +104,17 @@ class AvailabilityController extends Controller
         usort($events, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
 
         return $events;
+    }
+
+    private function parseEventDateTime($dateProperty, string $tz): Carbon
+    {
+        $valueType = strtoupper((string)($dateProperty['VALUE'] ?? ''));
+
+        if ($valueType === 'DATE') {
+            return Carbon::parse((string)$dateProperty->getValue(), $tz)->startOfDay();
+        }
+
+        return Carbon::instance($dateProperty->getDateTime())->setTimezone($tz);
     }
 
     private function computeRangeFreeSlots(array $busyEvents, array $settings, Carbon $rangeStart, Carbon $rangeEnd, string $tz): array

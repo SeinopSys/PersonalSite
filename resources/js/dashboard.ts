@@ -10,12 +10,18 @@ interface AvailabilityResponse {
   error?: string;
 }
 
+interface DaySlot {
+  date: string;
+  startMin: number;
+  endMin: number;
+}
+
 function localDate(str: string): Date {
   return new Date(+str.slice(0, 4), +str.slice(5, 7) - 1, +str.slice(8, 10));
 }
 
 function fmtDate(d: Date): string {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function toMins(iso: string): number {
@@ -33,32 +39,28 @@ function getDatesInRange(start: string, end: string): string[] {
   return result;
 }
 
-function getOffset(iso: string): string {
-  const m = iso.match(/([+-]\d{2}:\d{2}|Z)$/);
-  return m ? (m[0] === 'Z' ? '+00:00' : m[0]) : '+00:00';
-}
-
-function splitAtMidnight(slot: TimeSlot): TimeSlot[] {
+function splitAtMidnightToDaySlots(slot: TimeSlot): DaySlot[] {
   const sd = slot.start.slice(0, 10);
   const ed = slot.end.slice(0, 10);
-  if (sd === ed) return [slot];
+  const startMin = toMins(slot.start);
+  const endMin = toMins(slot.end);
 
-  const off = getOffset(slot.start);
-  const parts: TimeSlot[] = [];
+  if (sd === ed) {
+    return [{ date: sd, startMin, endMin }];
+  }
+
+  const parts: DaySlot[] = [{ date: sd, startMin, endMin: 1440 }];
   const cur = localDate(sd);
   const endD = localDate(ed);
-
-  parts.push({start: slot.start, end: sd + 'T24:00:00' + off});
   cur.setDate(cur.getDate() + 1);
 
   while (cur < endD) {
-    const ds = fmtDate(cur);
-    parts.push({start: ds + 'T00:00:00' + off, end: ds + 'T24:00:00' + off});
+    parts.push({ date: fmtDate(cur), startMin: 0, endMin: 1440 });
     cur.setDate(cur.getDate() + 1);
   }
 
-  if (toMins(slot.end) > 0) {
-    parts.push({start: ed + 'T00:00:00' + off, end: slot.end});
+  if (endMin > 0) {
+    parts.push({ date: ed, startMin: 0, endMin });
   }
 
   return parts;
@@ -68,32 +70,54 @@ function formatDayLabel(dateStr: string): string {
   const d = localDate(dateStr);
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return days[d.getDay()] + '<br>' + d.getDate() + '&nbsp;' + months[d.getMonth()];
+  return `${days[d.getDay()]}<br>${d.getDate()}&nbsp;${months[d.getMonth()]}`;
 }
 
-function buildCalendar(calDiv: HTMLElement, data: AvailabilityResponse): void {
+function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse): void {
   const PX_PER_MIN = 0.8;
   const HEADER_H = 40;
   const TIME_W = 42;
 
-  const days = getDatesInRange(data.range.start.slice(0, 10), data.range.end.slice(0, 10));
+  const requestedStart = data.range.start.slice(0, 10);
+  const requestedEnd = data.range.end.slice(0, 10);
 
-  const byDate: Record<string, TimeSlot[]> = {};
+  const rangeStart = localDate(data.range.start.slice(0, 10));
+  const rangeEnd = localDate(data.range.end.slice(0, 10));
+  rangeStart.setDate(rangeStart.getDate() - 1);
+  rangeEnd.setDate(rangeEnd.getDate() + 1);
+
+  let daysStart = fmtDate(rangeStart);
+  let daysEnd = fmtDate(rangeEnd);
+  const datesWithSlots = new Set<string>();
+  data.free.forEach(slot => {
+    splitAtMidnightToDaySlots(slot).forEach(part => {
+      datesWithSlots.add(part.date);
+      if (part.date < daysStart) daysStart = part.date;
+      if (part.date > daysEnd) daysEnd = part.date;
+    });
+  });
+
+  const days = getDatesInRange(daysStart, daysEnd).filter(day => {
+    const inRequestedRange = day >= requestedStart && day <= requestedEnd;
+    return inRequestedRange || datesWithSlots.has(day);
+  });
+
+  const byDate: Record<string, DaySlot[]> = {};
   days.forEach(d => {
     byDate[d] = [];
   });
   data.free.forEach(slot => {
-    splitAtMidnight(slot).forEach(part => {
-      const d = part.start.slice(0, 10);
-      if (byDate[d]) byDate[d].push(part);
+    splitAtMidnightToDaySlots(slot).forEach(part => {
+      if (byDate[part.date]) byDate[part.date].push(part);
     });
   });
 
-  let viewMin = 1440, viewMax = 0;
+  let viewMin = 1440; let
+    viewMax = 0;
   data.free.forEach(slot => {
-    splitAtMidnight(slot).forEach(part => {
-      viewMin = Math.min(viewMin, toMins(part.start));
-      viewMax = Math.max(viewMax, toMins(part.end));
+    splitAtMidnightToDaySlots(slot).forEach(part => {
+      viewMin = Math.min(viewMin, part.startMin);
+      viewMax = Math.max(viewMax, part.endMin);
     });
   });
   if (viewMin >= viewMax) {
@@ -113,8 +137,9 @@ function buildCalendar(calDiv: HTMLElement, data: AvailabilityResponse): void {
   html += `<div style="position:relative;height:${totalH}px">`;
   for (let m = viewMin; m < viewMax; m += 60) {
     const y = (m - viewMin) * PX_PER_MIN;
-    const label = String(Math.floor(m / 60) % 24).padStart(2, '0') + ':00';
-    html += `<div style="position:absolute;top:${y}px;right:6px;transform:translateY(-50%);color:#6c757d;white-space:nowrap">${label}</div>`;
+    const label = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:00`;
+    html += `<div style="position:absolute;top:${y}px;right:6px;`
+      + `transform:translateY(-50%);color:#6c757d;white-space:nowrap">${label}</div>`;
   }
   html += '</div></div>';
 
@@ -122,7 +147,9 @@ function buildCalendar(calDiv: HTMLElement, data: AvailabilityResponse): void {
   days.forEach(day => {
     const slots = byDate[day];
     html += '<div style="flex:1;min-width:80px;border-left:1px solid #dee2e6">';
-    html += `<div style="height:${HEADER_H}px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;border-bottom:2px solid #dee2e6">${formatDayLabel(day)}</div>`;
+    html += `<div style="height:${HEADER_H}px;display:flex;align-items:center;`
+      + 'justify-content:center;text-align:center;font-weight:600;'
+      + `border-bottom:2px solid #dee2e6">${formatDayLabel(day)}</div>`;
     html += `<div style="position:relative;height:${totalH}px;background:#f8f9fa">`;
 
     for (let m = viewMin; m <= viewMax; m += 60) {
@@ -131,18 +158,21 @@ function buildCalendar(calDiv: HTMLElement, data: AvailabilityResponse): void {
     }
 
     slots.forEach(slot => {
-      const sm = Math.max(toMins(slot.start), viewMin);
-      const em = Math.min(toMins(slot.end), viewMax);
+      const sm = Math.max(slot.startMin, viewMin);
+      const em = Math.min(slot.endMin, viewMax);
       if (sm >= em) return;
       const top = (sm - viewMin) * PX_PER_MIN;
       const height = Math.max(2, (em - sm) * PX_PER_MIN);
-      html += `<div style="position:absolute;left:2px;right:2px;top:${top}px;height:${height}px;background:rgba(25,135,84,0.25);border-radius:3px;border-left:3px solid #198754"></div>`;
+      html += `<div style="position:absolute;left:2px;right:2px;top:${top}px;`
+        + `height:${height}px;background:rgba(25,135,84,0.25);border-radius:3px;`
+        + 'border-left:3px solid #198754"></div>';
     });
 
     html += '</div></div>';
   });
 
   html += '</div>';
+  const calDiv = calendarElement;
   calDiv.innerHTML = html;
 }
 
@@ -151,7 +181,8 @@ document.querySelectorAll<HTMLInputElement>('.day-available-check').forEach(chec
     const row = checkbox.closest('tr');
     if (!row) return;
     row.querySelectorAll<HTMLInputElement>('.day-time-input').forEach(input => {
-      input.disabled = !checkbox.checked;
+      const timeInput = input;
+      timeInput.disabled = !checkbox.checked;
     });
   });
 });
