@@ -75,9 +75,10 @@ class AvailabilityController extends Controller
     {
         $calendar = Reader::read($icsContent);
         $expandStart = $rangeStart->copy()->utc()->subDay();
+        $expandEnd = $rangeEnd->copy()->utc()->addDay();
         $calendar = $calendar->expand(
             \DateTimeImmutable::createFromInterface($expandStart),
-            \DateTimeImmutable::createFromInterface($rangeEnd->copy()->utc())
+            \DateTimeImmutable::createFromInterface($expandEnd)
         );
 
         $events = [];
