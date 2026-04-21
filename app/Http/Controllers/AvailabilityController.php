@@ -74,8 +74,9 @@ class AvailabilityController extends Controller
     private function parseIcsEvents(string $icsContent, Carbon $rangeStart, Carbon $rangeEnd, string $tz): array
     {
         $calendar = Reader::read($icsContent);
+        $expandStart = $rangeStart->copy()->utc()->subDay();
         $calendar = $calendar->expand(
-            \DateTimeImmutable::createFromInterface($rangeStart->copy()->utc()),
+            \DateTimeImmutable::createFromInterface($expandStart),
             \DateTimeImmutable::createFromInterface($rangeEnd->copy()->utc())
         );
 
