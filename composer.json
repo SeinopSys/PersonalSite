@@ -19,6 +19,7 @@
     "laravel/framework": "^12.0",
     "laravel/ui": "^4.6",
     "predis/predis": "^3.0",
+    "sabre/vobject": "^4.5",
     "webpatser/laravel-uuid": "^4.0.2",
     "zonuexe/http-accept-language": "~0.6.0"
   },

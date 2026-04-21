@@ -3,6 +3,7 @@
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\InlinerController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\LRCController;
@@ -54,6 +55,7 @@ Route::post('register', [RegisterController::class, 'register']);
 // These require login
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::post('/dashboard/settings', [DashboardController::class, 'saveSettings']);
     Route::get('/uploads', [UploadsController::class, 'index']);
     Route::post('/uploads/regen', [UploadsController::class, 'regen']);
     Route::post('/uploads/setting/{action}', [UploadsController::class, 'setting']);

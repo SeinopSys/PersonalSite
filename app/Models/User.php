@@ -62,7 +62,11 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password', 'lang', 'role',
+        'name', 'email', 'password', 'lang', 'role', 'calendar_url', 'availability_settings', 'timezone',
+    ];
+
+    protected $casts = [
+        'availability_settings' => 'array',
     ];
 
     /**
