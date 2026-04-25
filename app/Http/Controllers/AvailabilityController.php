@@ -40,6 +40,9 @@ class AvailabilityController extends Controller
             $tz
         );
 
+        $cutoff = Carbon::now($tz)->subDay()->startOfDay();
+        $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
+
         return response()->json([
             'timezone' => $tz,
             'range' => [
