@@ -158,83 +158,99 @@
         Query: <code>GET /api/availability/{{ $user->name }}?token=&lt;token&gt;</code>
     </p>
 
+    <div class="accordion mb-3" id="highlights-accordion">
     @foreach($highlights as $ht)
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="d-flex align-items-start gap-3 flex-wrap mb-2">
-                <div class="flex-grow-1">
-                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center">
-                        @csrf
-                        @method('PUT')
-                        <input type="text" name="label" class="form-control form-control-sm" style="max-width:220px"
-                               placeholder="Label (optional)" value="{{ $ht->label }}">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
-                    </form>
-                </div>
-                <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                            onclick="return confirm('Delete this token and all its words?')">Delete token</button>
-                </form>
-            </div>
-
-            <div class="mb-2">
-                <label class="form-label mb-1 small fw-semibold">Token</label>
-                <div class="d-flex align-items-center gap-2">
-                    <code class="text-break small">{{ $ht->token_base64 }}</code>
-                    <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn"
-                            data-token="{{ $ht->token_base64 }}">Copy</button>
-                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/regenerate">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-warning"
-                                onclick="return confirm('Regenerate this token? Anyone using the old token will lose access.')">Regenerate</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="mb-2">
-                <label class="form-label mb-1 small fw-semibold">Words</label>
-                @if($ht->words->isEmpty())
-                    <p class="text-muted small mb-1">No words yet.</p>
-                @else
-                <div class="d-flex flex-wrap gap-2 mb-2">
-                    @foreach($ht->words as $word)
-                    <span class="badge bg-secondary d-flex align-items-center gap-1">
-                        {{ $word->word }}
-                        <form method="POST"
-                              action="/dashboard/highlights/{{ $ht->id }}/words/{{ $word->id }}"
-                              class="d-inline">
+    @php
+        $collapseId = 'highlight-collapse-' . $ht->id;
+        $hasError = $errors->getBag('words_'.$ht->id)->has('word');
+    @endphp
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button {{ $hasError ? '' : 'collapsed' }}" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
+                    aria-expanded="{{ $hasError ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
+                {{ $ht->label ?? '(unlabelled)' }}
+            </button>
+        </h2>
+        <div id="{{ $collapseId }}" class="accordion-collapse collapse {{ $hasError ? 'show' : '' }}"
+             data-bs-parent="#highlights-accordion">
+            <div class="accordion-body">
+                <div class="d-flex align-items-start gap-3 flex-wrap mb-3">
+                    <div class="flex-grow-1">
+                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center">
                             @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    class="btn-close btn-close-white"
-                                    style="font-size:0.6rem"
-                                    aria-label="Remove word"></button>
+                            @method('PUT')
+                            <input type="text" name="label" class="form-control form-control-sm" style="max-width:220px"
+                                   placeholder="Label (optional)" value="{{ $ht->label }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                         </form>
-                    </span>
-                    @endforeach
-                </div>
-                @endif
-
-                <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/words">
-                    @csrf
-                    <div class="d-flex gap-2">
-                        <input type="text" name="word"
-                               class="form-control form-control-sm @if($errors->getBag('words_'.$ht->id)->has('word')) is-invalid @endif"
-                               style="max-width:200px"
-                               placeholder="Add word…" required maxlength="255"
-                               value="{{ old('word') }}">
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
                     </div>
-                    @if($errors->getBag('words_'.$ht->id)->has('word'))
-                        <div class="text-danger small mt-1">{{ $errors->getBag('words_'.$ht->id)->first('word') }}</div>
+                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Delete this token and all its words?')">Delete token</button>
+                    </form>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label mb-1 small fw-semibold">Token</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <code class="text-break small">{{ $ht->token_base64 }}</code>
+                        <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn"
+                                data-token="{{ $ht->token_base64 }}">Copy</button>
+                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/regenerate">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                    onclick="return confirm('Regenerate this token? Anyone using the old token will lose access.')">Regenerate</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label mb-1 small fw-semibold">Words</label>
+                    @if($ht->words->isEmpty())
+                        <p class="text-muted small mb-1">No words yet.</p>
+                    @else
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @foreach($ht->words as $word)
+                        <span class="badge bg-secondary d-flex align-items-center gap-1">
+                            {{ $word->word }}
+                            <form method="POST"
+                                  action="/dashboard/highlights/{{ $ht->id }}/words/{{ $word->id }}"
+                                  class="d-inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="btn-close btn-close-white"
+                                        style="font-size:0.6rem"
+                                        aria-label="Remove word"></button>
+                            </form>
+                        </span>
+                        @endforeach
+                    </div>
                     @endif
-                </form>
+
+                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/words">
+                        @csrf
+                        <div class="d-flex gap-2">
+                            <input type="text" name="word"
+                                   class="form-control form-control-sm @if($errors->getBag('words_'.$ht->id)->has('word')) is-invalid @endif"
+                                   style="max-width:200px"
+                                   placeholder="Add word…" required maxlength="255"
+                                   value="{{ old('word') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                        </div>
+                        @if($errors->getBag('words_'.$ht->id)->has('word'))
+                            <div class="text-danger small mt-1">{{ $errors->getBag('words_'.$ht->id)->first('word') }}</div>
+                        @endif
+                    </form>
+                </div>
             </div>
         </div>
     </div>
     @endforeach
+    </div>
 
     <form method="POST" action="/dashboard/highlights" class="d-flex gap-2 align-items-center mt-2">
         @csrf
