@@ -67,7 +67,11 @@ class AvailabilityController extends Controller
 
         $highlighted = null;
         if ($tokenValid) {
-            $highlighted = array_values(array_map($toSlot, $this->filterHighlightedEvents($busyEvents, $highlightWords)));
+            $matchedEvents = array_filter(
+                $this->filterHighlightedEvents($busyEvents, $highlightWords),
+                fn($e) => $e['end']->gt($cutoff)
+            );
+            $highlighted = array_values(array_map($toSlot, $matchedEvents));
         }
 
         return response()->json(new AvailabilityResult(

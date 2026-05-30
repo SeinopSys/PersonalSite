@@ -239,6 +239,30 @@ class AvailabilityHighlightTest extends TestCase
         $response->assertJsonMissing(['highlighted']);
     }
 
+    public function test_availability_highlighted_events_in_the_past_are_excluded(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => random_bytes(32),
+            'label'   => 'Friends',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e2', 'start' => '20200101T100000Z', 'end' => '20200101T110000Z', 'summary' => 'Old lunch with Alice'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'highlighted');
+        $this->assertEquals('2026-06-02T10:00:00+00:00', $response->json('highlighted.0.start'));
+    }
+
     public function test_availability_multiple_words_match_different_events(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
