@@ -45,16 +45,20 @@
             <span class="badge bg-secondary" id="uploaded-total">{{ $images->total() }}</span>
         </h3>
         <p>
-            <strong>{{ __('uploads.usedspace') }}:</strong> <span id="used-space">{{ $usedSpace }}</span><br>
-            <strong>{{ __('uploads.sorting') }}:</strong> <span id="ordering-links">@php
-                $pageq = "page={$images->currentPage()}";
-                foreach (App\Http\Controllers\UploadsController::ORDERING as $k) {
-                    $ascc = $orderby === "$k asc" ? 'class="current"' : '';
-                    $descc = $orderby === "$k desc" ? 'class="current"' : '';
-                    echo __("uploads.sort-$k")." (<a href='?{$pageq}&orderby=$k+asc' $ascc>".__("uploads.sortasc-$k")."</a>/<a href='?{$pageq}&orderby=$k+desc' $descc>".__("uploads.sortdesc-$k").'</a>) ';
-                }
-                @endphp</span>
+            <strong>{{ __('uploads.usedspace') }}:</strong> <span id="used-space">{{ $usedSpace }}</span>
         </p>
+        <div class="mb-3 d-flex align-items-center gap-2 flex-wrap" id="ordering-links">
+            <strong>{{ __('uploads.sorting') }}:</strong>
+            @php $pageq = "page={$images->currentPage()}"; @endphp
+            <div class="btn-group" role="group">
+                @foreach (App\Http\Controllers\UploadsController::ORDERING as $k)
+                    <a href="?{{ $pageq }}&orderby={{ $k }}+asc"
+                       class="btn btn-sm btn-outline-secondary sort-link{{ $orderby === "$k asc" ? ' active' : '' }}">{{ __("uploads.sortasc-$k") }}</a>
+                    <a href="?{{ $pageq }}&orderby={{ $k }}+desc"
+                       class="btn btn-sm btn-outline-secondary sort-link{{ $orderby === "$k desc" ? ' active' : '' }}">{{ __("uploads.sortdesc-$k") }}</a>
+                @endforeach
+            </div>
+        </div>
         @php
             $haveResults = $images->count() > 0;
             $havePreviousPages = $images->lastPage() > 0 && $images->currentPage() > $images->lastPage();

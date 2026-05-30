@@ -5,6 +5,37 @@ const $uploadList = $('#upload-list');
 let $noimgAlert = $('#noimg-alert');
 let $uploadedTotal = $('#uploaded-total');
 
+interface ListUpdateData {
+  status: boolean;
+  message?: string;
+  newhtml: string;
+  total: number;
+  usedSpace: string;
+}
+
+function applyListUpdate(data: ListUpdateData) {
+  const $newhtml = $(data.newhtml);
+  $uploadList.empty().append($newhtml.filter('#upload-list').children());
+  $('.pagination-wrapper').replaceWith($newhtml.filter('.pagination-wrapper'));
+  $noimgAlert = $('#noimg-alert');
+  $uploadedTotal = $('#uploaded-total');
+  $uploadedTotal.text(data.total);
+  $('#used-space').text(data.usedSpace);
+  if ($uploadList.children().length === 0) {
+    $noimgAlert.removeClass('hidden');
+    $uploadList.remove();
+  }
+}
+
+function currentPageParams(): { page: number; orderby: string | null } {
+  const pageMatch = window.location.search.match(/page=(\d+)/);
+  const orderbyMatch = window.location.search.match(/orderby=([a-z_]+)[ +](asc|desc)/i);
+  return {
+    page: pageMatch ? parseInt(pageMatch[1], 10) : 1,
+    orderby: orderbyMatch ? `${orderbyMatch[1]}+${orderbyMatch[2]}` : null,
+  };
+}
+
 function wipeUpload($link: JQuery, requireConfirm: boolean) {
   const $image = $link.closest('.image');
   const id = ($image.attr('id') || '').replace(/^upload-/, '');
@@ -19,38 +50,21 @@ function wipeUpload($link: JQuery, requireConfirm: boolean) {
 
     if (requireConfirm) Dialog.wait(false);
 
-    const pageMatch = window.location.search.match(/page=(\d+)/);
-    const orderby = window.location.search.match(/orderby=([a-z]+)[ +](asc|desc)/i);
-    const params = [];
-    if (pageMatch) {
-      let page = parseInt(pageMatch[1], 10);
-      if ($image.parent().siblings().length === 0) page = Math.max(page - 1, 1);
-      params.push(`page=${page}`);
-    }
-    if (orderby) params.push(`orderby=${orderby.slice(1).join('+')}`);
-    $.post(`/uploads/wipe${params.length ? `?${params.join('&')}` : ''}`, { id }, mkAjaxHandler(data => {
+    let { page, orderby } = currentPageParams();
+    if ($image.parent().siblings().length === 0) page = Math.max(page - 1, 1);
+    const params: string[] = [`page=${page}`];
+    if (orderby) params.push(`orderby=${orderby}`);
+
+    $.post(`/uploads/wipe?${params.join('&')}`, { ids: [id] }, mkAjaxHandler((data: ListUpdateData) => {
       if (!data.status) {
         Dialog.fail(false, data.message);
         return;
       }
 
-      const $newhtml = $(data.newhtml);
-      const newTotal = data.total;
-      const { usedSpace } = data;
-
       Dialog.close(() => {
         $image.closest('.image-wrap').fadeTo(500, 0, function () {
           $(this).remove();
-          $uploadList.empty().append($newhtml.filter('#upload-list').children());
-          $('.pagination-wrapper').replaceWith($newhtml.filter('.pagination-wrapper'));
-          $noimgAlert = $('#noimg-alert');
-          $uploadedTotal = $('#uploaded-total');
-          $uploadedTotal.text(newTotal);
-          $('#used-space').text(usedSpace);
-          if ($uploadList.children().length === 0) {
-            $noimgAlert.removeClass('hidden');
-            $uploadList.remove();
-          }
+          applyListUpdate(data);
         });
       });
     }));
@@ -73,6 +87,41 @@ function selectionChange($el: JQuery, checked: boolean) {
   if ($unsel.length < $allWraps.length) $unsel.addClass('not-selected');
 }
 
+function fetchListPage(page: number, orderby: string | null) {
+  const params: Record<string, string | number> = { page };
+  if (orderby) params['orderby'] = orderby;
+
+  $uploadList.stop().fadeTo(150, 0.4);
+
+  $.ajax({
+    url: '/uploads',
+    data: params,
+    headers: { Accept: 'application/json' },
+    success: mkAjaxHandler((data: ListUpdateData) => {
+      if (!data.status) {
+        $uploadList.stop().fadeTo(150, 1);
+        Dialog.fail(false, data.message);
+        return;
+      }
+
+      const newSearch = `?page=${page}${orderby ? `&orderby=${orderby}` : ''}`;
+      history.pushState(null, '', newSearch);
+
+      if (orderby) {
+        const decodedOrderby = orderby.replace('+', ' ');
+        $('#ordering-links .sort-link').each(function () {
+          const href = $(this).attr('href') || '';
+          const hrefOrderby = (href.match(/[?&]orderby=([a-z_]+[+ ](asc|desc))/i) || [])[1] || '';
+          $(this).toggleClass('active', hrefOrderby.replace('+', ' ') === decodedOrderby);
+        });
+      }
+
+      applyListUpdate(data);
+      $uploadList.stop().fadeTo(150, 1);
+    }),
+  });
+}
+
 $(document).on('keydown', e => {
   if (!/^a$/i.test(e.key) || !e.ctrlKey || e.shiftKey || e.altKey) {
     return;
@@ -81,6 +130,18 @@ $(document).on('keydown', e => {
   e.preventDefault();
   $('.image-wrap').addClass('selected').removeClass('not-selected').find('.selection input')
     .prop('checked', true);
+});
+
+$(document).on('click', '.pagination-wrapper a, #ordering-links .sort-link', function (e) {
+  e.preventDefault();
+
+  const href = $(this).attr('href') || '';
+  const pageMatch = href.match(/[?&]page=(\d+)/);
+  const orderbyMatch = href.match(/[?&]orderby=([a-z_]+)[+ ](asc|desc)/i);
+  const page = pageMatch ? parseInt(pageMatch[1], 10) : 1;
+  const orderby = orderbyMatch ? `${orderbyMatch[1]}+${orderbyMatch[2]}` : currentPageParams().orderby;
+
+  fetchListPage(page, orderby);
 });
 
 const $uploadToggle = $('#uploads-toggle');
@@ -192,9 +253,22 @@ $uploadList.on('click', '.wipe-upload', function (e) {
 
         Dialog.wait(false);
 
-        $selection.each(function () {
-          wipeUpload($(this).find('.wipe-upload'), false);
-        });
+        const ids = $selection.map(function () {
+          return ($(this).find('.image').attr('id') || '').replace(/^upload-/, '');
+        }).get();
+
+        const { page, orderby } = currentPageParams();
+        const params: string[] = [`page=${page}`];
+        if (orderby) params.push(`orderby=${orderby}`);
+
+        $.post(`/uploads/wipe?${params.join('&')}`, { ids }, mkAjaxHandler((data: ListUpdateData) => {
+          if (!data.status) {
+            Dialog.fail(false, data.message);
+            return;
+          }
+
+          Dialog.close(() => applyListUpdate(data));
+        }));
       },
     });
     return;

@@ -60,6 +60,26 @@ class UploadsController extends Controller
 
     public function index(Request $request)
     {
+        /** @var $user User */
+        $user = Auth::user();
+        $upload = $user->imageUpload()->first();
+        $uploadingEnabled = !empty($upload);
+
+        if ($request->expectsJson() && $uploadingEnabled) {
+            $out = [];
+            $this->_calcOrderBy($request, $out);
+            $out['images'] = $this->_getImageArray($user);
+            $out['uploadingEnabled'] = true;
+            $out['haveResults'] = $out['images']->count() > 0;
+            $out['havePreviousPages'] = $out['images']->lastPage() > 0 && $out['images']->currentPage() > $out['images']->lastPage();
+            return response()->json([
+                'status' => true,
+                'newhtml' => view('partials.uploads-imagelist', $out)->render(),
+                'total' => $out['images']->total(),
+                'usedSpace' => $this->_usedSpace($user),
+            ]);
+        }
+
         $out = [
             'js' => [],
             'css' => [],
@@ -69,12 +89,9 @@ class UploadsController extends Controller
             $out['css'][] = 'uploads';
         }
         $out['images'] = [];
-        /** @var $user User */
-        $user = Auth::user();
-        $upload = $user->imageUpload()->first();
-        $out['uploadingEnabled'] = !empty($upload);
+        $out['uploadingEnabled'] = $uploadingEnabled;
 
-        if ($out['uploadingEnabled']) {
+        if ($uploadingEnabled) {
             $out['uploadKey'] = $upload['upload_key'];
 
             $this->_calcOrderBy($request, $out);
@@ -237,24 +254,27 @@ class UploadsController extends Controller
     public function wipe(Request $request)
     {
         $this->validate($request, [
-            'id' => 'bail|required|uuid4',
+            'ids' => 'bail|required|array|min:1',
+            'ids.*' => 'bail|required|uuid4',
         ]);
-        $id = $request->id;
+        $ids = $request->input('ids');
 
-        /** @var $upload \App\Upload */
-        $upload = Upload::find($id);
-        if (empty($upload)) {
+        $uploads = Upload::whereIn('id', $ids)->get();
+        if ($uploads->isEmpty()) {
             Response::Fail(__('uploads.ajax-wipe-notfound'));
         }
 
         /** @var $user User */
-        $user = $upload->uploader()->first();
+        $user = $uploads->first()->uploader()->first();
         $uploadsFolderPath = UploadUtil::getUploadDirectory();
-        @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
-        @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
-        @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
 
-        $upload->delete();
+        foreach ($uploads as $upload) {
+            @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
+            @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
+            @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+            $upload->delete();
+        }
+
         $out = [];
         $this->_calcOrderBy($request, $out);
         $out['images'] = $this->_getImageArray($user);
