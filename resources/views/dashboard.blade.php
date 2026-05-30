@@ -185,6 +185,11 @@
                     <code class="text-break small">{{ $ht->token_base64 }}</code>
                     <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn"
                             data-token="{{ $ht->token_base64 }}">Copy</button>
+                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/regenerate">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                onclick="return confirm('Regenerate this token? Anyone using the old token will lose access.')">Regenerate</button>
+                    </form>
                 </div>
             </div>
 

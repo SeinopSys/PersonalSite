@@ -176,6 +176,20 @@ class DashboardController extends Controller
         return redirect('/dashboard#highlights')->with('success', 'Label updated.');
     }
 
+    public function regenerateHighlight(string $id)
+    {
+        abort_unless(Permission::Sufficient('developer'), 403);
+
+        $token = CalendarHighlightToken::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $token->token = random_bytes(32);
+        $token->save();
+
+        return redirect('/dashboard#highlights')->with('success', 'Token regenerated.');
+    }
+
     public function destroyHighlight(string $id)
     {
         abort_unless(Permission::Sufficient('developer'), 403);
