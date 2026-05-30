@@ -38,7 +38,8 @@ $images-per-row: 5;
 
             .actions {
                 > :nth-child(1), > :nth-child(2) {
-                    display: none;
+                    opacity: .25;
+                    pointer-events: none;
                 }
             }
         }
@@ -125,7 +126,7 @@ $images-per-row: 5;
             bottom: 0;
             font-size: 18px;
             line-height: 1em;
-            padding: 5px;
+            display: flex;
 
             .selection {
                 input {
@@ -135,8 +136,11 @@ $images-per-row: 5;
             }
 
             > * {
-                display: inline-block;
-                vertical-align: middle;
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px 4px;
 
                 .fa {
                     transition: color .2s linear;
@@ -144,10 +148,6 @@ $images-per-row: 5;
 
                 &:not(:hover):not(:focus) .fa {
                     color: $border !important;
-                }
-
-                &:not(:last-child) {
-                    margin-right: .15em;
                 }
             }
         }
@@ -181,8 +181,3 @@ $images-per-row: 5;
     }
 }
 
-#ordering-links .current {
-    color: inherit;
-    font-weight: bold;
-    text-decoration: none;
-}
