@@ -86,7 +86,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Friend',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
@@ -109,7 +109,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Alice',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
@@ -134,7 +134,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Alice',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
@@ -161,7 +161,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Alice',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
@@ -223,7 +223,7 @@ class AvailabilityHighlightTest extends TestCase
         ]);
         $token = CalendarHighlightToken::create([
             'user_id' => $otherUser->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Test',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $otherUser->id, 'word' => 'Meeting']);
@@ -245,7 +245,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Friends',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
@@ -269,7 +269,7 @@ class AvailabilityHighlightTest extends TestCase
         $user = $this->makeUser($calUrl);
         $token = CalendarHighlightToken::create([
             'user_id' => $user->id,
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => 'Friends',
         ]);
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);

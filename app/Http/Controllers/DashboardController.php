@@ -151,7 +151,7 @@ class DashboardController extends Controller
 
         CalendarHighlightToken::create([
             'user_id' => Auth::id(),
-            'token'   => random_bytes(32),
+            'token'   => CalendarHighlightToken::generateToken(),
             'label'   => $validated['label'] ?? null,
         ]);
 
@@ -184,7 +184,7 @@ class DashboardController extends Controller
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
-        $token->token = random_bytes(32);
+        $token->token = CalendarHighlightToken::generateToken();
         $token->save();
 
         return redirect('/dashboard#highlights')->with('success', 'Token regenerated.');

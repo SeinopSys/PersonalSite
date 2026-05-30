@@ -35,10 +35,15 @@ class CalendarHighlightToken extends Model
         return rtrim(strtr(base64_encode($this->token), '+/', '-_'), '=');
     }
 
-    /** Generate a cryptographically-random token as raw bytes. */
+    /** Generate a cryptographically-random token whose base64url form contains no - or _ characters. */
     public static function generateToken(): string
     {
-        return random_bytes(32);
+        do {
+            $bytes = random_bytes(32);
+            $encoded = rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+        } while (strpbrk($encoded, '-_') !== false);
+
+        return $bytes;
     }
 
     /** Validate a base64url string (43 chars, 256-bit token). */
