@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\AvailabilityResult;
+use App\Data\TimeSlot;
+use App\Models\CalendarHighlightToken;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\QueryParameter;
+use Dedoc\Scramble\Attributes\Response;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +17,10 @@ use Sabre\VObject\Reader;
 
 class AvailabilityController extends Controller
 {
+    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted?: list<array{start: string, end: string}>}')]
+    #[QueryParameter('start', 'Start of the date range in YYYY-MM-DD format. Defaults to the current week\'s Monday.', required: false, type: 'string')]
+    #[QueryParameter('end', 'End of the date range in YYYY-MM-DD format. Defaults to start date plus six days.', required: false, type: 'string')]
+    #[QueryParameter('token', 'Base64url-encoded highlight token. When supplied and valid, matching events are returned under a `highlighted` key.', required: false, type: 'string')]
     public function show(Request $request, string $name): JsonResponse
     {
         $user = User::whereRaw('LOWER(name) = ?', [strtolower($name)])
@@ -43,17 +52,30 @@ class AvailabilityController extends Controller
         $cutoff = Carbon::now($tz)->subDay()->startOfDay();
         $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
 
-        return response()->json([
-            'timezone' => $tz,
-            'range' => [
-                'start' => $rangeStart->toAtomString(),
-                'end' => $rangeEnd->toAtomString(),
-            ],
-            'free' => array_values(array_map(fn($s) => [
-                'start' => $s['start']->toAtomString(),
-                'end' => $s['end']->toAtomString(),
-            ], $freeSlots)),
-        ]);
+        $tokenStr = $request->input('token');
+        $highlightWords = [];
+        $tokenValid = false;
+        if ($tokenStr) {
+            $highlightToken = CalendarHighlightToken::findByBase64Url($tokenStr, $user->id);
+            if ($highlightToken) {
+                $tokenValid = true;
+                $highlightWords = $highlightToken->words->pluck('word')->toArray();
+            }
+        }
+
+        $toSlot = fn($s) => new TimeSlot($s['start']->toAtomString(), $s['end']->toAtomString());
+
+        $highlighted = null;
+        if ($tokenValid) {
+            $highlighted = array_values(array_map($toSlot, $this->filterHighlightedEvents($busyEvents, $highlightWords)));
+        }
+
+        return response()->json(new AvailabilityResult(
+            timezone: $tz,
+            range: new TimeSlot($rangeStart->toAtomString(), $rangeEnd->toAtomString()),
+            free: array_values(array_map($toSlot, $freeSlots)),
+            highlighted: $highlighted,
+        ));
     }
 
     private function parseRange(?string $start, ?string $end, string $tz): array
@@ -101,7 +123,11 @@ class AvailabilityController extends Controller
                 ? $this->parseEventDateTime($event->DTEND, $tz)
                 : $start->copy()->addHour();
 
-            $events[] = ['start' => $start, 'end' => $end];
+            $events[] = [
+                'start' => $start,
+                'end'   => $end,
+                'name'  => isset($event->SUMMARY) ? (string)$event->SUMMARY : '',
+            ];
         }
 
         usort($events, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
@@ -118,6 +144,25 @@ class AvailabilityController extends Controller
         }
 
         return Carbon::instance($dateProperty->getDateTime())->setTimezone($tz);
+    }
+
+    private function filterHighlightedEvents(array $events, array $words): array
+    {
+        if (empty($words)) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($events as $event) {
+            foreach ($words as $word) {
+                if (strpos($event['name'], $word) !== false) {
+                    $matched[] = $event;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
     }
 
     private function computeRangeFreeSlots(array $busyEvents, array $settings, Carbon $rangeStart, Carbon $rangeEnd, string $tz): array

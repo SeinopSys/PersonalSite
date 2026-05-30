@@ -76,6 +76,7 @@ class AvailabilityControllerTest extends TestCase
         $busyEvents = [[
             'start' => Carbon::parse('2026-04-22 00:30:00', 'UTC'),
             'end' => Carbon::parse('2026-04-22 01:00:00', 'UTC'),
+            'name' => '',
         ]];
 
         $settings = [
@@ -101,10 +102,13 @@ class AvailabilityControllerTest extends TestCase
             'UTC'
         );
 
+        // Tuesday sleep=01:00 extends the window past midnight into Wednesday.
+        // The busy event at 00:30–01:00 Wed cuts the window short, so there must be a
+        // free slot that ends at exactly 2026-04-22T00:30 (the cross-midnight portion is preserved).
         $slotFound = false;
         foreach ($freeSlots as $slot) {
-            if ($slot['start']->toAtomString() === '2026-04-22T00:00:00+00:00'
-                && $slot['end']->toAtomString() === '2026-04-22T00:30:00+00:00') {
+            if ($slot['end']->toAtomString() === '2026-04-22T00:30:00+00:00'
+                && $slot['start']->lte(Carbon::parse('2026-04-22 00:00:00', 'UTC'))) {
                 $slotFound = true;
                 break;
             }
@@ -165,5 +169,149 @@ class AvailabilityControllerTest extends TestCase
         }
 
         $this->assertTrue($slotFound);
+    }
+
+    // --- Highlight: parseIcsEvents name extraction ---
+
+    public function test_parse_ics_events_includes_summary_as_name(): void
+    {
+        $controller = new AvailabilityController();
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Test//EN',
+            'BEGIN:VEVENT',
+            'UID:test-named',
+            'DTSTART:20260421T100000Z',
+            'DTEND:20260421T110000Z',
+            'SUMMARY:Team Meeting with Alice',
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
+        $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
+
+        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+
+        $this->assertCount(1, $events);
+        $this->assertSame('Team Meeting with Alice', $events[0]['name']);
+    }
+
+    public function test_parse_ics_events_empty_summary_defaults_to_empty_string(): void
+    {
+        $controller = new AvailabilityController();
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Test//EN',
+            'BEGIN:VEVENT',
+            'UID:test-no-summary',
+            'DTSTART:20260421T100000Z',
+            'DTEND:20260421T110000Z',
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
+        $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
+
+        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+
+        $this->assertCount(1, $events);
+        $this->assertSame('', $events[0]['name']);
+    }
+
+    // --- Highlight: filterHighlightedEvents ---
+
+    private function makeEvents(array $names): array
+    {
+        $events = [];
+        foreach ($names as $i => $name) {
+            $events[] = [
+                'start' => Carbon::parse("2026-04-21 {$i}0:00:00", 'UTC'),
+                'end'   => Carbon::parse("2026-04-21 {$i}1:00:00", 'UTC'),
+                'name'  => $name,
+            ];
+        }
+        return $events;
+    }
+
+    public function test_filter_highlighted_events_returns_matching_events(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Team meeting', 'Lunch with Bob', 'Standup']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Bob']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Lunch with Bob', $result[0]['name']);
+    }
+
+    public function test_filter_highlighted_events_matching_is_case_sensitive(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Lunch with alice', 'Meeting with Alice', 'ALICE review']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Alice']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Meeting with Alice', $result[0]['name']);
+    }
+
+    public function test_filter_highlighted_events_partial_match_returns_event(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['SeinopSys: code review']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['SeinopSys']);
+
+        $this->assertCount(1, $result);
+    }
+
+    public function test_filter_highlighted_events_returns_empty_when_no_words(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Meeting with Bob']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, []);
+
+        $this->assertCount(0, $result);
+    }
+
+    public function test_filter_highlighted_events_returns_empty_when_no_matches(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Team standup', 'Lunch break']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Alice', 'Bob']);
+
+        $this->assertCount(0, $result);
+    }
+
+    public function test_filter_highlighted_events_single_event_matched_by_multiple_words_not_duplicated(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Meeting with Alice and Bob']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Alice', 'Bob']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Meeting with Alice and Bob', $result[0]['name']);
+    }
+
+    public function test_filter_highlighted_events_multiple_events_each_matched_by_different_word(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Lunch with Alice', 'Coffee with Bob', 'Solo work session']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Alice', 'Bob']);
+
+        $this->assertCount(2, $result);
+        $names = array_column($result, 'name');
+        $this->assertContains('Lunch with Alice', $names);
+        $this->assertContains('Coffee with Bob', $names);
     }
 }

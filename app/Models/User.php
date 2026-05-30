@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
@@ -104,5 +105,10 @@ class User extends Authenticatable
     public function uploads()
     {
         return $this->hasMany(Upload::class, 'uploaded_by', 'id');
+    }
+
+    public function highlightTokens(): HasMany
+    {
+        return $this->hasMany(CalendarHighlightToken::class);
     }
 }

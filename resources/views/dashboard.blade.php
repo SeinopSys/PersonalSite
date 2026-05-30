@@ -25,6 +25,7 @@
         <li><strong>{{ __('global.role') }}:</strong> {{ \App\Util\Permission::LocalizedRoleName($user->role) }}</li>
         <li><strong>UUID:</strong> {{ $user->id }}</li>
         <li><strong>Stored language:</strong> {{ strtoupper($user->lang) }}</li>
+        <li><a href="/docs/api">API documentation</a></li>
     </ul>
 
     @if(session('success'))
@@ -122,18 +123,119 @@
     </form>
 
     <h3 class="mt-4">Test availability</h3>
-    <div class="row g-2 align-items-end mb-3">
-        <div class="col-auto">
-            <label for="avail-start" class="form-label mb-1">From</label>
-            <input type="date" class="form-control" id="avail-start">
+    <div class="d-flex flex-column gap-2 mb-3" style="max-width:420px">
+        <div class="d-flex gap-2">
+            <div class="flex-fill">
+                <label for="avail-start" class="form-label mb-1">From</label>
+                <input type="date" class="form-control" id="avail-start">
+            </div>
+            <div class="flex-fill">
+                <label for="avail-end" class="form-label mb-1">To</label>
+                <input type="date" class="form-control" id="avail-end">
+            </div>
         </div>
-        <div class="col-auto">
-            <label for="avail-end" class="form-label mb-1">To</label>
-            <input type="date" class="form-control" id="avail-end">
+        <div>
+            <label for="avail-token" class="form-label mb-1">Token</label>
+            <input type="text" class="form-control" id="avail-token" placeholder="highlight token">
         </div>
-        <div class="col-auto">
+        <div class="d-flex align-items-center gap-3">
             <button type="button" class="btn btn-secondary" id="avail-fetch">Fetch</button>
+            <div class="form-check mb-0">
+                <input type="checkbox" class="form-check-input" id="debug-event-names">
+                <label for="debug-event-names" class="form-check-label text-muted fst-italic">Show event names (debug)</label>
+            </div>
         </div>
     </div>
-    <div id="avail-calendar" class="border rounded overflow-hidden" data-username="{{ $user->name }}"></div>
+    <div id="avail-calendar"
+         class="border rounded overflow-hidden"
+         data-username="{{ $user->name }}"></div>
+
+    @if(!empty($isDeveloper))
+    <h3 class="mt-5" id="highlights">Highlight tokens</h3>
+    <p class="text-muted">
+        Share a token with someone so they can see matching events in the availability API response under a
+        <code>highlighted</code> key. Events matching any word in the group are surfaced; free/busy logic is unchanged.
+        Query: <code>GET /api/availability/{{ $user->name }}?token=&lt;token&gt;</code>
+    </p>
+
+    @foreach($highlights as $ht)
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-start gap-3 flex-wrap mb-2">
+                <div class="flex-grow-1">
+                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center">
+                        @csrf
+                        @method('PUT')
+                        <input type="text" name="label" class="form-control form-control-sm" style="max-width:220px"
+                               placeholder="Label (optional)" value="{{ $ht->label }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                    </form>
+                </div>
+                <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Delete this token and all its words?')">Delete token</button>
+                </form>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label mb-1 small fw-semibold">Token</label>
+                <div class="d-flex align-items-center gap-2">
+                    <code class="text-break small">{{ $ht->token_base64 }}</code>
+                    <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn"
+                            data-token="{{ $ht->token_base64 }}">Copy</button>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label mb-1 small fw-semibold">Words</label>
+                @if($ht->words->isEmpty())
+                    <p class="text-muted small mb-1">No words yet.</p>
+                @else
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    @foreach($ht->words as $word)
+                    <span class="badge bg-secondary d-flex align-items-center gap-1">
+                        {{ $word->word }}
+                        <form method="POST"
+                              action="/dashboard/highlights/{{ $ht->id }}/words/{{ $word->id }}"
+                              class="d-inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="btn-close btn-close-white"
+                                    style="font-size:0.6rem"
+                                    aria-label="Remove word"></button>
+                        </form>
+                    </span>
+                    @endforeach
+                </div>
+                @endif
+
+                <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/words">
+                    @csrf
+                    <div class="d-flex gap-2">
+                        <input type="text" name="word"
+                               class="form-control form-control-sm @if($errors->getBag('words_'.$ht->id)->has('word')) is-invalid @endif"
+                               style="max-width:200px"
+                               placeholder="Add word…" required maxlength="255"
+                               value="{{ old('word') }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                    </div>
+                    @if($errors->getBag('words_'.$ht->id)->has('word'))
+                        <div class="text-danger small mt-1">{{ $errors->getBag('words_'.$ht->id)->first('word') }}</div>
+                    @endif
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+
+    <form method="POST" action="/dashboard/highlights" class="d-flex gap-2 align-items-center mt-2">
+        @csrf
+        <input type="text" name="label" class="form-control" style="max-width:240px"
+               placeholder="New token label (optional)" maxlength="255">
+        <button type="submit" class="btn btn-primary">Create token</button>
+    </form>
+    @endif
 @endsection

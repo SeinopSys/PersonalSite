@@ -3,17 +3,36 @@ interface TimeSlot {
   end: string;
 }
 
+interface HighlightedEvent {
+  start: string;
+  end: string;
+}
+
 interface AvailabilityResponse {
   timezone: string;
   range: { start: string; end: string };
   free: TimeSlot[];
+  highlighted?: HighlightedEvent[];
   error?: string;
+}
+
+interface DebugEvent {
+  start: string;
+  end: string;
+  name: string;
 }
 
 interface DaySlot {
   date: string;
   startMin: number;
   endMin: number;
+}
+
+interface DayEvent {
+  date: string;
+  startMin: number;
+  endMin: number;
+  name: string;
 }
 
 function localDate(str: string): Date {
@@ -66,6 +85,11 @@ function splitAtMidnightToDaySlots(slot: TimeSlot): DaySlot[] {
   return parts;
 }
 
+function splitEventToDayEvents(event: DebugEvent): DayEvent[] {
+  const slots = splitAtMidnightToDaySlots(event);
+  return slots.map(s => ({ ...s, name: event.name }));
+}
+
 function formatDayLabel(dateStr: string): string {
   const d = localDate(dateStr);
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -73,7 +97,12 @@ function formatDayLabel(dateStr: string): string {
   return `${days[d.getDay()]}<br>${d.getDate()}&nbsp;${months[d.getMonth()]}`;
 }
 
-function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse): void {
+function buildCalendar(
+  calendarElement: HTMLElement,
+  data: AvailabilityResponse,
+  debugEvents: DebugEvent[] | null,
+  highlighted: HighlightedEvent[] | null,
+): void {
   const PX_PER_MIN = 0.8;
   const HEADER_H = 40;
   const TIME_W = 42;
@@ -112,6 +141,28 @@ function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse)
     });
   });
 
+  const eventsByDate: Record<string, DayEvent[]> = {};
+  if (debugEvents) {
+    days.forEach(d => { eventsByDate[d] = []; });
+    debugEvents.forEach(event => {
+      splitEventToDayEvents(event).forEach(part => {
+        if (eventsByDate[part.date]) eventsByDate[part.date].push(part);
+      });
+    });
+  }
+
+  const highlightedByDate: Record<string, DayEvent[]> = {};
+  if (highlighted) {
+    days.forEach(d => { highlightedByDate[d] = []; });
+    highlighted.forEach(event => {
+      splitAtMidnightToDaySlots(event).forEach(part => {
+        if (highlightedByDate[part.date]) {
+          highlightedByDate[part.date].push({ ...part, name: 'Highlighted' });
+        }
+      });
+    });
+  }
+
   let viewMin = 1440; let
     viewMax = 0;
   data.free.forEach(slot => {
@@ -120,6 +171,22 @@ function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse)
       viewMax = Math.max(viewMax, part.endMin);
     });
   });
+  if (debugEvents) {
+    debugEvents.forEach(event => {
+      splitEventToDayEvents(event).forEach(part => {
+        viewMin = Math.min(viewMin, part.startMin);
+        viewMax = Math.max(viewMax, part.endMin);
+      });
+    });
+  }
+  if (highlighted) {
+    highlighted.forEach(event => {
+      splitAtMidnightToDaySlots(event).forEach(part => {
+        viewMin = Math.min(viewMin, part.startMin);
+        viewMax = Math.max(viewMax, part.endMin);
+      });
+    });
+  }
   if (viewMin >= viewMax) {
     viewMin = 8 * 60;
     viewMax = 22 * 60;
@@ -146,6 +213,8 @@ function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse)
   // Day columns
   days.forEach(day => {
     const slots = byDate[day];
+    const dayEvents = debugEvents ? (eventsByDate[day] ?? []) : [];
+    const dayHighlighted = highlighted ? (highlightedByDate[day] ?? []) : [];
     html += '<div style="flex:1;min-width:80px;border-left:1px solid #dee2e6">';
     html += `<div style="height:${HEADER_H}px;display:flex;align-items:center;`
       + 'justify-content:center;text-align:center;font-weight:600;'
@@ -168,12 +237,45 @@ function buildCalendar(calendarElement: HTMLElement, data: AvailabilityResponse)
         + 'border-left:3px solid #198754"></div>';
     });
 
+    dayEvents.forEach(event => {
+      const sm = Math.max(event.startMin, viewMin);
+      const em = Math.min(event.endMin, viewMax);
+      if (sm >= em) return;
+      const top = (sm - viewMin) * PX_PER_MIN;
+      const height = Math.max(2, (em - sm) * PX_PER_MIN);
+      const escapedName = event.name
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
+        + `height:${height}px;background:rgba(220,53,69,0.18);border-radius:3px;`
+        + 'border-left:3px solid #dc3545;overflow:hidden;font-size:0.7rem;padding:0 2px;'
+        + `color:#842029;line-height:1.2">${escapedName}</div>`;
+    });
+
+    dayHighlighted.forEach(event => {
+      const sm = Math.max(event.startMin, viewMin);
+      const em = Math.min(event.endMin, viewMax);
+      if (sm >= em) return;
+      const top = (sm - viewMin) * PX_PER_MIN;
+      const height = Math.max(2, (em - sm) * PX_PER_MIN);
+      const escapedName = event.name
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
+        + `height:${height}px;background:rgba(253,126,20,0.25);border-radius:3px;`
+        + 'border-left:3px solid #fd7e14;overflow:hidden;font-size:0.7rem;padding:0 2px;'
+        + `color:#7d3f00;line-height:1.2">${escapedName}</div>`;
+    });
+
     html += '</div></div>';
   });
 
   html += '</div>';
-  const calDiv = calendarElement;
-  calDiv.innerHTML = html;
+  calendarElement.innerHTML = html;
 }
 
 document.querySelectorAll<HTMLInputElement>('.day-available-check').forEach(checkbox => {
@@ -189,8 +291,10 @@ document.querySelectorAll<HTMLInputElement>('.day-available-check').forEach(chec
 
 const startInput = document.getElementById('avail-start') as HTMLInputElement | null;
 const endInput = document.getElementById('avail-end') as HTMLInputElement | null;
+const tokenInput = document.getElementById('avail-token') as HTMLInputElement | null;
 const btn = document.getElementById('avail-fetch') as HTMLButtonElement | null;
 const calDiv = document.getElementById('avail-calendar') as HTMLElement | null;
+const debugToggle = document.getElementById('debug-event-names') as HTMLInputElement | null;
 
 if (startInput && endInput && btn && calDiv) {
   const username = calDiv.dataset.username ?? '';
@@ -213,16 +317,29 @@ if (startInput && endInput && btn && calDiv) {
     btn.disabled = true;
     calDiv.innerHTML = '<div class="p-3 text-muted">Loading…</div>';
 
+    const token = tokenInput?.value.trim() ?? '';
     let url = `/api/availability/${encodeURIComponent(username)}?start=${encodeURIComponent(s)}`;
     if (e) url += `&end=${encodeURIComponent(e)}`;
+    if (token) url += `&token=${encodeURIComponent(token)}`;
 
-    fetch(url)
-      .then(r => r.json() as Promise<AvailabilityResponse>)
-      .then(data => {
+    const showDebug = debugToggle?.checked ?? false;
+    let debugUrl = '';
+    if (showDebug) {
+      debugUrl = `/dashboard/debug/events?start=${encodeURIComponent(s)}`;
+      if (e) debugUrl += `&end=${encodeURIComponent(e)}`;
+    }
+
+    const availFetch = fetch(url).then(r => r.json() as Promise<AvailabilityResponse>);
+    const debugFetch = showDebug
+      ? fetch(debugUrl).then(r => r.json() as Promise<DebugEvent[]>)
+      : Promise.resolve(null);
+
+    Promise.all([availFetch, debugFetch])
+      .then(([data, debugEvents]) => {
         if (data.error) {
           calDiv.innerHTML = `<div class="p-3 text-danger">${data.error}</div>`;
         } else {
-          buildCalendar(calDiv, data);
+          buildCalendar(calDiv, data, debugEvents, data.highlighted ?? null);
         }
       })
       .catch((err: Error) => {
@@ -233,3 +350,34 @@ if (startInput && endInput && btn && calDiv) {
       });
   });
 }
+
+function copyText(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  try {
+    document.execCommand('copy');
+    return Promise.resolve();
+  } catch {
+    return Promise.reject(new Error('Copy failed'));
+  } finally {
+    document.body.removeChild(el);
+  }
+}
+
+document.querySelectorAll<HTMLButtonElement>('.copy-token-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const token = btn.dataset.token ?? '';
+    const orig = btn.textContent;
+    copyText(token)
+      .then(() => { btn.textContent = 'Copied!'; })
+      .catch(() => { btn.textContent = 'Failed'; })
+      .finally(() => { setTimeout(() => { btn.textContent = orig; }, 1500); });
+  });
+});
