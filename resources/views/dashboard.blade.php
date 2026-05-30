@@ -25,7 +25,7 @@
         <li><strong>{{ __('global.role') }}:</strong> {{ \App\Util\Permission::LocalizedRoleName($user->role) }}</li>
         <li><strong>UUID:</strong> {{ $user->id }}</li>
         <li><strong>Stored language:</strong> {{ strtoupper($user->lang) }}</li>
-        <li><a href="/docs/api">API documentation</a></li>
+        <li><a href="/docs/api">API documentation</a> (<a href="/docs/api.json">JSON</a>)</li>
     </ul>
 
     @if(session('success'))
