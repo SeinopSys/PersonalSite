@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -18,7 +19,6 @@ class TwoFactorAuthController extends Controller
      */
     public function setup(Request $request)
     {
-        $user = Auth::user();
         $google2fa = new Google2FA();
 
         $secret = $request->session()->get('2fa_pending_secret');
@@ -27,6 +27,22 @@ class TwoFactorAuthController extends Controller
             $secret = $google2fa->generateSecretKey();
             $request->session()->put('2fa_pending_secret', $secret);
         }
+
+        return redirect('/dashboard');
+    }
+
+    /**
+     * Build the QR code SVG and secret for a pending 2FA setup, if any.
+     */
+    public static function pendingSetup(Request $request, User $user): ?array
+    {
+        $secret = $request->session()->get('2fa_pending_secret');
+
+        if (!$secret) {
+            return null;
+        }
+
+        $google2fa = new Google2FA();
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
             config('app.name'),
@@ -38,12 +54,10 @@ class TwoFactorAuthController extends Controller
         $qrCodeSvg = (new Writer($renderer))->writeString($qrCodeUrl);
         $qrCodeSvg = preg_replace('/^<\?xml.*\?>\s*/', '', $qrCodeSvg);
 
-        return redirect('/dashboard', 303)->with([
-            'two_factor_setup' => [
-                'secret' => $secret,
-                'qr_code_svg' => $qrCodeSvg,
-            ],
-        ]);
+        return [
+            'secret' => $secret,
+            'qr_code_svg' => $qrCodeSvg,
+        ];
     }
 
     /**

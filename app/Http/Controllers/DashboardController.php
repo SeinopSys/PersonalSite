@@ -22,14 +22,16 @@ class DashboardController extends Controller
         $this->middleware('auth');
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $data = [
             'title'  => __('global.dashboard'),
             'js'     => ['dashboard'],
             'days'   => self::DAYS,
-            'twoFactorSetup' => session('two_factor_setup'),
+            'twoFactorSetup' => $user->hasTwoFactorEnabled()
+                ? null
+                : TwoFactorAuthController::pendingSetup($request, $user),
         ];
 
         if (Permission::Sufficient('developer')) {
