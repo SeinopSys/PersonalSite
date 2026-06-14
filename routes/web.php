@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InlinerController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\LRCController;
 use App\Http\Controllers\NetSalaryController;
 use App\Http\Controllers\SelfsignedController;
 use App\Http\Controllers\ToolsController;
+use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\UploadsController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,10 +54,16 @@ Auth::routes(['register' => false, 'reset' => false]);
 Route::get('register', [RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('register', [RegisterController::class, 'register']);
 
+Route::get('/login/2fa', [TwoFactorChallengeController::class, 'show'])->name('2fa.challenge');
+Route::post('/login/2fa', [TwoFactorChallengeController::class, 'verify'])->name('2fa.verify');
+
 // These require login
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::post('/dashboard/settings', [DashboardController::class, 'saveSettings']);
+    Route::post('/dashboard/2fa/setup', [TwoFactorAuthController::class, 'setup']);
+    Route::post('/dashboard/2fa/confirm', [TwoFactorAuthController::class, 'confirm']);
+    Route::post('/dashboard/2fa/disable', [TwoFactorAuthController::class, 'disable']);
     Route::get('/dashboard/debug/events', [DashboardController::class, 'debugEvents']);
     Route::post('/dashboard/highlights', [DashboardController::class, 'storeHighlight']);
     Route::put('/dashboard/highlights/{tokenId}', [DashboardController::class, 'updateHighlight']);

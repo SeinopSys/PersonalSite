@@ -68,6 +68,8 @@ class User extends Authenticatable
 
     protected $casts = [
         'availability_settings' => 'array',
+        'two_factor_secret' => 'encrypted',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
     /**
@@ -76,7 +78,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'two_factor_secret',
     ];
 
     public function getGravatar($size = 50)
@@ -110,5 +112,10 @@ class User extends Authenticatable
     public function highlightTokens(): HasMany
     {
         return $this->hasMany(CalendarHighlightToken::class);
+    }
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return !is_null($this->two_factor_confirmed_at);
     }
 }

@@ -30,4 +30,10 @@ return [
     'link-forgot' => 'Forgot Your Password?',
     'is-robot' => 'Simulate request made by a robot',
 
+    '2fa-title' => 'Two-Factor Authentication',
+    '2fa-description' => 'Please enter the 6-digit code from your authenticator app to continue.',
+    '2fa-field-code' => 'Authentication Code',
+    '2fa-btn-verify' => 'Verify',
+    '2fa-invalid-code' => 'The provided code is invalid.',
+
 ];

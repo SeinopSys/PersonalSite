@@ -29,4 +29,10 @@ return [
     'btn-register' => 'Regisztráció',
     'link-forgot' => 'Elfelejtetted a jelszavad?',
     'is-robot' => 'Robot általi kérés szimulálása',
+
+    '2fa-title' => 'Kétfaktoros Hitelesítés',
+    '2fa-description' => 'Add meg a hitelesítő alkalmazásodban megjelenő 6 számjegyű kódot a folytatáshoz.',
+    '2fa-field-code' => 'Hitelesítő Kód',
+    '2fa-btn-verify' => 'Megerősítés',
+    '2fa-invalid-code' => 'A megadott kód érvénytelen.',
 ];

@@ -29,6 +29,7 @@ class DashboardController extends Controller
             'title'  => __('global.dashboard'),
             'js'     => ['dashboard'],
             'days'   => self::DAYS,
+            'twoFactorSetup' => session('two_factor_setup'),
         ];
 
         if (Permission::Sufficient('developer')) {
