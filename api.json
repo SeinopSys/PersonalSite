@@ -7,8 +7,7 @@
     },
     "servers": [
         {
-            "url": "http://seinopsys.lc",
-            "description": "Local"
+            "url": "http://seinopsys.lc/api"
         }
     ],
     "paths": {
@@ -219,6 +218,44 @@
                                     "required": [
                                         "full",
                                         "preview"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "500 mib in bytes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Could not create upload directory"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }

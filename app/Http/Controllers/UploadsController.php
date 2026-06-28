@@ -204,13 +204,13 @@ class UploadsController extends Controller
 
         $uploaddir = UploadUtil::getUploadDirectory();
         if (!@mkdir($uploaddir, 0777, true) && !is_dir($uploaddir)) {
-            Response::Fail('Could not create upload directory');
+            return response()->json(['message' => 'Could not create upload directory'], 500);
         }
 
         $file = $validated['file'];
         $orig_file_size = $file->getSize();
         if ($this->_usedSpaceInBytes($user) + $orig_file_size > 524288000) { // 500 mib in bytes
-            Response::Fail('Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again.');
+            return response()->json(['message' => 'Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again.'], 422);
         }
 
         $upload = new Upload;

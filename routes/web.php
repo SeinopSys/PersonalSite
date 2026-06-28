@@ -29,9 +29,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [AboutController::class, 'index'])->name('about');
 Route::get('/about', [AboutController::class, 'gotoIndex']);
 Route::get('/lang/{lang}', [LanguageController::class, 'switchLang'])->name('lang.switch');
-Route::group(['middleware' => ['throttle:60,5']], function () {
-    Route::post('/upload', [UploadsController::class, 'upload']);
-});
 Route::get('/vlsm', function () {
     return redirect('/networking#vlsm', 301);
 });
