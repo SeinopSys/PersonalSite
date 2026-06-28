@@ -208,6 +208,9 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
                                         "full": {
                                             "type": "string"
                                         },
@@ -216,6 +219,7 @@
                                         }
                                     },
                                     "required": [
+                                        "id",
                                         "full",
                                         "preview"
                                     ]
