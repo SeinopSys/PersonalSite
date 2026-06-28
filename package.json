@@ -11,7 +11,7 @@
     "@types/throttle-debounce": "^5.0.0",
     "acorn": "^8.8.0",
     "babel-eslint": "^10.1.0",
-    "blob-polyfill": "^7.0.20220408",
+    "blob-polyfill": "^9.0.20240710",
     "bootstrap": "^5.2.2",
     "chalk": "^5.0.1",
     "classnames": "^2.3.2",
