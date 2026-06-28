@@ -39,6 +39,10 @@
                 </div>
             </div>
         </div>
+        <p class="mt-3 mb-0">
+            <x-fa icon="book" first></x-fa>
+            <a href="/docs/api#/operations/uploads.upload" target="_blank">{{ __('uploads.apidocs-link') }}</a>
+        </p>
         <?php   /** @var $images \Illuminate\Pagination\LengthAwarePaginator */ ?>
         <h3>
             {{ __('uploads.listheading') }}
