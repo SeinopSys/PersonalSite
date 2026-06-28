@@ -183,10 +183,10 @@ class DashboardController extends Controller
                 'freePct'    => $past30Window > 0 ? min(100, (int)round($past30FreeMin / $past30Window * 100)) : null,
             ];
 
-            // Friends toplist
-            $highlights  = $user->highlightTokens()->with('words')->get();
-            $friendsData = [];
-            foreach ($highlights as $token) {
+            // Highlights toplist
+            $highlightTokens = $user->highlightTokens()->with('words')->get();
+            $highlightsData  = [];
+            foreach ($highlightTokens as $token) {
                 $words = $token->words->pluck('word')->toArray();
                 if (empty($words)) {
                     $totalMin = 0;
@@ -201,17 +201,17 @@ class DashboardController extends Controller
                     );
                     $totalMin = array_sum($minutesByDate);
                 }
-                $friendsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin];
+                $highlightsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin, 'archived' => $token->archived];
             }
-            usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
+            usort($highlightsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 
-            $topFriends    = array_values(array_slice(array_filter($friendsData, fn($f) => $f['minutes'] > 0), 0, 10));
-            $noTimeFriends = array_values(array_filter($friendsData, fn($f) => $f['minutes'] === 0));
+            $topHighlights    = array_values(array_slice(array_filter($highlightsData, fn($h) => $h['minutes'] > 0), 0, 10));
+            $noTimeHighlights = array_values(array_filter($highlightsData, fn($h) => $h['minutes'] === 0 && !$h['archived']));
 
             return response()->json([
-                'rows'          => [$todayRow, $weekRow, $past30Row],
-                'friends'       => $topFriends,
-                'friendsNoTime' => $noTimeFriends,
+                'rows'              => [$todayRow, $weekRow, $past30Row],
+                'highlights'        => $topHighlights,
+                'highlightsNoTime'  => $noTimeHighlights,
             ]);
         } catch (\Exception) {
             return response()->json(['error' => 'fetch_failed']);
@@ -503,6 +503,21 @@ class DashboardController extends Controller
             'highlights.json',
             ['Content-Type' => 'application/json']
         );
+    }
+
+    public function archiveHighlight(string $id)
+    {
+        abort_unless(Permission::Sufficient('developer'), 403);
+
+        $token = CalendarHighlightToken::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $token->archived = !$token->archived;
+        $token->save();
+
+        $msg = $token->archived ? 'Token archived.' : 'Token unarchived.';
+        return redirect('/availability#highlights')->with('success', $msg)->with('open_highlight', $id);
     }
 
     public function importHighlights(Request $request)

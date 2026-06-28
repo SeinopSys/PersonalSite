@@ -190,12 +190,21 @@
                             <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
                         </form>
                     </div>
-                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('Delete this token and all its words?')">Delete token</button>
-                    </form>
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/archive">
+                            @csrf
+                            <button type="submit" class="btn btn-sm {{ $ht->archived ? 'btn-warning' : 'btn-outline-secondary' }}"
+                                    title="{{ $ht->archived ? 'Unarchive: show in dashboard no-time list' : 'Archive: hide from dashboard no-time list' }}">
+                                {{ $ht->archived ? 'Unarchive' : 'Archive' }}
+                            </button>
+                        </form>
+                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Delete this token and all its words?')">Delete token</button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="mb-3">

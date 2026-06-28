@@ -72,6 +72,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/dashboard/highlights', [DashboardController::class, 'storeHighlight']);
     Route::put('/dashboard/highlights/{tokenId}', [DashboardController::class, 'updateHighlight']);
     Route::post('/dashboard/highlights/{tokenId}/regenerate', [DashboardController::class, 'regenerateHighlight']);
+    Route::post('/dashboard/highlights/{tokenId}/archive', [DashboardController::class, 'archiveHighlight']);
     Route::delete('/dashboard/highlights/{tokenId}', [DashboardController::class, 'destroyHighlight']);
     Route::post('/dashboard/highlights/{tokenId}/words', [DashboardController::class, 'storeHighlightWord']);
     Route::delete('/dashboard/highlights/{tokenId}/words/{wordId}', [DashboardController::class, 'destroyHighlightWord']);
