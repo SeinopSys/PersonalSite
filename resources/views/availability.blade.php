@@ -166,17 +166,18 @@
     @php
         $collapseId = 'highlight-collapse-' . $ht->id;
         $hasError = $errors->getBag('words_'.$ht->id)->has('word');
+        $isOpen = $hasError || session('open_highlight') === $ht->id;
     @endphp
     <div class="accordion-item">
         <h2 class="accordion-header">
-            <button class="accordion-button {{ $hasError ? '' : 'collapsed' }}" type="button"
+            <button class="accordion-button {{ $isOpen ? '' : 'collapsed' }}" type="button"
                     data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
-                    aria-expanded="{{ $hasError ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
+                    aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
                 {{ $ht->label ?? '(unlabelled)' }}
                 <span class="text-muted small fw-normal ms-2"><span class="fa fa-clock me-1"></span>{{ $ht->created_at->format('Y-m-d H:i') }}</span>
             </button>
         </h2>
-        <div id="{{ $collapseId }}" class="accordion-collapse collapse {{ $hasError ? 'show' : '' }}"
+        <div id="{{ $collapseId }}" class="accordion-collapse collapse {{ $isOpen ? 'show' : '' }}"
              data-bs-parent="#highlights-accordion">
             <div class="accordion-body">
                 <div class="d-flex align-items-start gap-3 flex-wrap mb-3">

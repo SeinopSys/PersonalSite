@@ -402,7 +402,7 @@ class DashboardController extends Controller
         $token->label = $validated['label'] ?? null;
         $token->save();
 
-        return redirect('/availability#highlights')->with('success', 'Label updated.');
+        return redirect('/availability#highlights')->with('success', 'Label updated.')->with('open_highlight', $id);
     }
 
     public function regenerateHighlight(string $id)
@@ -458,7 +458,7 @@ class DashboardController extends Controller
             'word'     => $word,
         ]);
 
-        return redirect('/availability#highlights')->with('success', 'Word added.');
+        return redirect('/availability#highlights')->with('success', 'Word added.')->with('open_highlight', $tokenId);
     }
 
     public function destroyHighlightWord(string $tokenId, string $wordId)
@@ -474,7 +474,7 @@ class DashboardController extends Controller
             ->firstOrFail()
             ->delete();
 
-        return redirect('/availability#highlights')->with('success', 'Word removed.');
+        return redirect('/availability#highlights')->with('success', 'Word removed.')->with('open_highlight', $tokenId);
     }
 
     public function exportHighlights()
