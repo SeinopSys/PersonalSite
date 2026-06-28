@@ -129,36 +129,20 @@ class DashboardController extends Controller
                 $data['weekBusyBarPct']  = (int)round($weekBusyMin / $weekTotalMin * 100);
                 $data['weekSleepBarPct'] = (int)round($weekSleepMin / $weekTotalMin * 100);
 
-                // Past 30 days — aggregate bar + per-day chart data
+                // Past 30 days — aggregate stats
                 $past30FreeMin = 0;
                 $past30WorkMin = 0;
                 $past30Window  = 0;
-                $past30Data    = [];
                 for ($i = 29; $i >= 0; $i--) {
                     $day    = $now->copy()->subDays($i);
                     $dk     = $day->format('Y-m-d');
                     $window = $service->dayWindowMinutes($dowNames[$day->dayOfWeek], $settings);
                     $past30Window += $window;
-                    if ($window === 0) {
-                        $past30Data[] = ['date' => $dk, 'dow' => $day->format('D'), 'busyPct' => null, 'workPct' => null];
-                    } else {
-                        $freeMin = $service->sumSlotMinutes($slotsByDate[$dk] ?? []);
-                        $workMin = $workMinsByDate[$dk] ?? 0;
-                        $busyMin = max(0, $window - $freeMin);
-                        $past30FreeMin += $freeMin;
-                        $past30WorkMin += $workMin;
-                        $past30Data[] = [
-                            'date'    => $dk,
-                            'dow'     => $day->format('D'),
-                            'busyPct' => min(100, (int)round($busyMin / $window * 100)),
-                            'workPct' => min(100, (int)round($workMin / $window * 100)),
-                            '_window' => $window,
-                            '_busyMin' => $busyMin,
-                            '_workMin' => $workMin,
-                        ];
+                    if ($window > 0) {
+                        $past30FreeMin += $service->sumSlotMinutes($slotsByDate[$dk] ?? []);
+                        $past30WorkMin += $workMinsByDate[$dk] ?? 0;
                     }
                 }
-                $data['past30Data']    = $past30Data;
                 $past30BusyMin  = max(0, $past30Window - $past30FreeMin - $past30WorkMin);
                 $past30TotalMin = 30 * 1440;
                 $past30SleepMin = $past30TotalMin - $past30Window;
@@ -215,11 +199,15 @@ class DashboardController extends Controller
         if ($data['uploadingEnabled']) {
             $usedBytes  = (int)$user->uploads()->sum('size');
             $quotaBytes = (int)config('app.upload_quota_bytes');
-            $data['usedSpace']  = Core::ReadableFilesize($usedBytes);
-            $data['quotaSpace'] = Core::ReadableFilesize($quotaBytes);
-            $data['usedPct']    = $quotaBytes > 0
+            $data['usedSpace']    = Core::ReadableFilesize($usedBytes);
+            $data['quotaSpace']   = Core::ReadableFilesize($quotaBytes);
+            $data['usedPct']      = $quotaBytes > 0
                 ? min(100, (int)round($usedBytes / $quotaBytes * 100))
                 : 0;
+            $data['recentUploads'] = $user->uploads()
+                ->orderByDesc('uploaded_at')
+                ->limit(4)
+                ->get();
         }
 
         return view('dashboard', $data);

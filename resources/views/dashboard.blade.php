@@ -34,162 +34,100 @@
                     @if(!$user->calendar_url)
                         <p class="text-muted mb-0">
                             No calendar URL configured.
-                            <a href="/availability">Set it up on the Availability page</a> to see your free/busy stats here.
+                            <a href="/availability">Set it up on the Availability page</a> to see your free/busy stats
+                            here.
                         </p>
                     @elseif(isset($availabilityFetchError))
                         <p class="text-danger mb-0">
-                            <x-fa icon="exclamation-circle" first></x-fa>Failed to fetch calendar data.
+                            <x-fa icon="exclamation-circle" first></x-fa>
+                            Failed to fetch calendar data.
                         </p>
                     @else
-                        {{-- Today --}}
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="fw-semibold">Today</span>
-                                @if($todayFreeFormatted === null)
-                                    <span class="text-muted">Not available</span>
-                                @else
-                                    <span>
-                                        {{ $todayFreeFormatted }} ({{ $todayFreePct }}%) free
-                                        @if(($todayWorkPct ?? 0) > 0)
-                                            &middot; <span class="text-primary">{{ $todayWorkFormatted }} ({{ $todayWorkPct }}%) work</span>
-                                        @endif
-                                        @if(($todayBusyPct ?? 0) > 0)
-                                            &middot; <span class="text-danger">{{ $todayBusyFormatted }} ({{ $todayBusyPct }}%) busy</span>
-                                        @endif
-                                        @if(($todaySleepPct ?? 0) > 0)
-                                            &middot; <span class="text-secondary">{{ $todaySleepFormatted }} ({{ $todaySleepPct }}%) sleep</span>
-                                        @endif
-                                    </span>
-                                @endif
+                        @php
+                            $fmt = fn(?string $t, ?int $p = null) => $t !== null ? ($p !== null ? "$t ($p%)" : $t) : "$p%";
+                            $availRows = [
+                                [
+                                    'title'       => 'Today',
+                                    'notAvail'    => $todayFreeFormatted === null,
+                                    'workLabel'   => $fmt($todayWorkFormatted ?? null),
+                                    'busyLabel'   => $fmt($todayBusyFormatted ?? null),
+                                    'sleepLabel'  => $fmt($todaySleepFormatted ?? null),
+                                    'freeLabel'   => $fmt($todayFreeFormatted ?? null),
+                                    'workPct'     => $todayWorkPct ?? 0,
+                                    'busyPct'     => $todayBusyPct ?? 0,
+                                    'sleepPct'    => $todaySleepPct ?? 0,
+                                    'workBarPct'  => $todayWorkBarPct ?? 0,
+                                    'busyBarPct'  => $todayBusyBarPct ?? 0,
+                                    'sleepBarPct' => $todaySleepBarPct ?? 0,
+                                ],
+                                [
+                                    'title'       => 'This week',
+                                    'notAvail'    => $weekFreePct === null,
+                                    'workLabel'   => $fmt(null, $weekWorkPct ?? 0),
+                                    'busyLabel'   => $fmt(null, $weekBusyPct ?? 0),
+                                    'sleepLabel'  => $fmt(null, $weekSleepPct ?? 0),
+                                    'freeLabel'   => $fmt(null, $weekFreePct ?? 0),
+                                    'workPct'     => $weekWorkPct ?? 0,
+                                    'busyPct'     => $weekBusyPct ?? 0,
+                                    'sleepPct'    => $weekSleepPct ?? 0,
+                                    'workBarPct'  => $weekWorkBarPct ?? 0,
+                                    'busyBarPct'  => $weekBusyBarPct ?? 0,
+                                    'sleepBarPct' => $weekSleepBarPct ?? 0,
+                                ],
+                                [
+                                    'title'       => 'Past 30 days',
+                                    'notAvail'    => $past30FreePct === null,
+                                    'workLabel'   => $fmt(null, $past30WorkPct ?? 0),
+                                    'busyLabel'   => $fmt(null, $past30BusyPct ?? 0),
+                                    'sleepLabel'  => $fmt(null, $past30SleepPct ?? 0),
+                                    'freeLabel'   => $fmt(null, $past30FreePct ?? 0),
+                                    'workPct'     => $past30WorkPct ?? 0,
+                                    'busyPct'     => $past30BusyPct ?? 0,
+                                    'sleepPct'    => $past30SleepPct ?? 0,
+                                    'workBarPct'  => $past30WorkBarPct ?? 0,
+                                    'busyBarPct'  => $past30BusyBarPct ?? 0,
+                                    'sleepBarPct' => $past30SleepBarPct ?? 0,
+                                ],
+                            ];
+                        @endphp
+                        @foreach($availRows as $row)
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="fw-semibold">{{ $row['title'] }}</span>
+                                    @if($row['notAvail'])
+                                        <span class="text-muted">Not available</span>
+                                    @else
+                                        <span>
+                                            @if($row['sleepPct'] > 0)
+                                                <span>{{ $row['sleepLabel'] }} sleep</span> &middot;
+                                            @endif
+                                            @if($row['workPct'] > 0)
+                                                <span class="text-primary">{{ $row['workLabel'] }} work</span> &middot;
+                                            @endif
+                                            @if($row['busyPct'] > 0)
+                                                <span class="text-danger">{{ $row['busyLabel'] }} busy</span> &middot;
+                                            @endif
+                                            <span class="text-secondary">{{ $row['freeLabel'] }} free</span>
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="progress" style="height:8px">
+                                    @if($row['sleepBarPct'] > 0)
+                                        <div class="progress-bar bg-secondary" style="width:{{ $row['sleepBarPct'] }}%"
+                                             title="sleep"></div>
+                                    @endif
+                                    @if($row['workBarPct'] > 0)
+                                        <div class="progress-bar bg-primary" style="width:{{ $row['workBarPct'] }}%"
+                                             title="{{ $row['workPct'] }}% work"></div>
+                                    @endif
+                                    @if($row['busyBarPct'] > 0)
+                                        <div class="progress-bar bg-danger" style="width:{{ $row['busyBarPct'] }}%"
+                                             title="{{ $row['busyPct'] }}% busy"></div>
+                                    @endif
+                                </div>
                             </div>
-                            <div class="progress" style="height:8px">
-                                @if(($todayWorkBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-primary" style="width:{{ $todayWorkBarPct }}%"
-                                         title="{{ $todayWorkPct ?? 0 }}% work"></div>
-                                @endif
-                                @if(($todayBusyBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-danger" style="width:{{ $todayBusyBarPct }}%"
-                                         title="{{ $todayBusyPct ?? 0 }}% busy"></div>
-                                @endif
-                                @if(($todaySleepBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-secondary" style="width:{{ $todaySleepBarPct }}%"
-                                         title="sleep"></div>
-                                @endif
-                            </div>
-                        </div>
+                        @endforeach
 
-                        {{-- This week --}}
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="fw-semibold">This week</span>
-                                @if($weekFreePct === null)
-                                    <span class="text-muted">Not available</span>
-                                @else
-                                    <span>
-                                        {{ $weekFreePct }}% free
-                                        @if(($weekWorkPct ?? 0) > 0)
-                                            &middot; <span class="text-primary">{{ $weekWorkPct }}% work</span>
-                                        @endif
-                                        @if(($weekBusyPct ?? 0) > 0)
-                                            &middot; <span class="text-danger">{{ $weekBusyPct }}% busy</span>
-                                        @endif
-                                        @if(($weekSleepPct ?? 0) > 0)
-                                            &middot; <span class="text-secondary">{{ $weekSleepPct }}% sleep</span>
-                                        @endif
-                                    </span>
-                                @endif
-                            </div>
-                            <div class="progress" style="height:8px">
-                                @if(($weekWorkBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-primary" style="width:{{ $weekWorkBarPct }}%"
-                                         title="{{ $weekWorkPct ?? 0 }}% work"></div>
-                                @endif
-                                @if(($weekBusyBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-danger" style="width:{{ $weekBusyBarPct }}%"
-                                         title="{{ $weekBusyPct ?? 0 }}% busy"></div>
-                                @endif
-                                @if(($weekSleepBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-secondary" style="width:{{ $weekSleepBarPct }}%"
-                                         title="sleep"></div>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Past 30 days --}}
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="fw-semibold">Past 30 days</span>
-                                @if($past30FreePct === null)
-                                    <span class="text-muted">Not available</span>
-                                @else
-                                    <span>
-                                        {{ $past30FreePct }}% free
-                                        @if(($past30WorkPct ?? 0) > 0)
-                                            &middot; <span class="text-primary">{{ $past30WorkPct }}% work</span>
-                                        @endif
-                                        @if(($past30BusyPct ?? 0) > 0)
-                                            &middot; <span class="text-danger">{{ $past30BusyPct }}% busy</span>
-                                        @endif
-                                        @if(($past30SleepPct ?? 0) > 0)
-                                            &middot; <span class="text-secondary">{{ $past30SleepPct }}% sleep</span>
-                                        @endif
-                                    </span>
-                                @endif
-                            </div>
-                            <div class="progress" style="height:8px">
-                                @if(($past30WorkBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-primary" style="width:{{ $past30WorkBarPct }}%"
-                                         title="{{ $past30WorkPct ?? 0 }}% work"></div>
-                                @endif
-                                @if(($past30BusyBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-danger" style="width:{{ $past30BusyBarPct }}%"
-                                         title="{{ $past30BusyPct ?? 0 }}% busy"></div>
-                                @endif
-                                @if(($past30SleepBarPct ?? 0) > 0)
-                                    <div class="progress-bar bg-secondary" style="width:{{ $past30SleepBarPct }}%"
-                                         title="sleep"></div>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Past 30 days bar chart --}}
-                        <div class="small text-muted mb-1">Busiest days — past 30 days</div>
-                        <div style="display:flex;align-items:stretch;height:56px;gap:1px">
-                            @foreach($past30Data as $d)
-                                @php
-                                    $pct     = $d['busyPct'];
-                                    $wpct    = $d['workPct'];
-                                    $unavail = $pct === null;
-                                    // All columns are 56px; scale everything relative to full 24h (1440 min)
-                                    $sleepPx = $unavail ? 56 : (int)round((1440 - $d['_window']) / 1440 * 56);
-                                @endphp
-                                @if($unavail)
-                                    <div style="flex:1;min-width:1px;background:#6c757d;border-radius:2px 2px 0 0"
-                                         title="{{ $d['dow'] }} {{ $d['date'] }}: not available"></div>
-                                @else
-                                    @php
-                                        $busyPx    = (int)round(max(0, $d['_busyMin'] ?? 0) / 1440 * 56);
-                                        $workPx    = (int)round(($d['_workMin'] ?? 0) / 1440 * 56);
-                                        $otherBusy = max(0, $busyPx - $workPx);
-                                        $label     = "{$d['dow']} {$d['date']}: {$pct}% busy" . ($wpct > 0 ? " ({$wpct}% work)" : '');
-                                    @endphp
-                                    <div style="flex:1;min-width:1px;position:relative" title="{{ $label }}">
-                                        {{-- Sleep band at top --}}
-                                        @if($sleepPx > 0)
-                                            <div style="position:absolute;top:0;left:0;right:0;height:{{ $sleepPx }}px;background:#6c757d;border-radius:2px 2px 0 0"></div>
-                                        @endif
-                                        {{-- Other-busy band above work --}}
-                                        @if($otherBusy > 0)
-                                            <div style="position:absolute;bottom:{{ $workPx }}px;left:0;right:0;height:{{ $otherBusy }}px;background:#dc3545"></div>
-                                        @endif
-                                        {{-- Work band at the bottom --}}
-                                        @if($workPx > 0)
-                                            <div style="position:absolute;bottom:0;left:0;right:0;height:{{ $workPx }}px;background:#0d6efd"></div>
-                                        @endif
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
                         {{-- Friends toplist --}}
                         @if(!empty($friendsData))
                             @php
@@ -202,7 +140,7 @@
                                     return sprintf('%d:%02d', intdiv($m, 60), $m % 60);
                                 };
                             @endphp
-                            <div class="small text-muted mb-1 mt-3">Time with friends — past 30 days</div>
+                            <div class="small fw-semibold mb-1 mt-3">Top highlights, past 30 days</div>
                             <ol class="list-unstyled mb-0 small">
                                 @foreach($friendsData as $friend)
                                     <li class="d-flex justify-content-between">
@@ -243,6 +181,61 @@
                             <div class="progress-bar {{ $barClass }}" style="width:{{ $usedPct }}%"></div>
                         </div>
                         <div class="small text-muted">{{ $usedPct }}% of quota used</div>
+                        @if($recentUploads->isNotEmpty())
+                            <div class="small fw-semibold mb-2 mt-3">Recent uploads</div>
+                            <div class="d-flex justify-content-between gap-2">
+                                @foreach($recentUploads as $upload)
+                                    <a href="#" class="dashboard-upload-preview"
+                                       data-full="{{ $upload->host }}/{{ $upload->filename }}.{{ $upload->extension }}"
+                                       data-name="{{ $upload->orig_filename }}"
+                                       title="{{ $upload->orig_filename }}"
+                                       style="flex:1;min-width:0;aspect-ratio:1;display:block">
+                                        <img src="{{ $upload->host }}/{{ $upload->filename }}p.png"
+                                             alt="{{ $upload->orig_filename }}"
+                                             style="width:100%;height:100%;object-fit:cover;border-radius:4px">
+                                    </a>
+                                @endforeach
+                            </div>
+
+                            {{-- Preview modal --}}
+                            <div class="modal fade" id="uploadPreviewModal" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title text-truncate" id="uploadPreviewModalLabel"></h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body p-0 text-center bg-dark">
+                                            <img id="uploadPreviewImg" src="" alt=""
+                                                 style="max-width:100%;max-height:80vh;object-fit:contain">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <a id="uploadPreviewOpen" href="#" target="_blank" class="btn btn-primary">Open
+                                                full image</a>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const modal = new bootstrap.Modal(document.getElementById('uploadPreviewModal'));
+                                    document.querySelectorAll('.dashboard-upload-preview').forEach(function (el) {
+                                        el.addEventListener('click', function (e) {
+                                            e.preventDefault();
+                                            const full = el.dataset.full, name = el.dataset.name;
+                                            document.getElementById('uploadPreviewImg').src = full;
+                                            document.getElementById('uploadPreviewImg').alt = name;
+                                            document.getElementById('uploadPreviewOpen').href = full;
+                                            document.getElementById('uploadPreviewModalLabel').textContent = name;
+                                            modal.show();
+                                        });
+                                    });
+                                })();
+                            </script>
+                        @endif
                     @endif
                 </div>
             </div>
