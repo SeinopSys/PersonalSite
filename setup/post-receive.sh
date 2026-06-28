@@ -18,10 +18,16 @@ echo "$ $CMD_FETCH"
 eval ${CMD_FETCH}
 echo "$ $CMD_COMPOSER"
 eval ${CMD_COMPOSER}
-echo "$ $CMD_NPM"
-eval ${CMD_NPM}
-echo "$ $CMD_BUILD"
-eval ${CMD_BUILD}
+FRONTEND_CHANGED=$(git diff --name-only "$oldrev" "$newrev" | grep -E '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)')
+if [ -n "$FRONTEND_CHANGED" ]; then
+  echo "Frontend files changed, running install + build"
+  echo "$ $CMD_NPM"
+  eval ${CMD_NPM}
+  echo "$ $CMD_BUILD"
+  eval ${CMD_BUILD}
+else
+  echo "No frontend files changed, skipping install + build"
+fi
 echo "$ $CMD_LARAVEL_OPTIMIZE"
 eval ${CMD_LARAVEL_OPTIMIZE}
 echo "$ $CMD_MIGRATE"
