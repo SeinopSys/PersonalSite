@@ -9,6 +9,8 @@ use App\Util\Core;
 use App\Util\UploadUtil;
 use App\Util\Permission;
 use App\Util\Response;
+use Dedoc\Scramble\Attributes\BodyParameter;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -169,6 +171,12 @@ class UploadsController extends Controller
         }
     }
 
+    #[BodyParameter('upload_key', 'Base64-encoded upload key assigned to your account.', required: true, type: 'string')]
+    #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG.', required: true)]
+    #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
+    #[ApiResponse(status: 200, type: 'array{full: string, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail.')]
+    #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
+    #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
     public function upload(Request $request)
     {
         $validation_rules = [

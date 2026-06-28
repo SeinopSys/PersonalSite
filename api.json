@@ -7,7 +7,8 @@
     },
     "servers": [
         {
-            "url": "http://seinopsys.lc/api"
+            "url": "http://seinopsys.lc",
+            "description": "Local"
         }
     ],
     "paths": {
@@ -156,6 +157,104 @@
                                     },
                                     "required": [
                                         "error"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/upload": {
+            "post": {
+                "operationId": "uploads.upload",
+                "tags": [
+                    "Uploads"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "upload_key": {
+                                        "type": "string",
+                                        "description": "Base64-encoded upload key assigned to your account."
+                                    },
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG."
+                                    },
+                                    "domain": {
+                                        "type": "string",
+                                        "description": "Optional secondary domain to serve the image from."
+                                    }
+                                },
+                                "required": [
+                                    "upload_key",
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "URLs for the uploaded image and its preview thumbnail.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "full": {
+                                            "type": "string"
+                                        },
+                                        "preview": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "full",
+                                        "preview"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation errors keyed by field name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing upload key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": ""
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }

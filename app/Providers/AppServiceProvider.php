@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
@@ -42,5 +44,9 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
 
         Gate::define('viewApiDocs', fn () => true);
+
+        Scramble::routes(function (Route $route) {
+            return str_starts_with($route->uri, 'api/') || $route->uri === 'upload';
+        });
     }
 }
