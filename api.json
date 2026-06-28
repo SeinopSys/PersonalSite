@@ -179,7 +179,7 @@
                                 "properties": {
                                     "upload_key": {
                                         "type": "string",
-                                        "description": "Base64-encoded upload key assigned to your account."
+                                        "description": "Secret upload key from your account settings."
                                     },
                                     "file": {
                                         "type": "string",
@@ -224,15 +224,14 @@
                         }
                     },
                     "422": {
-                        "description": "500 mib in bytes",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "message": {
-                                            "type": "string",
-                                            "const": "Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again."
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
