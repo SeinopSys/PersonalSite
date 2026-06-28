@@ -202,7 +202,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image and its preview thumbnail.",
+                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -214,6 +214,15 @@
                                         "full": {
                                             "type": "string"
                                         },
+                                        "full_png": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "full_jpg": {
+                                            "type": "string"
+                                        },
                                         "preview": {
                                             "type": "string"
                                         }
@@ -221,6 +230,8 @@
                                     "required": [
                                         "id",
                                         "full",
+                                        "full_png",
+                                        "full_jpg",
                                         "preview"
                                     ]
                                 }

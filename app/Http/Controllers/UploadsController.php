@@ -174,7 +174,7 @@ class UploadsController extends Controller
     #[BodyParameter('upload_key', 'Secret upload key from your account settings.', required: true, type: 'string')]
     #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG.', required: true)]
     #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail.')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
     public function upload(Request $request)
@@ -258,6 +258,8 @@ class UploadsController extends Controller
         return [
             'id' => $upload->id,
             'full' => "{$upload->host}/$return_filename",
+            'full_png' => $not_animated ? "{$upload->host}/{$filenames['full']}" : null,
+            'full_jpg' => "{$upload->host}/{$filenames['jpeg']}",
             'preview' => "{$upload->host}/{$filenames['preview']}",
         ];
     }
