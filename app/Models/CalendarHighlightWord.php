@@ -13,7 +13,7 @@ class CalendarHighlightWord extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = ['token_id', 'user_id', 'word'];
+    protected $fillable = ['token_id', 'user_id', 'word', 'created_at', 'updated_at'];
 
     public function highlightToken(): BelongsTo
     {

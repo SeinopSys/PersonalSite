@@ -150,6 +150,17 @@
         Query: <code>GET /api/availability/{{ $user->name }}?token=&lt;token&gt;</code>
     </p>
 
+    @php
+        $sortBase = '/availability?#highlights';
+        $mkSortUrl = fn(string $s) => '/availability?sort='.$s.'&dir='.($sort === $s ? ($dir === 'asc' ? 'desc' : 'asc') : 'asc').'#highlights';
+        $sortIcon  = fn(string $s) => $sort === $s ? '<span class="fa fa-chevron-'.($dir === 'asc' ? 'up' : 'down').' fa-xs ms-1"></span>' : '';
+    @endphp
+    <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+        Sort:
+        <a href="{{ $mkSortUrl('created_at') }}" class="link-secondary {{ $sort === 'created_at' ? 'fw-semibold text-body' : '' }}">Date{!! $sortIcon('created_at') !!}</a>
+        <a href="{{ $mkSortUrl('label') }}" class="link-secondary {{ $sort === 'label' ? 'fw-semibold text-body' : '' }}">Name{!! $sortIcon('label') !!}</a>
+    </div>
+
     <div class="accordion mb-3" id="highlights-accordion">
     @foreach($highlights as $ht)
     @php
@@ -162,6 +173,7 @@
                     data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
                     aria-expanded="{{ $hasError ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
                 {{ $ht->label ?? '(unlabelled)' }}
+                <span class="text-muted small fw-normal ms-2"><span class="fa fa-clock me-1"></span>{{ $ht->created_at->format('Y-m-d H:i') }}</span>
             </button>
         </h2>
         <div id="{{ $collapseId }}" class="accordion-collapse collapse {{ $hasError ? 'show' : '' }}"
@@ -250,5 +262,19 @@
                placeholder="New token label (optional)" maxlength="255">
         <button type="submit" class="btn btn-primary">Create token</button>
     </form>
+
+    <div class="d-flex gap-2 align-items-center flex-wrap mt-3">
+        <a href="/dashboard/highlights/export" class="btn btn-outline-secondary btn-sm">Export JSON</a>
+        <form method="POST" action="/dashboard/highlights/import"
+              enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+            @csrf
+            <input type="file" name="file" class="form-control form-control-sm @error('file') is-invalid @enderror"
+                   accept=".json" style="max-width:220px" required>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Import JSON</button>
+        </form>
+    </div>
+    @error('file')
+        <div class="text-danger small mt-1">{{ $message }}</div>
+    @enderror
     @endif
 @endsection

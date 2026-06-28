@@ -6,6 +6,7 @@ use App\Models\CalendarHighlightToken;
 use App\Models\CalendarHighlightWord;
 use App\Services\AvailabilityService;
 use App\Util\Core;
+use App\Util\JSON;
 use App\Util\Permission;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -223,8 +224,15 @@ class DashboardController extends Controller
         ];
 
         if (Permission::Sufficient('developer')) {
-            $data['highlights'] = $user->highlightTokens()->with('words')->get();
+            $sort = $request->input('sort', 'created_at');
+            $dir  = $request->input('dir', 'asc');
+            if (!in_array($sort, ['created_at', 'label'])) $sort = 'created_at';
+            if (!in_array($dir, ['asc', 'desc'])) $dir = 'asc';
+
+            $data['highlights']  = $user->highlightTokens()->with('words')->orderBy($sort, $dir)->get();
             $data['isDeveloper'] = true;
+            $data['sort']        = $sort;
+            $data['dir']         = $dir;
         }
 
         return view('availability', $data);
@@ -412,5 +420,107 @@ class DashboardController extends Controller
             ->delete();
 
         return redirect('/availability#highlights')->with('success', 'Word removed.');
+    }
+
+    public function exportHighlights()
+    {
+        abort_unless(Permission::Sufficient('developer'), 403);
+
+        $user = Auth::user();
+        $highlights = $user->highlightTokens()->with('words')->get();
+        $data = $highlights->map(fn($ht) => [
+            'label'      => $ht->label,
+            'token'      => $ht->token_base64,
+            'created_at' => $ht->created_at->toIso8601String(),
+            'words'      => $ht->words->pluck('word')->values()->toArray(),
+        ])->toArray();
+
+        return response()->streamDownload(
+            function () use ($data) {
+                echo JSON::Encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            },
+            'highlights.json',
+            ['Content-Type' => 'application/json']
+        );
+    }
+
+    public function importHighlights(Request $request)
+    {
+        abort_unless(Permission::Sufficient('developer'), 403);
+
+        $request->validate(['file' => 'required|file|mimes:json,txt|max:1024']);
+
+        $contents = file_get_contents($request->file('file')->getRealPath());
+        $data = JSON::Decode($contents);
+
+        if (!is_array($data)) {
+            return back()->withErrors(['file' => 'Invalid JSON: expected an array of highlight objects.']);
+        }
+
+        $userId = Auth::id();
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($data as $item) {
+            if (!is_array($item) || empty($item['token']) || !is_string($item['token'])) {
+                $skipped++;
+                continue;
+            }
+
+            if (!CalendarHighlightToken::isValidBase64Url($item['token'])) {
+                $skipped++;
+                continue;
+            }
+
+            $bytes = CalendarHighlightToken::decodeBase64Url($item['token']);
+            if ($bytes === null) {
+                $skipped++;
+                continue;
+            }
+
+            $exists = CalendarHighlightToken::whereRaw("token = decode(?, 'hex')", [bin2hex($bytes)])
+                ->where('user_id', $userId)
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $label = isset($item['label']) && is_string($item['label'])
+                ? substr($item['label'], 0, 255)
+                : null;
+
+            $createdAt = null;
+            if (!empty($item['created_at']) && is_string($item['created_at'])) {
+                try { $createdAt = Carbon::parse($item['created_at']); } catch (\Exception) {}
+            }
+
+            $token = CalendarHighlightToken::create([
+                'user_id'    => $userId,
+                'token'      => $bytes,
+                'label'      => $label,
+                'created_at' => $createdAt ?? now(),
+            ]);
+
+            foreach ($item['words'] ?? [] as $word) {
+                if (!is_string($word) || $word === '') {
+                    continue;
+                }
+                $word = substr($word, 0, 255);
+                if (!CalendarHighlightWord::where('user_id', $userId)->where('word', $word)->exists()) {
+                    CalendarHighlightWord::create([
+                        'token_id' => $token->id,
+                        'user_id'  => $userId,
+                        'word'     => $word,
+                    ]);
+                }
+            }
+
+            $imported++;
+        }
+
+        return redirect('/availability#highlights')
+            ->with('success', "Import complete: $imported created, $skipped skipped.");
     }
 }

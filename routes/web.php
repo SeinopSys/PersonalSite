@@ -72,6 +72,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::delete('/dashboard/highlights/{tokenId}', [DashboardController::class, 'destroyHighlight']);
     Route::post('/dashboard/highlights/{tokenId}/words', [DashboardController::class, 'storeHighlightWord']);
     Route::delete('/dashboard/highlights/{tokenId}/words/{wordId}', [DashboardController::class, 'destroyHighlightWord']);
+    Route::get('/dashboard/highlights/export', [DashboardController::class, 'exportHighlights']);
+    Route::post('/dashboard/highlights/import', [DashboardController::class, 'importHighlights']);
     Route::get('/uploads', [UploadsController::class, 'index']);
     Route::post('/uploads/regen', [UploadsController::class, 'regen']);
     Route::post('/uploads/setting/{action}', [UploadsController::class, 'setting']);

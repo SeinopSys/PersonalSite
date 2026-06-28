@@ -15,7 +15,7 @@ class CalendarHighlightToken extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = ['user_id', 'token', 'label'];
+    protected $fillable = ['user_id', 'token', 'label', 'created_at', 'updated_at'];
 
     protected $casts = ['token' => ByteaCast::class];
 
