@@ -129,7 +129,7 @@
                         @endforeach
 
                         {{-- Friends toplist --}}
-                        @if(!empty($friendsData))
+                        @if(isset($friendsData) && count($friendsData) > 0)
                             @php
                                 $formatFriendMin = function(int $m): string {
                                     if ($m >= 1440) {
@@ -140,12 +140,12 @@
                                     return sprintf('%d:%02d', intdiv($m, 60), $m % 60);
                                 };
                             @endphp
-                            <div class="small fw-semibold mb-1 mt-3">Top highlights, past 30 days</div>
+                            <div class="small fw-semibold mb-1 mt-3">Top highlights (past 30 days)</div>
                             <ol class="list-unstyled mb-0 small">
                                 @foreach($friendsData as $friend)
-                                    <li class="d-flex justify-content-between">
+                                    <li class="d-flex justify-content-between{{ $friend['minutes'] === 0 ? ' text-muted' : '' }}">
                                         <span>{{ $friend['label'] }}</span>
-                                        <span class="text-muted ms-2">{{ $formatFriendMin($friend['minutes']) }}</span>
+                                        <span class="ms-2">{{ $formatFriendMin($friend['minutes']) }}</span>
                                     </li>
                                 @endforeach
                             </ol>

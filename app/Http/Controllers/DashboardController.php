@@ -172,20 +172,19 @@ class DashboardController extends Controller
                 foreach ($highlights as $token) {
                     $words = $token->words->pluck('word')->toArray();
                     if (empty($words)) {
-                        continue;
+                        $totalMin = 0;
+                    } else {
+                        $tokenWords    = $words;
+                        $minutesByDate = $service->computeFilteredMinutesByDate(
+                            $events, [],
+                            $rangeStart->copy()->subDay(),
+                            $rangeEnd->copy()->addDay(),
+                            $tz,
+                            fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w))
+                        );
+                        $totalMin = array_sum($minutesByDate);
                     }
-                    $tokenWords    = $words;
-                    $minutesByDate = $service->computeFilteredMinutesByDate(
-                        $events, $settings,
-                        $rangeStart->copy()->subDay(),
-                        $rangeEnd->copy()->addDay(),
-                        $tz,
-                        fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w))
-                    );
-                    $totalMin = array_sum($minutesByDate);
-                    if ($totalMin > 0) {
-                        $friendsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin];
-                    }
+                    $friendsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin];
                 }
                 usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
                 $data['friendsData'] = $friendsData;
