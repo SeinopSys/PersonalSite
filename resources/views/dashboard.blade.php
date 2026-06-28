@@ -66,7 +66,7 @@
                             </ol>
                             <div id="highlight-no-time-section" class="d-none">
                                 <div class="small fw-semibold mb-1 mt-3 text-muted">No time logged</div>
-                                <ol id="highlight-no-time-list" class="list-unstyled mb-0 small text-muted"></ol>
+                                <p id="highlight-no-time-list" class="mb-0 small text-muted"></p>
                             </div>
                         @endif
                     @endif

@@ -111,8 +111,7 @@ if (availEl) {
       const noTimeListEl = document.getElementById('highlight-no-time-list');
       if (noTimeSectionEl && noTimeListEl && data.highlightsNoTime) {
         if (data.highlightsNoTime.length > 0) {
-          noTimeListEl.innerHTML = data.highlightsNoTime.map(f => `
-            <li>${esc(f.label)}</li>`).join('');
+          noTimeListEl.textContent = data.highlightsNoTime.map(f => f.label).join(', ');
           noTimeSectionEl.classList.remove('d-none');
         }
       }
