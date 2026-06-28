@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 class DashboardController extends Controller
 {
     private const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    private const PAST_DAYS = 90;
 
     public function __construct()
     {
@@ -30,6 +31,7 @@ class DashboardController extends Controller
         $data = ['title' => __('global.dashboard'), 'js' => ['dashboard']];
 
         $data['hasCalendar'] = !empty($user->calendar_url);
+        $data['pastDays'] = self::PAST_DAYS;
         if ($data['hasCalendar']) {
             $data['highlightLabels'] = $user->highlightTokens()
                 ->orderBy('label')
@@ -57,7 +59,7 @@ class DashboardController extends Controller
             $settings = $user->availability_settings ?? [];
             $now      = Carbon::now($tz);
 
-            $past30Start = $now->copy()->subDays(29)->startOfDay();
+            $past30Start = $now->copy()->subDays(self::PAST_DAYS - 1)->startOfDay();
             $weekEnd     = $now->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
             $rangeStart  = $past30Start;
             $rangeEnd    = $weekEnd;
@@ -148,11 +150,11 @@ class DashboardController extends Controller
                 'freePct'    => $weekWindow > 0 ? min(100, (int)round($weekFreeMin / $weekWindow * 100)) : null,
             ];
 
-            // Past 30 days
+            // Past N days
             $past30FreeMin = 0;
             $past30WorkMin = 0;
             $past30Window  = 0;
-            for ($i = 29; $i >= 0; $i--) {
+            for ($i = self::PAST_DAYS - 1; $i >= 0; $i--) {
                 $day    = $now->copy()->subDays($i);
                 $dk     = $day->format('Y-m-d');
                 $window = $service->dayWindowMinutes($dowNames[$day->dayOfWeek], $settings);
@@ -163,10 +165,10 @@ class DashboardController extends Controller
                 }
             }
             $past30BusyMin  = max(0, $past30Window - $past30FreeMin - $past30WorkMin);
-            $past30TotalMin = 30 * 1440;
+            $past30TotalMin = self::PAST_DAYS * 1440;
             $past30SleepMin = $past30TotalMin - $past30Window;
             $past30Row = [
-                'title'      => 'Past 30 days',
+                'title'      => 'Past ' . self::PAST_DAYS . ' days',
                 'notAvail'   => $past30Window === 0,
                 'sleepLabel' => $hhmm($past30SleepMin),
                 'sleepPct'   => (int)round($past30SleepMin / $past30TotalMin * 100),
@@ -204,8 +206,9 @@ class DashboardController extends Controller
             usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 
             return response()->json([
-                'rows'    => [$todayRow, $weekRow, $past30Row],
-                'friends' => $friendsData,
+                'rows'     => [$todayRow, $weekRow, $past30Row],
+                'friends'  => $friendsData,
+                'pastDays' => self::PAST_DAYS,
             ]);
         } catch (\Exception) {
             return response()->json(['error' => 'fetch_failed']);

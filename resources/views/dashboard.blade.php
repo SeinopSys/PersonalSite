@@ -40,7 +40,7 @@
                     @else
                         <div id="avail-stats">
                             {{-- Skeleton rows --}}
-                            @foreach(['Today', 'This week', 'Past 30 days'] as $i => $rowTitle)
+                            @foreach(['Today', 'This week', 'Past ' . $pastDays . ' days'] as $i => $rowTitle)
                                 <div class="mb-3">
                                     <div class="d-flex justify-content-between small mb-1">
                                         <span class="fw-semibold">{{ $rowTitle }}</span>
@@ -54,7 +54,7 @@
 
                             {{-- Friends skeleton --}}
                             @if(!empty($highlightLabels))
-                                <div class="small fw-semibold mb-1 mt-3">Top highlights (past 30 days)</div>
+                                <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
                                 <ol class="list-unstyled mb-0 small">
                                     @foreach($highlightLabels as $label)
                                         <li class="d-flex justify-content-between">

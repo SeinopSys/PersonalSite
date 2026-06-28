@@ -28,6 +28,7 @@ interface AvailResponse {
   error?: string;
   rows?: AvailRow[];
   friends?: Friend[];
+  pastDays?: number;
 }
 
 interface Upload { preview: string; full: string; name: string; }
@@ -97,8 +98,9 @@ if (availEl) {
       }
       const rowsHtml = data.rows.map(renderAvailRow).join('');
       const friends = data.friends ?? [];
+      const pastDays = data.pastDays ?? 30;
       const friendsHtml = friends.length > 0
-        ? `<div class="small fw-semibold mb-1 mt-3">Top highlights (past 30 days)</div>
+        ? `<div class="small fw-semibold mb-1 mt-3">Top highlights (past ${pastDays} days)</div>
            <ol class="list-unstyled mb-0 small">
              ${friends.map(f => `
                <li class="d-flex justify-content-between${f.minutes === 0 ? ' text-muted' : ''}">
