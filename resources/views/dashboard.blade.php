@@ -51,20 +51,20 @@
                                     </div>
                                 </div>
                             @endforeach
-
-                            {{-- Friends skeleton --}}
-                            @if(!empty($highlightLabels))
-                                <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
-                                <ol class="list-unstyled mb-0 small">
-                                    @foreach($highlightLabels as $label)
-                                        <li class="d-flex justify-content-between">
-                                            <span>{{ $label }}</span>
-                                            <span class="ms-2 placeholder-glow"><span class="placeholder" style="width:3rem"></span></span>
-                                        </li>
-                                    @endforeach
-                                </ol>
-                            @endif
                         </div>
+
+                        {{-- Friends section: heading is static, list is updated by JS --}}
+                        @if(!empty($highlightLabels))
+                            <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
+                            <ol id="highlight-list" class="list-unstyled mb-0 small">
+                                @foreach($highlightLabels as $label)
+                                    <li class="d-flex justify-content-between">
+                                        <span>{{ $label }}</span>
+                                        <span class="ms-2 placeholder-glow"><span class="placeholder" style="width:3rem"></span></span>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        @endif
                     @endif
                 </div>
             </div>

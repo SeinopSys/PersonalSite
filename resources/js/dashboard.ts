@@ -28,7 +28,6 @@ interface AvailResponse {
   error?: string;
   rows?: AvailRow[];
   friends?: Friend[];
-  pastDays?: number;
 }
 
 interface Upload { preview: string; full: string; name: string; }
@@ -96,20 +95,15 @@ if (availEl) {
         availEl.innerHTML = '<p class="text-danger mb-0"><span class="fa fa-exclamation-circle me-1"></span>Failed to fetch calendar data.</p>';
         return;
       }
-      const rowsHtml = data.rows.map(renderAvailRow).join('');
-      const friends = data.friends ?? [];
-      const pastDays = data.pastDays ?? 30;
-      const friendsHtml = friends.length > 0
-        ? `<div class="small fw-semibold mb-1 mt-3">Top highlights (past ${pastDays} days)</div>
-           <ol class="list-unstyled mb-0 small">
-             ${friends.map(f => `
-               <li class="d-flex justify-content-between${f.minutes === 0 ? ' text-muted' : ''}">
-                 <span>${esc(f.label)}</span>
-                 <span class="ms-2">${esc(fmtMin(f.minutes))}</span>
-               </li>`).join('')}
-           </ol>`
-        : '';
-      availEl.innerHTML = rowsHtml + friendsHtml;
+      availEl.innerHTML = data.rows.map(renderAvailRow).join('');
+      const highlightListEl = document.getElementById('highlight-list');
+      if (highlightListEl && data.friends) {
+        highlightListEl.innerHTML = data.friends.map(f => `
+          <li class="d-flex justify-content-between${f.minutes === 0 ? ' text-muted' : ''}">
+            <span>${esc(f.label)}</span>
+            <span class="ms-2">${esc(fmtMin(f.minutes))}</span>
+          </li>`).join('');
+      }
     })
     .catch(() => {
       availEl.innerHTML = '<p class="text-danger mb-0"><span class="fa fa-exclamation-circle me-1"></span>Failed to fetch calendar data.</p>';

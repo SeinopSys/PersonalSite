@@ -206,9 +206,8 @@ class DashboardController extends Controller
             usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 
             return response()->json([
-                'rows'     => [$todayRow, $weekRow, $past30Row],
-                'friends'  => $friendsData,
-                'pastDays' => self::PAST_DAYS,
+                'rows'    => [$todayRow, $weekRow, $past30Row],
+                'friends' => $friendsData,
             ]);
         } catch (\Exception) {
             return response()->json(['error' => 'fetch_failed']);
