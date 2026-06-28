@@ -1,0 +1,8 @@
+packages:
+  - '.'
+allowBuilds:
+  '@parcel/watcher': true
+  core-js: true
+  unrs-resolver: true
+minimumReleaseAge: 20160
+shamefullyHoist: true

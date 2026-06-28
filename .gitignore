@@ -18,6 +18,7 @@ public/*.html
 .php_cs.cache
 npm-debug.log
 yarn-error.log
+pnpm-debug.log
 /public/mix-manifest.json
 /public/css
 /public/js
