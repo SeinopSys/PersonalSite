@@ -11,7 +11,7 @@
 		'status' => '<span class="badge bg-'.($uploadingEnabled ? 'success' : 'danger').'">'.(strtoupper(__('global.'.($uploadingEnabled ? 'on' : 'off')))).'</span>'
 	]) !!}</p>
     @if($uploadingEnabled)
-        <div class="row mb-4">
+        <div class="row mb-2">
             <div class="col-lg-2">
                 <div class="d-grid gap-2">
                     <button type="button" class="btn btn-danger" id="uploads-toggle"
@@ -39,9 +39,8 @@
                 </div>
             </div>
         </div>
-        <p class="mt-3 mb-0">
-            <x-fa icon="book" first></x-fa>
-            <a href="/docs/api#/operations/uploads.upload" target="_blank">{{ __('uploads.apidocs-link') }}</a>
+        <p class="mb-4">
+            <a href="/docs/api#/operations/uploads.upload" target="_blank"><x-fa icon="book" first></x-fa>&nbsp;{{ __('uploads.apidocs-link') }}</a>
         </p>
         <?php   /** @var $images \Illuminate\Pagination\LengthAwarePaginator */ ?>
         <h3>

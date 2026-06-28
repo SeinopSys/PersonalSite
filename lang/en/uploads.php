@@ -33,5 +33,5 @@ return [
     'multiwipe_dialog_title' => 'Deleting multiple images',
     'multiwipe_dialog_text' => 'Are you sure you want to delete these :cnt images?',
 
-    'apidocs-link' => 'View API documentation for the upload endpoint',
+    'apidocs-link' => 'API documentation',
 ];

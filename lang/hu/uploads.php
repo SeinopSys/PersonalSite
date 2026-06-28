@@ -33,5 +33,5 @@ return [
     'multiwipe_dialog_title' => 'Több kép törlése egyszerre',
     'multiwipe_dialog_text' => 'Szeretnéd törölni mind a(z) :cnt képet?',
 
-    'apidocs-link' => 'A feltöltési végpont API dokumentációjának megtekintése',
+    'apidocs-link' => 'API dokumentáció',
 ];
