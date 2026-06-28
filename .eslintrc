@@ -48,7 +48,7 @@
       2
     ],
     "linebreak-style": 2,
-    "max-len": ["error", 140],
+    "max-len": 0,
     "new-cap": 2,
     "no-console": 0,
     "no-minusminus": 0,

@@ -42,16 +42,16 @@ interface UploadResponse {
 
 function renderAvailRow(row: AvailRow): string {
   const labelSpan = row.notAvail
-    ? `<span class="text-muted">Not available</span>`
+    ? '<span class="text-muted">Not available</span>'
     : (() => {
-        const parts = [
-          row.sleepPct > 0 ? `<span>${esc(row.sleepLabel)} sleep</span>` : '',
-          row.workPct > 0 ? `<span class="text-primary">${esc(row.workLabel!)} work</span>` : '',
-          row.busyPct > 0 ? `<span class="text-danger">${esc(row.busyLabel!)} busy</span>` : '',
-          row.freePct !== null ? `<span class="text-secondary">${esc(row.freeLabel!)} free</span>` : '',
-        ].filter(Boolean);
-        return `<span>${parts.join(' &middot; ')}</span>`;
-      })();
+      const parts = [
+        row.sleepPct > 0 ? `<span>${esc(row.sleepLabel)} sleep</span>` : '',
+        row.workPct > 0 ? `<span class="text-primary">${esc(row.workLabel!)} work</span>` : '',
+        row.busyPct > 0 ? `<span class="text-danger">${esc(row.busyLabel!)} busy</span>` : '',
+        row.freePct !== null ? `<span class="text-secondary">${esc(row.freeLabel!)} free</span>` : '',
+      ].filter(Boolean);
+      return `<span>${parts.join(' &middot; ')}</span>`;
+    })();
 
   const bars = [
     row.sleepBarPct > 0 ? `<div class="progress-bar bg-secondary" style="width:${row.sleepBarPct}%" title="sleep"></div>` : '',
