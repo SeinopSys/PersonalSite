@@ -67,27 +67,32 @@ class DashboardController extends Controller
                 $todayWindow  = $service->dayWindowMinutes($dowNames[$now->dayOfWeek], $settings);
                 $todayFreeMin = $service->sumSlotMinutes($slotsByDate[$todayKey] ?? []);
                 $todayWorkMin = $workMinsByDate[$todayKey] ?? 0;
+                $todaySleepMin = 1440 - $todayWindow;
                 if ($todayWindow > 0) {
                     $todayBusyMin = max(0, $todayWindow - $todayFreeMin - $todayWorkMin);
-                    $data['todayFreeFormatted'] = sprintf('%d:%02d', intdiv($todayFreeMin, 60), $todayFreeMin % 60);
-                    $data['todayFreePct']       = min(100, (int)round($todayFreeMin / $todayWindow * 100));
-                    $data['todayWorkFormatted'] = sprintf('%d:%02d', intdiv($todayWorkMin, 60), $todayWorkMin % 60);
-                    $data['todayWorkPct']       = min(100, (int)round($todayWorkMin / $todayWindow * 100));
-                    $data['todayBusyFormatted'] = sprintf('%d:%02d', intdiv($todayBusyMin, 60), $todayBusyMin % 60);
-                    $data['todayBusyPct']       = min(100, (int)round($todayBusyMin / $todayWindow * 100));
-                    $data['todayWorkBarPct']    = (int)round($todayWorkMin / 1440 * 100);
-                    $data['todayBusyBarPct']    = (int)round($todayBusyMin / 1440 * 100);
-                    $data['todaySleepBarPct']   = (int)round((1440 - $todayWindow) / 1440 * 100);
+                    $data['todayFreeFormatted']  = sprintf('%d:%02d', intdiv($todayFreeMin, 60), $todayFreeMin % 60);
+                    $data['todayFreePct']        = min(100, (int)round($todayFreeMin / $todayWindow * 100));
+                    $data['todayWorkFormatted']  = sprintf('%d:%02d', intdiv($todayWorkMin, 60), $todayWorkMin % 60);
+                    $data['todayWorkPct']        = min(100, (int)round($todayWorkMin / $todayWindow * 100));
+                    $data['todayBusyFormatted']  = sprintf('%d:%02d', intdiv($todayBusyMin, 60), $todayBusyMin % 60);
+                    $data['todayBusyPct']        = min(100, (int)round($todayBusyMin / $todayWindow * 100));
+                    $data['todayWorkBarPct']     = (int)round($todayWorkMin / 1440 * 100);
+                    $data['todayBusyBarPct']     = (int)round($todayBusyMin / 1440 * 100);
+                    $data['todaySleepBarPct']    = (int)round($todaySleepMin / 1440 * 100);
+                    $data['todaySleepFormatted'] = sprintf('%d:%02d', intdiv($todaySleepMin, 60), $todaySleepMin % 60);
+                    $data['todaySleepPct']       = (int)round($todaySleepMin / 1440 * 100);
                 } else {
-                    $data['todayFreeFormatted'] = null;
-                    $data['todayFreePct']       = null;
-                    $data['todayWorkFormatted'] = null;
-                    $data['todayWorkPct']       = null;
-                    $data['todayBusyFormatted'] = null;
-                    $data['todayBusyPct']       = null;
-                    $data['todayWorkBarPct']    = 0;
-                    $data['todayBusyBarPct']    = 0;
-                    $data['todaySleepBarPct']   = 100;
+                    $data['todayFreeFormatted']  = null;
+                    $data['todayFreePct']        = null;
+                    $data['todayWorkFormatted']  = null;
+                    $data['todayWorkPct']        = null;
+                    $data['todayBusyFormatted']  = null;
+                    $data['todayBusyPct']        = null;
+                    $data['todayWorkBarPct']     = 0;
+                    $data['todayBusyBarPct']     = 0;
+                    $data['todaySleepBarPct']    = 100;
+                    $data['todaySleepFormatted'] = '24:00';
+                    $data['todaySleepPct']       = 100;
                 }
 
                 // This week (Mon–Sun)
@@ -103,7 +108,13 @@ class DashboardController extends Controller
                     $weekWorkMin += $workMinsByDate[$dk] ?? 0;
                     $weekDay->addDay();
                 }
-                $weekBusyMin = max(0, $weekWindow - $weekFreeMin - $weekWorkMin);
+                $weekBusyMin  = max(0, $weekWindow - $weekFreeMin - $weekWorkMin);
+                $weekTotalMin = 7 * 1440;
+                $weekSleepMin = $weekTotalMin - $weekWindow;
+                $data['weekFreeFormatted']  = sprintf('%d:%02d', intdiv($weekFreeMin, 60), $weekFreeMin % 60);
+                $data['weekWorkFormatted']  = sprintf('%d:%02d', intdiv($weekWorkMin, 60), $weekWorkMin % 60);
+                $data['weekBusyFormatted']  = sprintf('%d:%02d', intdiv($weekBusyMin, 60), $weekBusyMin % 60);
+                $data['weekSleepFormatted'] = sprintf('%d:%02d', intdiv($weekSleepMin, 60), $weekSleepMin % 60);
                 $data['weekFreePct'] = $weekWindow > 0
                     ? min(100, (int)round($weekFreeMin / $weekWindow * 100))
                     : null;
@@ -113,10 +124,10 @@ class DashboardController extends Controller
                 $data['weekBusyPct'] = $weekWindow > 0
                     ? min(100, (int)round($weekBusyMin / $weekWindow * 100))
                     : null;
-                $weekTotalMin = 7 * 1440;
+                $data['weekSleepPct'] = (int)round($weekSleepMin / $weekTotalMin * 100);
                 $data['weekWorkBarPct']  = (int)round($weekWorkMin / $weekTotalMin * 100);
                 $data['weekBusyBarPct']  = (int)round($weekBusyMin / $weekTotalMin * 100);
-                $data['weekSleepBarPct'] = (int)round(($weekTotalMin - $weekWindow) / $weekTotalMin * 100);
+                $data['weekSleepBarPct'] = (int)round($weekSleepMin / $weekTotalMin * 100);
 
                 // Past 30 days — aggregate bar + per-day chart data
                 $past30FreeMin = 0;
@@ -148,7 +159,13 @@ class DashboardController extends Controller
                     }
                 }
                 $data['past30Data']    = $past30Data;
-                $past30BusyMin = max(0, $past30Window - $past30FreeMin - $past30WorkMin);
+                $past30BusyMin  = max(0, $past30Window - $past30FreeMin - $past30WorkMin);
+                $past30TotalMin = 30 * 1440;
+                $past30SleepMin = $past30TotalMin - $past30Window;
+                $data['past30FreeFormatted']  = sprintf('%d:%02d', intdiv($past30FreeMin, 60), $past30FreeMin % 60);
+                $data['past30WorkFormatted']  = sprintf('%d:%02d', intdiv($past30WorkMin, 60), $past30WorkMin % 60);
+                $data['past30BusyFormatted']  = sprintf('%d:%02d', intdiv($past30BusyMin, 60), $past30BusyMin % 60);
+                $data['past30SleepFormatted'] = sprintf('%d:%02d', intdiv($past30SleepMin, 60), $past30SleepMin % 60);
                 $data['past30FreePct'] = $past30Window > 0
                     ? min(100, (int)round($past30FreeMin / $past30Window * 100))
                     : null;
@@ -158,10 +175,34 @@ class DashboardController extends Controller
                 $data['past30BusyPct'] = $past30Window > 0
                     ? min(100, (int)round($past30BusyMin / $past30Window * 100))
                     : null;
-                $past30TotalMin = 30 * 1440;
+                $data['past30SleepPct'] = (int)round($past30SleepMin / $past30TotalMin * 100);
                 $data['past30WorkBarPct']  = (int)round($past30WorkMin / $past30TotalMin * 100);
                 $data['past30BusyBarPct']  = (int)round($past30BusyMin / $past30TotalMin * 100);
-                $data['past30SleepBarPct'] = (int)round(($past30TotalMin - $past30Window) / $past30TotalMin * 100);
+                $data['past30SleepBarPct'] = (int)round($past30SleepMin / $past30TotalMin * 100);
+
+                // Friends toplist — sum event minutes per highlight token over the full data range
+                $highlights   = $user->highlightTokens()->with('words')->get();
+                $friendsData  = [];
+                foreach ($highlights as $token) {
+                    $words = $token->words->pluck('word')->toArray();
+                    if (empty($words)) {
+                        continue;
+                    }
+                    $tokenWords    = $words;
+                    $minutesByDate = $service->computeFilteredMinutesByDate(
+                        $events, $settings,
+                        $rangeStart->copy()->subDay(),
+                        $rangeEnd->copy()->addDay(),
+                        $tz,
+                        fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w))
+                    );
+                    $totalMin = array_sum($minutesByDate);
+                    if ($totalMin > 0) {
+                        $friendsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin];
+                    }
+                }
+                usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
+                $data['friendsData'] = $friendsData;
 
             } catch (\Exception) {
                 $data['availabilityFetchError'] = true;

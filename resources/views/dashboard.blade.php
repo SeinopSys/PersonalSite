@@ -41,11 +41,6 @@
                             <x-fa icon="exclamation-circle" first></x-fa>Failed to fetch calendar data.
                         </p>
                     @else
-                        @php
-                            // Shared macro: render a label row + a green free bar + optional blue work bar
-                            // Called inline below for each section.
-                        @endphp
-
                         {{-- Today --}}
                         <div class="mb-3">
                             <div class="d-flex justify-content-between small mb-1">
@@ -54,12 +49,15 @@
                                     <span class="text-muted">Not available</span>
                                 @else
                                     <span>
-                                        <span class="text-success">{{ $todayFreeFormatted }} free</span>
+                                        {{ $todayFreeFormatted }} ({{ $todayFreePct }}%) free
                                         @if(($todayWorkPct ?? 0) > 0)
-                                            &middot; <span class="text-primary">{{ $todayWorkFormatted }} work</span>
+                                            &middot; <span class="text-primary">{{ $todayWorkFormatted }} ({{ $todayWorkPct }}%) work</span>
                                         @endif
                                         @if(($todayBusyPct ?? 0) > 0)
-                                            &middot; <span class="text-danger">{{ $todayBusyFormatted }} busy</span>
+                                            &middot; <span class="text-danger">{{ $todayBusyFormatted }} ({{ $todayBusyPct }}%) busy</span>
+                                        @endif
+                                        @if(($todaySleepPct ?? 0) > 0)
+                                            &middot; <span class="text-secondary">{{ $todaySleepFormatted }} ({{ $todaySleepPct }}%) sleep</span>
                                         @endif
                                     </span>
                                 @endif
@@ -88,12 +86,15 @@
                                     <span class="text-muted">Not available</span>
                                 @else
                                     <span>
-                                        <span class="text-success">{{ $weekFreePct }}% free</span>
+                                        {{ $weekFreePct }}% free
                                         @if(($weekWorkPct ?? 0) > 0)
                                             &middot; <span class="text-primary">{{ $weekWorkPct }}% work</span>
                                         @endif
                                         @if(($weekBusyPct ?? 0) > 0)
                                             &middot; <span class="text-danger">{{ $weekBusyPct }}% busy</span>
+                                        @endif
+                                        @if(($weekSleepPct ?? 0) > 0)
+                                            &middot; <span class="text-secondary">{{ $weekSleepPct }}% sleep</span>
                                         @endif
                                     </span>
                                 @endif
@@ -122,12 +123,15 @@
                                     <span class="text-muted">Not available</span>
                                 @else
                                     <span>
-                                        <span class="text-success">{{ $past30FreePct }}% free</span>
+                                        {{ $past30FreePct }}% free
                                         @if(($past30WorkPct ?? 0) > 0)
                                             &middot; <span class="text-primary">{{ $past30WorkPct }}% work</span>
                                         @endif
                                         @if(($past30BusyPct ?? 0) > 0)
                                             &middot; <span class="text-danger">{{ $past30BusyPct }}% busy</span>
+                                        @endif
+                                        @if(($past30SleepPct ?? 0) > 0)
+                                            &middot; <span class="text-secondary">{{ $past30SleepPct }}% sleep</span>
                                         @endif
                                     </span>
                                 @endif
@@ -186,6 +190,28 @@
                                 @endif
                             @endforeach
                         </div>
+                        {{-- Friends toplist --}}
+                        @if(!empty($friendsData))
+                            @php
+                                $formatFriendMin = function(int $m): string {
+                                    if ($m >= 1440) {
+                                        $d = intdiv($m, 1440);
+                                        $r = $m % 1440;
+                                        return $d.'d '.sprintf('%d:%02d', intdiv($r, 60), $r % 60);
+                                    }
+                                    return sprintf('%d:%02d', intdiv($m, 60), $m % 60);
+                                };
+                            @endphp
+                            <div class="small text-muted mb-1 mt-3">Time with friends — past 30 days</div>
+                            <ol class="list-unstyled mb-0 small">
+                                @foreach($friendsData as $friend)
+                                    <li class="d-flex justify-content-between">
+                                        <span>{{ $friend['label'] }}</span>
+                                        <span class="text-muted ms-2">{{ $formatFriendMin($friend['minutes']) }}</span>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        @endif
                     @endif
                 </div>
             </div>
