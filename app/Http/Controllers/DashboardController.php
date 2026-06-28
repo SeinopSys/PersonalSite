@@ -320,14 +320,25 @@ class DashboardController extends Controller
         abort_unless(Permission::Sufficient('developer'), 403);
 
         $validated = $request->validate([
-            'label' => 'nullable|string|max:255',
+            'label' => 'required|string|max:255',
         ]);
 
-        CalendarHighlightToken::create([
-            'user_id' => Auth::id(),
+        $userId = Auth::id();
+        $label  = $validated['label'];
+
+        $token = CalendarHighlightToken::create([
+            'user_id' => $userId,
             'token'   => CalendarHighlightToken::generateToken(),
-            'label'   => $validated['label'] ?? null,
+            'label'   => $label,
         ]);
+
+        if ($label && !CalendarHighlightWord::where('user_id', $userId)->where('word', $label)->exists()) {
+            CalendarHighlightWord::create([
+                'token_id' => $token->id,
+                'user_id'  => $userId,
+                'word'     => $label,
+            ]);
+        }
 
         return redirect('/availability#highlights')->with('success', 'Highlight token created.');
     }

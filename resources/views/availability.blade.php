@@ -259,7 +259,7 @@
     <form method="POST" action="/dashboard/highlights" class="d-flex gap-2 align-items-center mt-2">
         @csrf
         <input type="text" name="label" class="form-control" style="max-width:240px"
-               placeholder="New token label (optional)" maxlength="255">
+               placeholder="New token label" maxlength="255" required>
         <button type="submit" class="btn btn-primary">Create token</button>
     </form>
 
