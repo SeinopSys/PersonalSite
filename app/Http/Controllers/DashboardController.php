@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -224,7 +225,7 @@ class DashboardController extends Controller
         ];
 
         if (Permission::Sufficient('developer')) {
-            $sort = $request->input('sort', 'created_at');
+            $sort = $request->input('sort', 'label');
             $dir  = $request->input('dir', 'asc');
             if (!in_array($sort, ['created_at', 'label'])) $sort = 'created_at';
             if (!in_array($dir, ['asc', 'desc'])) $dir = 'asc';
@@ -460,65 +461,66 @@ class DashboardController extends Controller
         $userId = Auth::id();
         $imported = 0;
         $skipped = 0;
+        $seenWords = [];
 
+        // Validate all items before making any changes
+        $valid = [];
         foreach ($data as $item) {
             if (!is_array($item) || empty($item['token']) || !is_string($item['token'])) {
                 $skipped++;
                 continue;
             }
-
             if (!CalendarHighlightToken::isValidBase64Url($item['token'])) {
                 $skipped++;
                 continue;
             }
-
             $bytes = CalendarHighlightToken::decodeBase64Url($item['token']);
             if ($bytes === null) {
                 $skipped++;
                 continue;
             }
-
-            $exists = CalendarHighlightToken::whereRaw("token = decode(?, 'hex')", [bin2hex($bytes)])
-                ->where('user_id', $userId)
-                ->exists();
-
-            if ($exists) {
-                $skipped++;
-                continue;
-            }
-
-            $label = isset($item['label']) && is_string($item['label'])
-                ? substr($item['label'], 0, 255)
-                : null;
-
-            $createdAt = null;
-            if (!empty($item['created_at']) && is_string($item['created_at'])) {
-                try { $createdAt = Carbon::parse($item['created_at']); } catch (\Exception) {}
-            }
-
-            $token = CalendarHighlightToken::create([
-                'user_id'    => $userId,
-                'token'      => $bytes,
-                'label'      => $label,
-                'created_at' => $createdAt ?? now(),
-            ]);
-
-            foreach ($item['words'] ?? [] as $word) {
-                if (!is_string($word) || $word === '') {
-                    continue;
-                }
-                $word = substr($word, 0, 255);
-                if (!CalendarHighlightWord::where('user_id', $userId)->where('word', $word)->exists()) {
-                    CalendarHighlightWord::create([
-                        'token_id' => $token->id,
-                        'user_id'  => $userId,
-                        'word'     => $word,
-                    ]);
-                }
-            }
-
-            $imported++;
+            $valid[] = array_merge($item, ['_bytes' => $bytes]);
         }
+
+        // Replace: wipe existing tokens then insert from file
+        DB::transaction(function () use ($userId, $valid, &$imported, &$seenWords) {
+            CalendarHighlightToken::where('user_id', $userId)->delete();
+
+            foreach ($valid as $item) {
+                $label = isset($item['label']) && is_string($item['label'])
+                    ? substr($item['label'], 0, 255)
+                    : null;
+
+                $createdAt = null;
+                if (!empty($item['created_at']) && is_string($item['created_at'])) {
+                    try { $createdAt = Carbon::parse($item['created_at']); } catch (\Exception) {}
+                }
+
+                $token = CalendarHighlightToken::create([
+                    'user_id'    => $userId,
+                    'token'      => $item['_bytes'],
+                    'label'      => $label,
+                    'created_at' => $createdAt ?? now(),
+                ]);
+
+                foreach ($item['words'] ?? [] as $word) {
+                    if (!is_string($word) || $word === '') {
+                        continue;
+                    }
+                    $word = substr($word, 0, 255);
+                    if (!isset($seenWords[$word])) {
+                        $seenWords[$word] = true;
+                        CalendarHighlightWord::create([
+                            'token_id' => $token->id,
+                            'user_id'  => $userId,
+                            'word'     => $word,
+                        ]);
+                    }
+                }
+
+                $imported++;
+            }
+        });
 
         return redirect('/availability#highlights')
             ->with('success', "Import complete: $imported created, $skipped skipped.");

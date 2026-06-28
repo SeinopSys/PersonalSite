@@ -264,7 +264,9 @@
     </form>
 
     <div class="d-flex gap-2 align-items-center flex-wrap mt-3">
-        <a href="/dashboard/highlights/export" class="btn btn-outline-secondary btn-sm">Export JSON</a>
+        <a href="{{ $highlights->isEmpty() ? '#' : '/dashboard/highlights/export' }}"
+           class="btn btn-outline-secondary btn-sm {{ $highlights->isEmpty() ? 'disabled' : '' }}"
+           @if($highlights->isEmpty()) aria-disabled="true" tabindex="-1" @endif>Export JSON</a>
         <form method="POST" action="/dashboard/highlights/import"
               enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
             @csrf
