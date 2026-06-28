@@ -219,22 +219,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <script>
-                                (function () {
-                                    const modal = new bootstrap.Modal(document.getElementById('uploadPreviewModal'));
-                                    document.querySelectorAll('.dashboard-upload-preview').forEach(function (el) {
-                                        el.addEventListener('click', function (e) {
-                                            e.preventDefault();
-                                            const full = el.dataset.full, name = el.dataset.name;
-                                            document.getElementById('uploadPreviewImg').src = full;
-                                            document.getElementById('uploadPreviewImg').alt = name;
-                                            document.getElementById('uploadPreviewOpen').href = full;
-                                            document.getElementById('uploadPreviewModalLabel').textContent = name;
-                                            modal.show();
-                                        });
-                                    });
-                                })();
-                            </script>
                         @endif
                     @endif
                 </div>
@@ -243,3 +227,4 @@
 
     </div>
 @endsection
+

@@ -70,11 +70,11 @@ class AvailabilityHighlightTest extends TestCase
         $calUrl = 'https://example.com/calendar.ics';
         $user = $this->makeUser($calUrl);
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Meeting'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Meeting'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson('/api/availability/testuser?start=2026-06-02&end=2026-06-02');
+        $response = $this->getJson('/api/availability/testuser?start=2030-06-03&end=2030-06-03');
 
         $response->assertOk();
         $response->assertJsonMissing(['highlighted']);
@@ -92,11 +92,11 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Team standup'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Team standup'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonStructure(['highlighted']);
@@ -115,16 +115,16 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
-            ['uid' => 'e2', 'start' => '20260602T140000Z', 'end' => '20260602T150000Z', 'summary' => 'Team standup'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e2', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Team standup'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonCount(1, 'highlighted');
-        $response->assertJsonFragment(['start' => '2026-06-02T10:00:00+00:00', 'end' => '2026-06-02T11:00:00+00:00']);
+        $response->assertJsonFragment(['start' => '2030-06-03T10:00:00+00:00', 'end' => '2030-06-03T11:00:00+00:00']);
         $response->assertJsonMissing(['name' => 'Lunch with Alice']);
     }
 
@@ -140,18 +140,18 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
-            ['uid' => 'e2', 'start' => '20260602T120000Z', 'end' => '20260602T130000Z', 'summary' => 'Lunch with ALICE'],
-            ['uid' => 'e3', 'start' => '20260602T140000Z', 'end' => '20260602T150000Z', 'summary' => 'lunch with alice'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e2', 'start' => '20300603T120000Z', 'end' => '20300603T130000Z', 'summary' => 'Lunch with ALICE'],
+            ['uid' => 'e3', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'lunch with alice'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonCount(1, 'highlighted');
         // Only the exact-case match is returned; no name field exposed
-        $response->assertJsonFragment(['start' => '2026-06-02T10:00:00+00:00', 'end' => '2026-06-02T11:00:00+00:00']);
+        $response->assertJsonFragment(['start' => '2030-06-03T10:00:00+00:00', 'end' => '2030-06-03T11:00:00+00:00']);
         $response->assertJsonMissingExact(['name' => 'Lunch with Alice']);
     }
 
@@ -168,11 +168,11 @@ class AvailabilityHighlightTest extends TestCase
 
         // Alice blocks 10:00–11:00, leaving 09:00–10:00 and 11:00–22:00 free
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
 
@@ -183,8 +183,8 @@ class AvailabilityHighlightTest extends TestCase
         foreach ($free as $slot) {
             $slotStart = strtotime($slot['start']);
             $slotEnd = strtotime($slot['end']);
-            $eventStart = strtotime('2026-06-02T10:00:00+00:00');
-            $eventEnd = strtotime('2026-06-02T11:00:00+00:00');
+            $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+            $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
 
             $this->assertFalse(
                 $slotStart < $eventEnd && $slotEnd > $eventStart,
@@ -198,11 +198,11 @@ class AvailabilityHighlightTest extends TestCase
         $calUrl = 'https://example.com/calendar.ics';
         $this->makeUser($calUrl);
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Meeting'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Meeting'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson('/api/availability/testuser?start=2026-06-02&end=2026-06-02&token=' . str_repeat('A', 43));
+        $response = $this->getJson('/api/availability/testuser?start=2030-06-03&end=2030-06-03&token=' . str_repeat('A', 43));
 
         $response->assertOk();
         $response->assertJsonMissing(['highlighted']);
@@ -229,11 +229,11 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $otherUser->id, 'word' => 'Meeting']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Meeting'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Meeting'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonMissing(['highlighted']);
@@ -251,16 +251,16 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice'],
             ['uid' => 'e2', 'start' => '20200101T100000Z', 'end' => '20200101T110000Z', 'summary' => 'Old lunch with Alice'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonCount(1, 'highlighted');
-        $this->assertEquals('2026-06-02T10:00:00+00:00', $response->json('highlighted.0.start'));
+        $this->assertEquals('2030-06-03T10:00:00+00:00', $response->json('highlighted.0.start'));
     }
 
     public function test_availability_multiple_words_match_different_events(): void
@@ -276,18 +276,18 @@ class AvailabilityHighlightTest extends TestCase
         CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Bob']);
 
         $ics = $this->makeIcs([
-            ['uid' => 'e1', 'start' => '20260602T100000Z', 'end' => '20260602T110000Z', 'summary' => 'Lunch with Alice'],
-            ['uid' => 'e2', 'start' => '20260602T140000Z', 'end' => '20260602T150000Z', 'summary' => 'Coffee with Bob'],
-            ['uid' => 'e3', 'start' => '20260602T160000Z', 'end' => '20260602T170000Z', 'summary' => 'Solo work'],
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice'],
+            ['uid' => 'e2', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Coffee with Bob'],
+            ['uid' => 'e3', 'start' => '20300603T160000Z', 'end' => '20300603T170000Z', 'summary' => 'Solo work'],
         ]);
         $this->seedCache($calUrl, $ics);
 
-        $response = $this->getJson("/api/availability/testuser?start=2026-06-02&end=2026-06-02&token={$token->token_base64}");
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
         $response->assertOk();
         $response->assertJsonCount(2, 'highlighted');
         $starts = array_column($response->json('highlighted'), 'start');
-        $this->assertContains('2026-06-02T10:00:00+00:00', $starts);
-        $this->assertContains('2026-06-02T14:00:00+00:00', $starts);
+        $this->assertContains('2030-06-03T10:00:00+00:00', $starts);
+        $this->assertContains('2030-06-03T14:00:00+00:00', $starts);
     }
 }

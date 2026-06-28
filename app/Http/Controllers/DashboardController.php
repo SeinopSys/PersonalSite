@@ -24,7 +24,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $data = ['title' => __('global.dashboard')];
+        $data = ['title' => __('global.dashboard'), 'js' => ['dashboard']];
 
         // Availability stats
         if ($user->calendar_url) {
@@ -218,7 +218,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         $data = [
             'title' => __('global.availability'),
-            'js'    => ['dashboard'],
+            'js'    => ['availability'],
             'days'  => self::DAYS,
         ];
 

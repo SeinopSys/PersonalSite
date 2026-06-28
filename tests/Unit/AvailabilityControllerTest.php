@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Http\Controllers\AvailabilityController;
+use App\Services\AvailabilityService;
 use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
 
@@ -17,7 +18,7 @@ class AvailabilityControllerTest extends TestCase
     }
     public function test_parse_ics_events_includes_event_that_starts_previous_day_and_overlaps_range_start(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
         $ics = implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -35,7 +36,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
         $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
 
-        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+        $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'UTC');
 
         $this->assertCount(1, $events);
         $this->assertSame('2026-04-20T23:00:00+00:00', $events[0]['start']->toAtomString());
@@ -44,7 +45,7 @@ class AvailabilityControllerTest extends TestCase
 
     public function test_parse_ics_events_includes_event_that_starts_day_after_range_end(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
         $ics = implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -62,7 +63,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
         $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
 
-        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+        $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'UTC');
 
         $this->assertCount(1, $events);
         $this->assertSame('2026-04-22T00:30:00+00:00', $events[0]['start']->toAtomString());
@@ -71,7 +72,7 @@ class AvailabilityControllerTest extends TestCase
 
     public function test_compute_range_free_slots_honors_extended_range_for_cross_midnight_sleep_window(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
 
         $busyEvents = [[
             'start' => Carbon::parse('2026-04-22 00:30:00', 'UTC'),
@@ -92,9 +93,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'UTC');
         $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
 
-        $freeSlots = $this->invokePrivate(
-            $controller,
-            'computeRangeFreeSlots',
+        $freeSlots = $service->computeRangeFreeSlots(
             $busyEvents,
             $settings,
             $rangeStart->copy()->subDay(),
@@ -119,7 +118,7 @@ class AvailabilityControllerTest extends TestCase
 
     public function test_all_day_event_on_sunday_keeps_monday_midnight_to_two_free(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
         $ics = implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -137,7 +136,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'Europe/Budapest');
         $rangeEnd = Carbon::parse('2026-04-26 23:59:59', 'Europe/Budapest');
 
-        $busyEvents = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'Europe/Budapest');
+        $busyEvents = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'Europe/Budapest');
 
         $settings = [
             'monday' => ['available' => true, 'wake' => '09:00', 'sleep' => '02:00'],
@@ -149,9 +148,7 @@ class AvailabilityControllerTest extends TestCase
             'sunday' => ['available' => true, 'wake' => '14:00', 'sleep' => '02:00'],
         ];
 
-        $freeSlots = $this->invokePrivate(
-            $controller,
-            'computeRangeFreeSlots',
+        $freeSlots = $service->computeRangeFreeSlots(
             $busyEvents,
             $settings,
             $rangeStart->copy()->subDay(),
@@ -175,7 +172,7 @@ class AvailabilityControllerTest extends TestCase
 
     public function test_parse_ics_events_includes_summary_as_name(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
         $ics = implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -193,7 +190,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
         $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
 
-        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+        $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'UTC');
 
         $this->assertCount(1, $events);
         $this->assertSame('Team Meeting with Alice', $events[0]['name']);
@@ -201,7 +198,7 @@ class AvailabilityControllerTest extends TestCase
 
     public function test_parse_ics_events_empty_summary_defaults_to_empty_string(): void
     {
-        $controller = new AvailabilityController();
+        $service = new AvailabilityService();
         $ics = implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -218,7 +215,7 @@ class AvailabilityControllerTest extends TestCase
         $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
         $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
 
-        $events = $this->invokePrivate($controller, 'parseIcsEvents', $ics, $rangeStart, $rangeEnd, 'UTC');
+        $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'UTC');
 
         $this->assertCount(1, $events);
         $this->assertSame('', $events[0]['name']);

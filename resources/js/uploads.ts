@@ -50,7 +50,9 @@ function wipeUpload($link: JQuery, requireConfirm: boolean) {
 
     if (requireConfirm) Dialog.wait(false);
 
-    let { page, orderby } = currentPageParams();
+    const currentParams = currentPageParams();
+    let { page } = currentParams;
+    const { orderby } = currentParams;
     if ($image.parent().siblings().length === 0) page = Math.max(page - 1, 1);
     const params: string[] = [`page=${page}`];
     if (orderby) params.push(`orderby=${orderby}`);
@@ -89,7 +91,7 @@ function selectionChange($el: JQuery, checked: boolean) {
 
 function fetchListPage(page: number, orderby: string | null) {
   const params: Record<string, string | number> = { page };
-  if (orderby) params['orderby'] = orderby;
+  if (orderby) params.orderby = orderby;
 
   $uploadList.stop().fadeTo(150, 0.4);
 
@@ -105,7 +107,7 @@ function fetchListPage(page: number, orderby: string | null) {
       }
 
       const newSearch = `?page=${page}${orderby ? `&orderby=${orderby}` : ''}`;
-      history.pushState(null, '', newSearch);
+      window.history.pushState(null, '', newSearch);
 
       if (orderby) {
         const decodedOrderby = orderby.replace('+', ' ');
