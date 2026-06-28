@@ -194,8 +194,8 @@ class DashboardController extends Controller
                     $tokenWords    = $words;
                     $minutesByDate = $service->computeFilteredMinutesByDate(
                         $events, [],
-                        $rangeStart->copy()->subDay(),
-                        $rangeEnd->copy()->addDay(),
+                        $past30Start->copy()->subDay(),
+                        $now->copy()->endOfDay(),
                         $tz,
                         fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w))
                     );
