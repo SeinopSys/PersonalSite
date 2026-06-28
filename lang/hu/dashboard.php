@@ -4,6 +4,10 @@ return [
     'greeting' => 'Helló :name!',
     'info' => 'Üdv a kezelőpultban, mely jelen pillanatban teljesen üres. Tartalom hamarosan&trade;',
 
+    'profile-heading'  => 'Profil',
+    'profile-saved'    => 'Profil mentve.',
+    'profile-btn-save' => 'Profil mentése',
+
     '2fa-heading' => 'Kétfaktoros hitelesítés',
     '2fa-enabled-status' => 'A kétfaktoros hitelesítés jelenleg <strong>be van kapcsolva</strong> a fiókodon.',
     '2fa-disabled-status' => 'A kétfaktoros hitelesítés jelenleg <strong>ki van kapcsolva</strong> a fiókodon.',

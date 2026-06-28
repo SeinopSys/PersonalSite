@@ -9,6 +9,40 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
+    <h3>{{ __('dashboard.profile-heading') }}</h3>
+
+    <form method="POST" action="/account/profile" style="max-width:400px">
+        @csrf
+
+        <div class="mb-3">
+            <label for="profile-name" class="form-label fw-semibold">{{ __('auth.field-name') }}</label>
+            <input type="text"
+                   class="form-control @error('name') is-invalid @enderror"
+                   id="profile-name"
+                   name="name"
+                   value="{{ old('name', $user->name) }}"
+                   required>
+            @error('name')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div class="mb-3">
+            <label for="profile-email" class="form-label fw-semibold">{{ __('auth.field-email') }}</label>
+            <input type="email"
+                   class="form-control @error('email') is-invalid @enderror"
+                   id="profile-email"
+                   name="email"
+                   value="{{ old('email', $user->email) }}"
+                   required>
+            @error('email')
+                <span class="invalid-feedback">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <button type="submit" class="btn btn-primary mb-4">{{ __('dashboard.profile-btn-save') }}</button>
+    </form>
+
     <h3>{{ __('dashboard.2fa-heading') }}</h3>
     @if($user->hasTwoFactorEnabled())
         <p>{!! __('dashboard.2fa-enabled-status') !!}</p>

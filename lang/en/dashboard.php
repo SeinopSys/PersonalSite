@@ -4,6 +4,10 @@ return [
     'greeting' => 'Hi :name!',
     'info' => 'Welcome to the nothingness that is this dashboard. Features coming soon&trade;',
 
+    'profile-heading'  => 'Profile',
+    'profile-saved'    => 'Profile saved.',
+    'profile-btn-save' => 'Save Profile',
+
     '2fa-heading' => 'Two-factor authentication',
     '2fa-enabled-status' => 'Two-factor authentication is currently <strong>enabled</strong> for your account.',
     '2fa-disabled-status' => 'Two-factor authentication is currently <strong>disabled</strong> for your account.',

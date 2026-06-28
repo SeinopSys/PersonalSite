@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
@@ -275,6 +276,21 @@ class DashboardController extends Controller
                 ? null
                 : TwoFactorAuthController::pendingSetup($request, $user),
         ]);
+    }
+
+    public function saveProfile(Request $request)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+        ]);
+
+        $user->name  = $validated['name'];
+        $user->email = strtolower($validated['email']);
+        $user->save();
+
+        return redirect('/account')->with('success', __('dashboard.profile-saved'));
     }
 
     public function saveSettings(Request $request)
