@@ -53,7 +53,7 @@
                             @endforeach
                         </div>
 
-                        {{-- Friends section: heading is static, list is updated by JS --}}
+                        {{-- Friends section: headings are static, lists are updated by JS --}}
                         @if(!empty($highlightLabels))
                             <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
                             <ol id="highlight-list" class="list-unstyled mb-0 small">
@@ -64,6 +64,10 @@
                                     </li>
                                 @endforeach
                             </ol>
+                            <div id="highlight-no-time-section" class="d-none">
+                                <div class="small fw-semibold mb-1 mt-3 text-muted">No time logged</div>
+                                <ol id="highlight-no-time-list" class="list-unstyled mb-0 small text-muted"></ol>
+                            </div>
                         @endif
                     @endif
                 </div>

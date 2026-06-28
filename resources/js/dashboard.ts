@@ -28,6 +28,7 @@ interface AvailResponse {
   error?: string;
   rows?: AvailRow[];
   friends?: Friend[];
+  friendsNoTime?: Friend[];
 }
 
 interface Upload { preview: string; full: string; name: string; }
@@ -96,13 +97,24 @@ if (availEl) {
         return;
       }
       availEl.innerHTML = data.rows.map(renderAvailRow).join('');
+
       const highlightListEl = document.getElementById('highlight-list');
       if (highlightListEl && data.friends) {
         highlightListEl.innerHTML = data.friends.map(f => `
-          <li class="d-flex justify-content-between${f.minutes === 0 ? ' text-muted' : ''}">
+          <li class="d-flex justify-content-between">
             <span>${esc(f.label)}</span>
             <span class="ms-2">${esc(fmtMin(f.minutes))}</span>
           </li>`).join('');
+      }
+
+      const noTimeSectionEl = document.getElementById('highlight-no-time-section');
+      const noTimeListEl = document.getElementById('highlight-no-time-list');
+      if (noTimeSectionEl && noTimeListEl && data.friendsNoTime) {
+        if (data.friendsNoTime.length > 0) {
+          noTimeListEl.innerHTML = data.friendsNoTime.map(f => `
+            <li>${esc(f.label)}</li>`).join('');
+          noTimeSectionEl.classList.remove('d-none');
+        }
       }
     })
     .catch(() => {

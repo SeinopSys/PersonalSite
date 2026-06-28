@@ -205,9 +205,13 @@ class DashboardController extends Controller
             }
             usort($friendsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 
+            $topFriends    = array_values(array_slice(array_filter($friendsData, fn($f) => $f['minutes'] > 0), 0, 10));
+            $noTimeFriends = array_values(array_filter($friendsData, fn($f) => $f['minutes'] === 0));
+
             return response()->json([
-                'rows'    => [$todayRow, $weekRow, $past30Row],
-                'friends' => $friendsData,
+                'rows'          => [$todayRow, $weekRow, $past30Row],
+                'friends'       => $topFriends,
+                'friendsNoTime' => $noTimeFriends,
             ]);
         } catch (\Exception) {
             return response()->json(['error' => 'fetch_failed']);
