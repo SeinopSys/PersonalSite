@@ -205,13 +205,16 @@ class DashboardController extends Controller
             }
             usort($highlightsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 
-            $topHighlights    = array_values(array_slice(array_filter($highlightsData, fn($h) => $h['minutes'] > 0), 0, 10));
+            $withTime         = array_values(array_filter($highlightsData, fn($h) => $h['minutes'] > 0));
+            $topHighlights    = array_slice($withTime, 0, 10);
+            $restHighlights   = array_slice($withTime, 10);
             $noTimeHighlights = array_values(array_filter($highlightsData, fn($h) => $h['minutes'] === 0 && !$h['archived']));
             usort($noTimeHighlights, fn($a, $b) => strcasecmp($a['label'], $b['label']));
 
             return response()->json([
                 'rows'              => [$todayRow, $weekRow, $past30Row],
                 'highlights'        => $topHighlights,
+                'highlightsRest'    => $restHighlights,
                 'highlightsNoTime'  => $noTimeHighlights,
             ]);
         } catch (\Exception) {

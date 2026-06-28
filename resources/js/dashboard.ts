@@ -22,13 +22,14 @@ interface AvailRow {
   freeLabel: string | null; freePct: number | null;
 }
 
-interface Friend { label: string; minutes: number; }
+interface Highlight { label: string; minutes: number; }
 
 interface AvailResponse {
   error?: string;
   rows?: AvailRow[];
-  highlights?: Friend[];
-  highlightsNoTime?: Friend[];
+  highlights?: Highlight[];
+  highlightsRest?: Highlight[];
+  highlightsNoTime?: Highlight[];
 }
 
 interface Upload { preview: string; full: string; name: string; }
@@ -100,11 +101,18 @@ if (availEl) {
 
       const highlightListEl = document.getElementById('highlight-list');
       if (highlightListEl && data.highlights) {
+        const rest = data.highlightsRest ?? [];
+        const restRow = rest.length > 0
+          ? `<li class="d-flex justify-content-between text-muted">
+               <span>${esc(rest.map(f => f.label).join(', '))}</span>
+               <span class="ms-2">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
+             </li>`
+          : '';
         highlightListEl.innerHTML = data.highlights.map(f => `
           <li class="d-flex justify-content-between">
             <span>${esc(f.label)}</span>
             <span class="ms-2">${esc(fmtMin(f.minutes))}</span>
-          </li>`).join('');
+          </li>`).join('') + restRow;
       }
 
       const noTimeSectionEl = document.getElementById('highlight-no-time-section');
