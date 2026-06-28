@@ -207,6 +207,7 @@ class DashboardController extends Controller
 
             $topHighlights    = array_values(array_slice(array_filter($highlightsData, fn($h) => $h['minutes'] > 0), 0, 10));
             $noTimeHighlights = array_values(array_filter($highlightsData, fn($h) => $h['minutes'] === 0 && !$h['archived']));
+            usort($noTimeHighlights, fn($a, $b) => strcasecmp($a['label'], $b['label']));
 
             return response()->json([
                 'rows'              => [$todayRow, $weekRow, $past30Row],
