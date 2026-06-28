@@ -28,7 +28,7 @@ class TwoFactorAuthController extends Controller
             $request->session()->put('2fa_pending_secret', $secret);
         }
 
-        return redirect('/dashboard');
+        return redirect('/account');
     }
 
     /**
@@ -92,7 +92,7 @@ class TwoFactorAuthController extends Controller
 
         $request->session()->forget('2fa_pending_secret');
 
-        return redirect('/dashboard')->with('success', __('dashboard.2fa-enabled'));
+        return redirect('/account')->with('success', __('dashboard.2fa-enabled'));
     }
 
     /**
@@ -109,6 +109,6 @@ class TwoFactorAuthController extends Controller
         $user->two_factor_confirmed_at = null;
         $user->save();
 
-        return redirect('/dashboard')->with('success', __('dashboard.2fa-disabled'));
+        return redirect('/account')->with('success', __('dashboard.2fa-disabled'));
     }
 }

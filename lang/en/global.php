@@ -8,6 +8,8 @@ return [
     'home' => 'Home',
     'about' => 'About Me',
     'dashboard' => 'Dashboard',
+    'availability' => 'Availability',
+    'account' => 'Account',
     'uploads' => 'Uploads',
     'tools' => 'Tools',
     'networking' => 'Networking Calculators',

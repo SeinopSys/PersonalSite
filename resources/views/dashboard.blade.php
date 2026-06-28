@@ -1,24 +1,17 @@
 @extends('layouts.container')
 
 @section('panel-body')
-    @php
-        $user = Auth::user();
-        $availSettings = $user->availability_settings ?? [];
-        $defaults = [
-            'monday'    => ['available' => true,  'wake' => '09:00', 'sleep' => '01:00'],
-            'tuesday'   => ['available' => true,  'wake' => '09:00', 'sleep' => '01:00'],
-            'wednesday' => ['available' => true,  'wake' => '09:00', 'sleep' => '01:00'],
-            'thursday'  => ['available' => true,  'wake' => '09:00', 'sleep' => '01:00'],
-            'friday'    => ['available' => true,  'wake' => '09:00', 'sleep' => '02:00'],
-            'saturday'  => ['available' => false, 'wake' => '',      'sleep' => ''],
-            'sunday'    => ['available' => false, 'wake' => '',      'sleep' => ''],
-        ];
-        $daySetting = function(string $day) use ($availSettings, $defaults) {
-            return array_merge($defaults[$day], $availSettings[$day] ?? []);
-        };
-    @endphp
+    @php $user = Auth::user(); @endphp
 
     <h2>{{ __('global.dashboard') }}</h2>
+
+    @if(!$user->hasTwoFactorEnabled())
+        <div class="alert alert-warning">
+            <x-fa icon="exclamation-triangle" first></x-fa>
+            Two-factor authentication is not enabled on your account.
+            <a href="/account" class="alert-link">Enable it on the Account page</a> to improve your security.
+        </div>
+    @endif
 
     <h3>{{ __('dashboard.greeting', ['name' => $user->name]) }}</h3>
     <ul>
@@ -28,296 +21,206 @@
         <li><a href="/docs/api">API documentation</a> (<a href="/docs/api.json">JSON</a>)</li>
     </ul>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
+    <div class="row g-4 mt-0">
 
-    <h3>{{ __('dashboard.2fa-heading') }}</h3>
-    @if($user->hasTwoFactorEnabled())
-        <p>{!! __('dashboard.2fa-enabled-status') !!}</p>
-
-        <form method="POST" action="/dashboard/2fa/disable" class="mb-4">
-            @csrf
-
-            <div class="mb-3" style="max-width:320px">
-                <label for="2fa-disable-password" class="form-label fw-semibold">{{ __('dashboard.2fa-field-current-password') }}</label>
-                <input type="password"
-                       class="form-control @error('current_password') is-invalid @enderror"
-                       id="2fa-disable-password"
-                       name="current_password"
-                       required>
-                @error('current_password')
-                    <span class="invalid-feedback">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <button type="submit" class="btn btn-danger">{{ __('dashboard.2fa-btn-disable') }}</button>
-        </form>
-    @else
-        <p>{!! __('dashboard.2fa-disabled-status') !!}</p>
-
-        @if($twoFactorSetup ?? null)
-            <p>{{ __('dashboard.2fa-setup-intro') }}</p>
-
-            <div class="mb-3">
-                {!! $twoFactorSetup['qr_code_svg'] !!}
-            </div>
-
-            <p>
-                {{ __('dashboard.2fa-manual-key') }}
-                <code>{{ $twoFactorSetup['secret'] }}</code>
-            </p>
-
-            <form method="POST" action="/dashboard/2fa/confirm" class="mb-4">
-                @csrf
-
-                <div class="mb-3" style="max-width:320px">
-                    <label for="2fa-confirm-code" class="form-label fw-semibold">{{ __('dashboard.2fa-field-code') }}</label>
-                    <input type="text" inputmode="numeric" autocomplete="one-time-code"
-                           class="form-control @error('code') is-invalid @enderror"
-                           id="2fa-confirm-code"
-                           name="code"
-                           required autofocus>
-                    @error('code')
-                        <span class="invalid-feedback">{{ $message }}</span>
-                    @enderror
+        {{-- Availability --}}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ __('global.availability') }}</h5>
+                    <a href="/availability" class="btn btn-sm btn-outline-secondary">Manage</a>
                 </div>
-
-                <button type="submit" class="btn btn-primary">{{ __('dashboard.2fa-btn-confirm') }}</button>
-            </form>
-        @else
-            <form method="POST" action="/dashboard/2fa/setup" class="mb-4">
-                @csrf
-                <button type="submit" class="btn btn-primary">{{ __('dashboard.2fa-btn-setup') }}</button>
-            </form>
-        @endif
-    @endif
-
-    <h3>Availability settings</h3>
-    <form method="POST" action="/dashboard/settings">
-        @csrf
-
-        <div class="mb-3">
-            <label for="user-timezone" class="form-label fw-semibold">Timezone</label>
-            <select class="form-select" id="user-timezone" name="timezone">
-                <option value="">UTC (default)</option>
-                @php
-                    $tzGroups = collect(\DateTimeZone::listIdentifiers())
-                        ->groupBy(fn($tz) => str_contains($tz, '/') ? explode('/', $tz)[0] : 'Other');
-                    $current = old('timezone', $user->timezone ?? '');
-                @endphp
-                @foreach($tzGroups as $region => $zones)
-                    <optgroup label="{{ $region }}">
-                        @foreach($zones as $tz)
-                            <option value="{{ $tz }}" {{ $current === $tz ? 'selected' : '' }}>{{ $tz }}</option>
-                        @endforeach
-                    </optgroup>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="mb-3">
-            <label for="calendar-url" class="form-label fw-semibold">Calendar URL (ICS)</label>
-            <input type="url"
-                   class="form-control @error('calendar_url') is-invalid @enderror"
-                   id="calendar-url"
-                   name="calendar_url"
-                   value="{{ old('calendar_url', $user->calendar_url) }}"
-                   placeholder="https://…/calendar.ics">
-            @error('calendar_url')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-            <div class="form-text">A public ICS feed URL. Free slots will be queried via <code>GET /api/availability/{{ $user->name }}?start=YYYY-MM-DD&amp;end=YYYY-MM-DD</code>. Both parameters are optional and default to the current week.</div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-semibold">Sleep schedule</label>
-            <div class="form-text mb-2">
-                Set when you wake up and go to sleep each day. Free slots are shown between wake and sleep times.
-                Sleep times past midnight (e.g. 01:00) are treated as the following day.
-            </div>
-            <table class="table table-sm align-middle w-auto">
-                <thead>
-                    <tr>
-                        <th>Day</th>
-                        <th>Available</th>
-                        <th>Wake up</th>
-                        <th>Go to sleep</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($days as $day)
-                        @php $s = $daySetting($day); @endphp
-                        <tr>
-                            <td class="pe-3">{{ ucfirst($day) }}</td>
-                            <td class="text-center">
-                                <input type="checkbox"
-                                       class="form-check-input day-available-check"
-                                       name="settings[{{ $day }}][available]"
-                                       value="1"
-                                       data-day="{{ $day }}"
-                                       {{ old("settings.$day.available", $s['available']) ? 'checked' : '' }}>
-                            </td>
-                            <td class="px-2">
-                                <input type="time"
-                                       class="form-control form-control-sm day-time-input"
-                                       name="settings[{{ $day }}][wake]"
-                                       value="{{ old("settings.$day.wake", $s['wake']) }}"
-                                       style="width:8rem"
-                                       {{ !$s['available'] ? 'disabled' : '' }}>
-                            </td>
-                            <td class="px-2">
-                                <input type="time"
-                                       class="form-control form-control-sm day-time-input"
-                                       name="settings[{{ $day }}][sleep]"
-                                       value="{{ old("settings.$day.sleep", $s['sleep']) }}"
-                                       style="width:8rem"
-                                       {{ !$s['available'] ? 'disabled' : '' }}>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Save</button>
-    </form>
-
-    <h3 class="mt-4">Test availability</h3>
-    <div class="d-flex flex-column gap-2 mb-3" style="max-width:420px">
-        <div class="d-flex gap-2">
-            <div class="flex-fill">
-                <label for="avail-start" class="form-label mb-1">From</label>
-                <input type="date" class="form-control" id="avail-start">
-            </div>
-            <div class="flex-fill">
-                <label for="avail-end" class="form-label mb-1">To</label>
-                <input type="date" class="form-control" id="avail-end">
-            </div>
-        </div>
-        <div>
-            <label for="avail-token" class="form-label mb-1">Token</label>
-            <input type="text" class="form-control" id="avail-token" placeholder="highlight token">
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-secondary" id="avail-fetch">Fetch</button>
-            <div class="form-check mb-0">
-                <input type="checkbox" class="form-check-input" id="debug-event-names">
-                <label for="debug-event-names" class="form-check-label text-muted fst-italic">Show event names (debug)</label>
-            </div>
-        </div>
-    </div>
-    <div id="avail-calendar"
-         class="border rounded overflow-hidden"
-         data-username="{{ $user->name }}"></div>
-
-    @if(!empty($isDeveloper))
-    <h3 class="mt-5" id="highlights">Highlight tokens</h3>
-    <p class="text-muted">
-        Share a token with someone so they can see matching events in the availability API response under a
-        <code>highlighted</code> key. Events matching any word in the group are surfaced; free/busy logic is unchanged.
-        Query: <code>GET /api/availability/{{ $user->name }}?token=&lt;token&gt;</code>
-    </p>
-
-    <div class="accordion mb-3" id="highlights-accordion">
-    @foreach($highlights as $ht)
-    @php
-        $collapseId = 'highlight-collapse-' . $ht->id;
-        $hasError = $errors->getBag('words_'.$ht->id)->has('word');
-    @endphp
-    <div class="accordion-item">
-        <h2 class="accordion-header">
-            <button class="accordion-button {{ $hasError ? '' : 'collapsed' }}" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
-                    aria-expanded="{{ $hasError ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
-                {{ $ht->label ?? '(unlabelled)' }}
-            </button>
-        </h2>
-        <div id="{{ $collapseId }}" class="accordion-collapse collapse {{ $hasError ? 'show' : '' }}"
-             data-bs-parent="#highlights-accordion">
-            <div class="accordion-body">
-                <div class="d-flex align-items-start gap-3 flex-wrap mb-3">
-                    <div class="flex-grow-1">
-                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center">
-                            @csrf
-                            @method('PUT')
-                            <input type="text" name="label" class="form-control form-control-sm" style="max-width:220px"
-                                   placeholder="Label (optional)" value="{{ $ht->label }}">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
-                        </form>
-                    </div>
-                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('Delete this token and all its words?')">Delete token</button>
-                    </form>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label mb-1 small fw-semibold">Token</label>
-                    <div class="d-flex align-items-center gap-2">
-                        <code class="text-break small">{{ $ht->token_base64 }}</code>
-                        <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn"
-                                data-token="{{ $ht->token_base64 }}">Copy</button>
-                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/regenerate">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-outline-warning"
-                                    onclick="return confirm('Regenerate this token? Anyone using the old token will lose access.')">Regenerate</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="form-label mb-1 small fw-semibold">Words</label>
-                    @if($ht->words->isEmpty())
-                        <p class="text-muted small mb-1">No words yet.</p>
+                <div class="card-body">
+                    @if(!$user->calendar_url)
+                        <p class="text-muted mb-0">
+                            No calendar URL configured.
+                            <a href="/availability">Set it up on the Availability page</a> to see your free/busy stats here.
+                        </p>
+                    @elseif(isset($availabilityFetchError))
+                        <p class="text-danger mb-0">
+                            <x-fa icon="exclamation-circle" first></x-fa>Failed to fetch calendar data.
+                        </p>
                     @else
-                    <div class="d-flex flex-wrap gap-2 mb-2">
-                        @foreach($ht->words as $word)
-                        <span class="badge bg-secondary d-flex align-items-center gap-1">
-                            {{ $word->word }}
-                            <form method="POST"
-                                  action="/dashboard/highlights/{{ $ht->id }}/words/{{ $word->id }}"
-                                  class="d-inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                        class="btn-close btn-close-white"
-                                        style="font-size:0.6rem"
-                                        aria-label="Remove word"></button>
-                            </form>
-                        </span>
-                        @endforeach
-                    </div>
-                    @endif
+                        @php
+                            // Shared macro: render a label row + a green free bar + optional blue work bar
+                            // Called inline below for each section.
+                        @endphp
 
-                    <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/words">
-                        @csrf
-                        <div class="d-flex gap-2">
-                            <input type="text" name="word"
-                                   class="form-control form-control-sm @if($errors->getBag('words_'.$ht->id)->has('word')) is-invalid @endif"
-                                   style="max-width:200px"
-                                   placeholder="Add word…" required maxlength="255"
-                                   value="{{ old('word') }}">
-                            <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                        {{-- Today --}}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-semibold">Today</span>
+                                @if($todayFreeFormatted === null)
+                                    <span class="text-muted">Not available</span>
+                                @else
+                                    <span>
+                                        <span class="text-success">{{ $todayFreeFormatted }} free</span>
+                                        @if(($todayWorkPct ?? 0) > 0)
+                                            &middot; <span class="text-primary">{{ $todayWorkFormatted }} work</span>
+                                        @endif
+                                        @if(($todayBusyPct ?? 0) > 0)
+                                            &middot; <span class="text-danger">{{ $todayBusyFormatted }} busy</span>
+                                        @endif
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="progress" style="height:8px">
+                                @if(($todayWorkBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-primary" style="width:{{ $todayWorkBarPct }}%"
+                                         title="{{ $todayWorkPct ?? 0 }}% work"></div>
+                                @endif
+                                @if(($todayBusyBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-danger" style="width:{{ $todayBusyBarPct }}%"
+                                         title="{{ $todayBusyPct ?? 0 }}% busy"></div>
+                                @endif
+                                @if(($todaySleepBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-secondary" style="width:{{ $todaySleepBarPct }}%"
+                                         title="sleep"></div>
+                                @endif
+                            </div>
                         </div>
-                        @if($errors->getBag('words_'.$ht->id)->has('word'))
-                            <div class="text-danger small mt-1">{{ $errors->getBag('words_'.$ht->id)->first('word') }}</div>
-                        @endif
-                    </form>
+
+                        {{-- This week --}}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-semibold">This week</span>
+                                @if($weekFreePct === null)
+                                    <span class="text-muted">Not available</span>
+                                @else
+                                    <span>
+                                        <span class="text-success">{{ $weekFreePct }}% free</span>
+                                        @if(($weekWorkPct ?? 0) > 0)
+                                            &middot; <span class="text-primary">{{ $weekWorkPct }}% work</span>
+                                        @endif
+                                        @if(($weekBusyPct ?? 0) > 0)
+                                            &middot; <span class="text-danger">{{ $weekBusyPct }}% busy</span>
+                                        @endif
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="progress" style="height:8px">
+                                @if(($weekWorkBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-primary" style="width:{{ $weekWorkBarPct }}%"
+                                         title="{{ $weekWorkPct ?? 0 }}% work"></div>
+                                @endif
+                                @if(($weekBusyBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-danger" style="width:{{ $weekBusyBarPct }}%"
+                                         title="{{ $weekBusyPct ?? 0 }}% busy"></div>
+                                @endif
+                                @if(($weekSleepBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-secondary" style="width:{{ $weekSleepBarPct }}%"
+                                         title="sleep"></div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Past 30 days --}}
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-semibold">Past 30 days</span>
+                                @if($past30FreePct === null)
+                                    <span class="text-muted">Not available</span>
+                                @else
+                                    <span>
+                                        <span class="text-success">{{ $past30FreePct }}% free</span>
+                                        @if(($past30WorkPct ?? 0) > 0)
+                                            &middot; <span class="text-primary">{{ $past30WorkPct }}% work</span>
+                                        @endif
+                                        @if(($past30BusyPct ?? 0) > 0)
+                                            &middot; <span class="text-danger">{{ $past30BusyPct }}% busy</span>
+                                        @endif
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="progress" style="height:8px">
+                                @if(($past30WorkBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-primary" style="width:{{ $past30WorkBarPct }}%"
+                                         title="{{ $past30WorkPct ?? 0 }}% work"></div>
+                                @endif
+                                @if(($past30BusyBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-danger" style="width:{{ $past30BusyBarPct }}%"
+                                         title="{{ $past30BusyPct ?? 0 }}% busy"></div>
+                                @endif
+                                @if(($past30SleepBarPct ?? 0) > 0)
+                                    <div class="progress-bar bg-secondary" style="width:{{ $past30SleepBarPct }}%"
+                                         title="sleep"></div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Past 30 days bar chart --}}
+                        <div class="small text-muted mb-1">Busiest days — past 30 days</div>
+                        <div style="display:flex;align-items:stretch;height:56px;gap:1px">
+                            @foreach($past30Data as $d)
+                                @php
+                                    $pct     = $d['busyPct'];
+                                    $wpct    = $d['workPct'];
+                                    $unavail = $pct === null;
+                                    // All columns are 56px; scale everything relative to full 24h (1440 min)
+                                    $sleepPx = $unavail ? 56 : (int)round((1440 - $d['_window']) / 1440 * 56);
+                                @endphp
+                                @if($unavail)
+                                    <div style="flex:1;min-width:1px;background:#6c757d;border-radius:2px 2px 0 0"
+                                         title="{{ $d['dow'] }} {{ $d['date'] }}: not available"></div>
+                                @else
+                                    @php
+                                        $busyPx    = (int)round(max(0, $d['_busyMin'] ?? 0) / 1440 * 56);
+                                        $workPx    = (int)round(($d['_workMin'] ?? 0) / 1440 * 56);
+                                        $otherBusy = max(0, $busyPx - $workPx);
+                                        $label     = "{$d['dow']} {$d['date']}: {$pct}% busy" . ($wpct > 0 ? " ({$wpct}% work)" : '');
+                                    @endphp
+                                    <div style="flex:1;min-width:1px;position:relative" title="{{ $label }}">
+                                        {{-- Sleep band at top --}}
+                                        @if($sleepPx > 0)
+                                            <div style="position:absolute;top:0;left:0;right:0;height:{{ $sleepPx }}px;background:#6c757d;border-radius:2px 2px 0 0"></div>
+                                        @endif
+                                        {{-- Other-busy band above work --}}
+                                        @if($otherBusy > 0)
+                                            <div style="position:absolute;bottom:{{ $workPx }}px;left:0;right:0;height:{{ $otherBusy }}px;background:#dc3545"></div>
+                                        @endif
+                                        {{-- Work band at the bottom --}}
+                                        @if($workPx > 0)
+                                            <div style="position:absolute;bottom:0;left:0;right:0;height:{{ $workPx }}px;background:#0d6efd"></div>
+                                        @endif
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
-    </div>
-    @endforeach
-    </div>
 
-    <form method="POST" action="/dashboard/highlights" class="d-flex gap-2 align-items-center mt-2">
-        @csrf
-        <input type="text" name="label" class="form-control" style="max-width:240px"
-               placeholder="New token label (optional)" maxlength="255">
-        <button type="submit" class="btn btn-primary">Create token</button>
-    </form>
-    @endif
+        {{-- Uploads --}}
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ __('global.uploads') }}</h5>
+                    <a href="/uploads" class="btn btn-sm btn-outline-secondary">Manage</a>
+                </div>
+                <div class="card-body">
+                    @if(!$uploadingEnabled)
+                        <p class="text-muted mb-0">
+                            Uploading is not enabled for your account.
+                            Contact the site owner to request access.
+                        </p>
+                    @else
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="fw-semibold">Space used</span>
+                            <span>{{ $usedSpace }} / {{ $quotaSpace }}</span>
+                        </div>
+                        <div class="progress mb-1" style="height:10px" role="progressbar"
+                             aria-valuenow="{{ $usedPct }}" aria-valuemin="0" aria-valuemax="100">
+                            @php
+                                $barClass = $usedPct >= 90 ? 'bg-danger' : ($usedPct >= 70 ? 'bg-warning' : 'bg-primary');
+                            @endphp
+                            <div class="progress-bar {{ $barClass }}" style="width:{{ $usedPct }}%"></div>
+                        </div>
+                        <div class="small text-muted">{{ $usedPct }}% of quota used</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+    </div>
 @endsection

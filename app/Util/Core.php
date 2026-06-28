@@ -121,7 +121,7 @@ class Core
         $factor = (int) floor((\strlen($bytes) - 1) / 3);
 
         $n = $bytes / (1024 ** $factor);
-        return ($n > 0 ? rtrim(number_format($n, $dec, '.', ''), '0.') : 0).' '.$size[$factor];
+        return ($n > 0 ? rtrim(rtrim(number_format($n, $dec, '.', ''), '0'), '.') : 0).' '.$size[$factor];
     }
 
     public static function ExportTranslations(string $namespace, array $translation): string

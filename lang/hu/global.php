@@ -8,6 +8,8 @@ return [
     'home' => 'Főoldal',
     'about' => 'Rólam',
     'dashboard' => 'Kezelőpult',
+    'availability' => 'Elérhetőség',
+    'account' => 'Fiók',
     'uploads' => 'Feltöltések',
     'tools' => 'Eszközök',
     'networking' => 'Hálózatszámoló Űrlapok',

@@ -59,6 +59,8 @@ Route::post('/login/2fa', [TwoFactorChallengeController::class, 'verify'])->name
 // These require login
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/availability', [DashboardController::class, 'availability'])->name('availability');
+    Route::get('/account', [DashboardController::class, 'account'])->name('account');
     Route::post('/dashboard/settings', [DashboardController::class, 'saveSettings']);
     Route::post('/dashboard/2fa/setup', [TwoFactorAuthController::class, 'setup']);
     Route::post('/dashboard/2fa/confirm', [TwoFactorAuthController::class, 'confirm']);

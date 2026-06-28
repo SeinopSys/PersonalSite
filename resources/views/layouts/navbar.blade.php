@@ -17,6 +17,7 @@
                 {!! \App\Util\Core::NavbarItem('/', __('global.about')) !!}
                 @if(Auth::check())
                     {!! \App\Util\Core::NavbarItem('dashboard') !!}
+                    {!! \App\Util\Core::NavbarItem('availability') !!}
                     {!! \App\Util\Core::NavbarItem('uploads') !!}
                 @endif
                 <li class="nav-item dropdown">
@@ -90,6 +91,10 @@
                             {{ Auth::user()->name }}
                         </a>
                         <div class="dropdown-menu" role="menu">
+                            <a href="{{ url('/account') }}" class="dropdown-item">
+                                <x-fa icon="user-cog" first></x-fa>{{ __('global.account') }}
+                            </a>
+                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item" id="logout-link">
                                 <x-fa icon="sign-out-alt" first></x-fa>{{ __('auth.logout') }}
                             </a>

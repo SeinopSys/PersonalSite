@@ -4,14 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarHighlightToken;
 use App\Models\CalendarHighlightWord;
+use App\Services\AvailabilityService;
+use App\Util\Core;
 use App\Util\Permission;
 use Carbon\Carbon;
-use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Sabre\VObject\Reader;
 
 class DashboardController extends Controller
 {
@@ -25,13 +24,173 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $data = ['title' => __('global.dashboard')];
+
+        // Availability stats
+        if ($user->calendar_url) {
+            try {
+                $service  = new AvailabilityService();
+                $tz       = $user->timezone ?? 'UTC';
+                $settings = $user->availability_settings ?? [];
+                $now      = Carbon::now($tz);
+
+                $past30Start = $now->copy()->subDays(29)->startOfDay();
+                $weekEnd     = $now->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+                $rangeStart  = $past30Start;
+                $rangeEnd    = $weekEnd;
+
+                $ics    = $service->fetchIcs($user->calendar_url);
+                $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, $tz);
+
+                $subArgs = [$events, $settings, $rangeStart->copy()->subDay(), $rangeEnd->copy()->addDay(), $tz];
+
+                $freeSlots      = $service->computeRangeFreeSlots(...$subArgs);
+                $workMinsByDate = $service->computeFilteredMinutesByDate(
+                    $events, $settings,
+                    $rangeStart->copy()->subDay(),
+                    $rangeEnd->copy()->addDay(),
+                    $tz,
+                    fn($e) => str_contains($e['name'], 'Work')
+                );
+
+                // Group free slots by day — computeRangeFreeSlots processes one day at a time,
+                // so each slot's start date corresponds exactly to its day's window.
+                $slotsByDate = [];
+                foreach ($freeSlots as $slot) {
+                    $slotsByDate[$slot['start']->format('Y-m-d')][] = $slot;
+                }
+
+                $dowNames = AvailabilityService::DAY_NAMES;
+
+                // Today (HH:mm free + HH:mm work, plus % for bars)
+                $todayKey     = $now->format('Y-m-d');
+                $todayWindow  = $service->dayWindowMinutes($dowNames[$now->dayOfWeek], $settings);
+                $todayFreeMin = $service->sumSlotMinutes($slotsByDate[$todayKey] ?? []);
+                $todayWorkMin = $workMinsByDate[$todayKey] ?? 0;
+                if ($todayWindow > 0) {
+                    $todayBusyMin = max(0, $todayWindow - $todayFreeMin - $todayWorkMin);
+                    $data['todayFreeFormatted'] = sprintf('%d:%02d', intdiv($todayFreeMin, 60), $todayFreeMin % 60);
+                    $data['todayFreePct']       = min(100, (int)round($todayFreeMin / $todayWindow * 100));
+                    $data['todayWorkFormatted'] = sprintf('%d:%02d', intdiv($todayWorkMin, 60), $todayWorkMin % 60);
+                    $data['todayWorkPct']       = min(100, (int)round($todayWorkMin / $todayWindow * 100));
+                    $data['todayBusyFormatted'] = sprintf('%d:%02d', intdiv($todayBusyMin, 60), $todayBusyMin % 60);
+                    $data['todayBusyPct']       = min(100, (int)round($todayBusyMin / $todayWindow * 100));
+                    $data['todayWorkBarPct']    = (int)round($todayWorkMin / 1440 * 100);
+                    $data['todayBusyBarPct']    = (int)round($todayBusyMin / 1440 * 100);
+                    $data['todaySleepBarPct']   = (int)round((1440 - $todayWindow) / 1440 * 100);
+                } else {
+                    $data['todayFreeFormatted'] = null;
+                    $data['todayFreePct']       = null;
+                    $data['todayWorkFormatted'] = null;
+                    $data['todayWorkPct']       = null;
+                    $data['todayBusyFormatted'] = null;
+                    $data['todayBusyPct']       = null;
+                    $data['todayWorkBarPct']    = 0;
+                    $data['todayBusyBarPct']    = 0;
+                    $data['todaySleepBarPct']   = 100;
+                }
+
+                // This week (Mon–Sun)
+                $weekStart   = $now->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+                $weekFreeMin = 0;
+                $weekWorkMin = 0;
+                $weekWindow  = 0;
+                $weekDay     = $weekStart->copy();
+                while ($weekDay->lte($weekEnd)) {
+                    $dk           = $weekDay->format('Y-m-d');
+                    $weekWindow  += $service->dayWindowMinutes($dowNames[$weekDay->dayOfWeek], $settings);
+                    $weekFreeMin += $service->sumSlotMinutes($slotsByDate[$dk] ?? []);
+                    $weekWorkMin += $workMinsByDate[$dk] ?? 0;
+                    $weekDay->addDay();
+                }
+                $weekBusyMin = max(0, $weekWindow - $weekFreeMin - $weekWorkMin);
+                $data['weekFreePct'] = $weekWindow > 0
+                    ? min(100, (int)round($weekFreeMin / $weekWindow * 100))
+                    : null;
+                $data['weekWorkPct'] = $weekWindow > 0
+                    ? min(100, (int)round($weekWorkMin / $weekWindow * 100))
+                    : null;
+                $data['weekBusyPct'] = $weekWindow > 0
+                    ? min(100, (int)round($weekBusyMin / $weekWindow * 100))
+                    : null;
+                $weekTotalMin = 7 * 1440;
+                $data['weekWorkBarPct']  = (int)round($weekWorkMin / $weekTotalMin * 100);
+                $data['weekBusyBarPct']  = (int)round($weekBusyMin / $weekTotalMin * 100);
+                $data['weekSleepBarPct'] = (int)round(($weekTotalMin - $weekWindow) / $weekTotalMin * 100);
+
+                // Past 30 days — aggregate bar + per-day chart data
+                $past30FreeMin = 0;
+                $past30WorkMin = 0;
+                $past30Window  = 0;
+                $past30Data    = [];
+                for ($i = 29; $i >= 0; $i--) {
+                    $day    = $now->copy()->subDays($i);
+                    $dk     = $day->format('Y-m-d');
+                    $window = $service->dayWindowMinutes($dowNames[$day->dayOfWeek], $settings);
+                    $past30Window += $window;
+                    if ($window === 0) {
+                        $past30Data[] = ['date' => $dk, 'dow' => $day->format('D'), 'busyPct' => null, 'workPct' => null];
+                    } else {
+                        $freeMin = $service->sumSlotMinutes($slotsByDate[$dk] ?? []);
+                        $workMin = $workMinsByDate[$dk] ?? 0;
+                        $busyMin = max(0, $window - $freeMin);
+                        $past30FreeMin += $freeMin;
+                        $past30WorkMin += $workMin;
+                        $past30Data[] = [
+                            'date'    => $dk,
+                            'dow'     => $day->format('D'),
+                            'busyPct' => min(100, (int)round($busyMin / $window * 100)),
+                            'workPct' => min(100, (int)round($workMin / $window * 100)),
+                            '_window' => $window,
+                            '_busyMin' => $busyMin,
+                            '_workMin' => $workMin,
+                        ];
+                    }
+                }
+                $data['past30Data']    = $past30Data;
+                $past30BusyMin = max(0, $past30Window - $past30FreeMin - $past30WorkMin);
+                $data['past30FreePct'] = $past30Window > 0
+                    ? min(100, (int)round($past30FreeMin / $past30Window * 100))
+                    : null;
+                $data['past30WorkPct'] = $past30Window > 0
+                    ? min(100, (int)round($past30WorkMin / $past30Window * 100))
+                    : null;
+                $data['past30BusyPct'] = $past30Window > 0
+                    ? min(100, (int)round($past30BusyMin / $past30Window * 100))
+                    : null;
+                $past30TotalMin = 30 * 1440;
+                $data['past30WorkBarPct']  = (int)round($past30WorkMin / $past30TotalMin * 100);
+                $data['past30BusyBarPct']  = (int)round($past30BusyMin / $past30TotalMin * 100);
+                $data['past30SleepBarPct'] = (int)round(($past30TotalMin - $past30Window) / $past30TotalMin * 100);
+
+            } catch (\Exception) {
+                $data['availabilityFetchError'] = true;
+            }
+        }
+
+        // Uploads stats
+        $imageUpload = $user->imageUpload()->first();
+        $data['uploadingEnabled'] = !empty($imageUpload);
+        if ($data['uploadingEnabled']) {
+            $usedBytes  = (int)$user->uploads()->sum('size');
+            $quotaBytes = (int)config('app.upload_quota_bytes');
+            $data['usedSpace']  = Core::ReadableFilesize($usedBytes);
+            $data['quotaSpace'] = Core::ReadableFilesize($quotaBytes);
+            $data['usedPct']    = $quotaBytes > 0
+                ? min(100, (int)round($usedBytes / $quotaBytes * 100))
+                : 0;
+        }
+
+        return view('dashboard', $data);
+    }
+
+    public function availability(Request $request)
+    {
+        $user = Auth::user();
         $data = [
-            'title'  => __('global.dashboard'),
-            'js'     => ['dashboard'],
-            'days'   => self::DAYS,
-            'twoFactorSetup' => $user->hasTwoFactorEnabled()
-                ? null
-                : TwoFactorAuthController::pendingSetup($request, $user),
+            'title' => __('global.availability'),
+            'js'    => ['dashboard'],
+            'days'  => self::DAYS,
         ];
 
         if (Permission::Sufficient('developer')) {
@@ -39,7 +198,18 @@ class DashboardController extends Controller
             $data['isDeveloper'] = true;
         }
 
-        return view('dashboard', $data);
+        return view('availability', $data);
+    }
+
+    public function account(Request $request)
+    {
+        $user = Auth::user();
+        return view('account', [
+            'title'          => __('global.account'),
+            'twoFactorSetup' => $user->hasTwoFactorEnabled()
+                ? null
+                : TwoFactorAuthController::pendingSetup($request, $user),
+        ]);
     }
 
     public function saveSettings(Request $request)
@@ -67,12 +237,11 @@ class DashboardController extends Controller
         $user->availability_settings = $availabilitySettings;
         $user->save();
 
-        return redirect('/dashboard')->with('success', 'Settings saved.');
+        return redirect('/availability')->with('success', 'Settings saved.');
     }
 
     public function debugEvents(Request $request): JsonResponse
     {
-
         $user = Auth::user();
         if (!$user->calendar_url) {
             return response()->json(['error' => 'No calendar configured'], 404);
@@ -92,56 +261,21 @@ class DashboardController extends Controller
             $rangeEnd = Carbon::now($tz)->endOfWeek(Carbon::SUNDAY)->endOfDay();
         }
 
+        $service = new AvailabilityService();
+
         try {
-            $cacheKey = 'ics_' . md5($user->calendar_url);
-            $icsContent = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($user) {
-                $client = new Client(['timeout' => 10]);
-                return (string)$client->get($user->calendar_url)->getBody();
-            });
+            $icsContent = $service->fetchIcs($user->calendar_url);
         } catch (\Exception) {
             return response()->json(['error' => 'Failed to fetch calendar data'], 503);
         }
 
-        $calendar = Reader::read($icsContent);
-        $expandStart = $rangeStart->copy()->utc()->subDay();
-        $expandEnd = $rangeEnd->copy()->utc()->addDay();
-        $calendar = $calendar->expand(
-            \DateTimeImmutable::createFromInterface($expandStart),
-            \DateTimeImmutable::createFromInterface($expandEnd)
-        );
+        $events = $service->parseIcsEvents($icsContent, $rangeStart, $rangeEnd, $tz);
 
-        $events = [];
-        if (isset($calendar->VEVENT)) {
-            foreach ($calendar->VEVENT as $event) {
-                $valueType = strtoupper((string)($event->DTSTART['VALUE'] ?? ''));
-                if ($valueType === 'DATE') {
-                    $eventStart = Carbon::parse((string)$event->DTSTART->getValue(), $tz)->startOfDay();
-                } else {
-                    $eventStart = Carbon::instance($event->DTSTART->getDateTime())->setTimezone($tz);
-                }
-
-                if (isset($event->DTEND)) {
-                    $valueType = strtoupper((string)($event->DTEND['VALUE'] ?? ''));
-                    if ($valueType === 'DATE') {
-                        $eventEnd = Carbon::parse((string)$event->DTEND->getValue(), $tz)->startOfDay();
-                    } else {
-                        $eventEnd = Carbon::instance($event->DTEND->getDateTime())->setTimezone($tz);
-                    }
-                } else {
-                    $eventEnd = $eventStart->copy()->addHour();
-                }
-
-                $events[] = [
-                    'start' => $eventStart->toAtomString(),
-                    'end'   => $eventEnd->toAtomString(),
-                    'name'  => isset($event->SUMMARY) ? (string)$event->SUMMARY : '',
-                ];
-            }
-        }
-
-        usort($events, fn($a, $b) => $a['start'] <=> $b['start']);
-
-        return response()->json($events);
+        return response()->json(array_map(fn($e) => [
+            'start' => $e['start']->toAtomString(),
+            'end'   => $e['end']->toAtomString(),
+            'name'  => $e['name'],
+        ], $events));
     }
 
     public function storeHighlight(Request $request)
@@ -158,7 +292,7 @@ class DashboardController extends Controller
             'label'   => $validated['label'] ?? null,
         ]);
 
-        return redirect('/dashboard#highlights')->with('success', 'Highlight token created.');
+        return redirect('/availability#highlights')->with('success', 'Highlight token created.');
     }
 
     public function updateHighlight(Request $request, string $id)
@@ -176,7 +310,7 @@ class DashboardController extends Controller
         $token->label = $validated['label'] ?? null;
         $token->save();
 
-        return redirect('/dashboard#highlights')->with('success', 'Label updated.');
+        return redirect('/availability#highlights')->with('success', 'Label updated.');
     }
 
     public function regenerateHighlight(string $id)
@@ -190,7 +324,7 @@ class DashboardController extends Controller
         $token->token = CalendarHighlightToken::generateToken();
         $token->save();
 
-        return redirect('/dashboard#highlights')->with('success', 'Token regenerated.');
+        return redirect('/availability#highlights')->with('success', 'Token regenerated.');
     }
 
     public function destroyHighlight(string $id)
@@ -202,7 +336,7 @@ class DashboardController extends Controller
             ->firstOrFail()
             ->delete();
 
-        return redirect('/dashboard#highlights')->with('success', 'Highlight token deleted.');
+        return redirect('/availability#highlights')->with('success', 'Highlight token deleted.');
     }
 
     public function storeHighlightWord(Request $request, string $tokenId)
@@ -232,7 +366,7 @@ class DashboardController extends Controller
             'word'     => $word,
         ]);
 
-        return redirect('/dashboard#highlights')->with('success', 'Word added.');
+        return redirect('/availability#highlights')->with('success', 'Word added.');
     }
 
     public function destroyHighlightWord(string $tokenId, string $wordId)
@@ -248,6 +382,6 @@ class DashboardController extends Controller
             ->firstOrFail()
             ->delete();
 
-        return redirect('/dashboard#highlights')->with('success', 'Word removed.');
+        return redirect('/availability#highlights')->with('success', 'Word removed.');
     }
 }
