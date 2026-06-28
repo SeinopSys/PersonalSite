@@ -19,6 +19,8 @@ return [
 
     'secondary_domain' => env('SECONDARY_DOMAIN', null),
 
+    'upload_quota_bytes' => (int) env('UPLOAD_QUOTA_BYTES', 524288000),
+
     'lrc_site_url' => env('APP_LRC_SITE_URL', null),
 
     /*

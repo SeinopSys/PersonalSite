@@ -209,8 +209,10 @@ class UploadsController extends Controller
 
         $file = $validated['file'];
         $orig_file_size = $file->getSize();
-        if ($this->_usedSpaceInBytes($user) + $orig_file_size > 524288000) { // 500 mib in bytes
-            return response()->json(['message' => 'Uploading this image would exceed the 500 MiB maximum uploadable amount. Delete some images and try again.'], 422);
+        $quota = config('app.upload_quota_bytes');
+        if ($this->_usedSpaceInBytes($user) + $orig_file_size > $quota) {
+            $readable = Core::ReadableFilesize($quota);
+            return response()->json(['message' => "Uploading this image would exceed the {$readable} maximum uploadable amount. Delete some images and try again."], 422);
         }
 
         $upload = new Upload;
