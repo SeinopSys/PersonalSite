@@ -36,8 +36,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0(eslint@8.57.1)
       blob-polyfill:
-        specifier: ^7.0.20220408
-        version: 7.0.20220408
+        specifier: ^9.0.20240710
+        version: 9.0.20240710
       bootstrap:
         specifier: ^5.2.2
         version: 5.3.8(@popperjs/core@2.11.8)
@@ -1515,8 +1515,8 @@ packages:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
 
-  blob-polyfill@7.0.20220408:
-    resolution: {integrity: sha512-oD8Ydw+5lNoqq+en24iuPt1QixdPpe/nUF8azTHnviCZYu9zUC+TwdzIp5orpblJosNlgNbVmmAb//c6d6ImUQ==}
+  blob-polyfill@9.0.20240710:
+    resolution: {integrity: sha512-DPUO/EjNANCgSVg0geTy1vmUpu5hhp9tV2F7xUSTUd1jwe4XpwupGB+lt5PhVUqpqAk+zK1etqp6Pl/HVf71Ug==}
 
   bn.js@4.12.3:
     resolution: {integrity: sha512-fGTi3gxV/23FTYdAoUtLYp6qySe2KE3teyZitipKNRuVYcBkoP/bB3guXN/XVKUe9mxCHXnc9C4ocyz8OmgN0g==}
@@ -5991,7 +5991,7 @@ snapshots:
 
   binary-extensions@2.3.0: {}
 
-  blob-polyfill@7.0.20220408: {}
+  blob-polyfill@9.0.20240710: {}
 
   bn.js@4.12.3: {}
 
