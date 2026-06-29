@@ -213,7 +213,7 @@ class DashboardController extends Controller
                         'end'   => $e['end']->format('Y-m-d H:i'),
                     ], $matchedEvents);
                 }
-                $highlightsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin, 'archived' => $token->archived, 'events' => $matchedEvents ?? []];
+                $highlightsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin, 'archived' => $token->archived, 'events' => $matchedEvents ?? [], 'words' => $words];
             }
             usort($highlightsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 

@@ -23,7 +23,7 @@ interface AvailRow {
 }
 
 interface HighlightEvent { name: string; start: string; end: string; }
-interface Highlight { label: string; minutes: number; events?: HighlightEvent[]; }
+interface Highlight { label: string; minutes: number; events?: HighlightEvent[]; words?: string[]; }
 
 interface AvailResponse {
   error?: string;
@@ -41,6 +41,13 @@ interface UploadResponse {
   quotaSpace?: string;
   usedPct?: number;
   uploads?: Upload[];
+}
+
+function boldWords(text: string, words: string[]): string {
+  return words.reduce((html, word) => {
+    const escapedWord = esc(word);
+    return html.split(escapedWord).join(`<strong>${escapedWord}</strong>`);
+  }, esc(text));
 }
 
 function renderAvailRow(row: AvailRow): string {
@@ -106,8 +113,12 @@ if (availEl) {
         const rest = data.highlightsRest ?? [];
         const topCount = data.highlights.length;
         const eventsMap = new Map<string, HighlightEvent[]>();
+        const wordsMap = new Map<string, string[]>();
         const allHighlights = [...data.highlights, ...rest];
-        allHighlights.forEach((f, i) => eventsMap.set(String(i), f.events ?? []));
+        allHighlights.forEach((f, i) => {
+          eventsMap.set(String(i), f.events ?? []);
+          wordsMap.set(String(i), f.words ?? []);
+        });
 
         const btnHtml = (f: Highlight, i: number, cls: string) =>
           `<button class="btn btn-link p-0 text-start text-decoration-none highlight-events-btn ${cls}"
@@ -133,10 +144,12 @@ if (availEl) {
           const modalBody = document.getElementById('highlightEventsModalBody')!;
           highlightListEl.querySelectorAll<HTMLButtonElement>('.highlight-events-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-              const events = eventsMap.get(btn.dataset.idx ?? '') ?? [];
+              const idx = btn.dataset.idx ?? '';
+              const events = eventsMap.get(idx) ?? [];
+              const words = wordsMap.get(idx) ?? [];
               modalLabel.textContent = btn.dataset.label ?? '';
               modalBody.innerHTML = events.length > 0
-                ? events.map(e => `<tr><td>${esc(e.name)}</td><td class="text-nowrap">${esc(e.start)}</td><td class="text-nowrap">${esc(e.end)}</td></tr>`).join('')
+                ? events.map(e => `<tr><td>${boldWords(e.name, words)}</td><td class="text-nowrap">${esc(e.start)}</td><td class="text-nowrap">${esc(e.end)}</td></tr>`).join('')
                 : '<tr><td colspan="3" class="text-muted p-3">No matched events.</td></tr>';
               modal.show();
             });
