@@ -61,8 +61,8 @@
                                         <h5 class="modal-title" id="highlightEventsModalLabel"></h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
-                                    <div class="modal-body p-0">
-                                        <table class="table table-sm mb-0 small" style="--bs-table-cell-padding-x:1rem">
+                                    <div class="modal-body">
+                                        <table class="table table-sm mb-0 small">
                                             <thead><tr><th>Event</th><th>Start</th><th>End</th></tr></thead>
                                             <tbody id="highlightEventsModalBody"></tbody>
                                         </table>
