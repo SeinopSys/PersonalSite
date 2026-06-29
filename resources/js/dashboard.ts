@@ -105,8 +105,10 @@ if (availEl) {
         const rest = data.highlightsRest ?? [];
         const restRow = rest.length > 0
           ? `<li class="d-flex justify-content-between text-muted">
-               <span>${esc(rest.map(f => f.label).join(', '))}</span>
-               <span class="ms-2">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
+               <span>${rest.map(f => `<button class="btn btn-link p-0 text-muted text-decoration-none highlight-events-btn"
+                 data-label="${esc(f.label)}"
+                 data-events="${esc(JSON.stringify(f.events ?? []))}">${esc(f.label)}</button>`).join(', ')}</span>
+               <span class="ms-2 flex-shrink-0">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
              </li>`
           : '';
         highlightListEl.innerHTML = data.highlights.map(f => `
