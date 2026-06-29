@@ -174,6 +174,7 @@
                     data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
                 @if($ht->archived)<span class="fa fa-archive me-2 text-muted" title="Archived"></span>@endif{{ $ht->label ?? '(unlabelled)' }}
+                <span class="badge bg-secondary fw-normal ms-2">{{ $ht->words->count() }}</span>
                 <span class="text-muted small fw-normal ms-2"><span class="fa fa-clock me-1"></span>{{ $ht->created_at->format('Y-m-d H:i') }}</span>
             </button>
         </h2>
