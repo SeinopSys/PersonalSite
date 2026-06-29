@@ -93,6 +93,7 @@ const availEl = document.getElementById('avail-stats');
 if (availEl) {
   fetch('/dashboard/stats/availability')
     .then(r => r.json() as Promise<AvailResponse>)
+    .catch(() => ({ error: 'fetch_failed' }) as AvailResponse)
     .then(data => {
       if (data.error || !data.rows) {
         availEl.innerHTML = '<p class="text-danger mb-0"><span class="fa fa-exclamation-circle me-1"></span>Failed to fetch calendar data.</p>';
@@ -150,9 +151,6 @@ if (availEl) {
           noTimeSectionEl.classList.remove('d-none');
         }
       }
-    })
-    .catch(() => {
-      availEl.innerHTML = '<p class="text-danger mb-0"><span class="fa fa-exclamation-circle me-1"></span>Failed to fetch calendar data.</p>';
     });
 }
 
@@ -160,6 +158,7 @@ const uploadEl = document.getElementById('upload-stats');
 if (uploadEl) {
   fetch('/dashboard/stats/uploads')
     .then(r => r.json() as Promise<UploadResponse>)
+    .catch(() => ({ error: 'fetch_failed' }) as UploadResponse)
     .then(data => {
       if (data.error || data.usedPct === undefined) {
         uploadEl.innerHTML = '<p class="text-danger mb-0">Failed to load upload stats.</p>';
@@ -200,7 +199,5 @@ if (uploadEl) {
         attachUploadPreviews();
       }
     })
-    .catch(() => {
-      uploadEl.innerHTML = '<p class="text-danger mb-0">Failed to load upload stats.</p>';
     });
 }
