@@ -170,7 +170,7 @@
     @endphp
     <div class="accordion-item">
         <h2 class="accordion-header">
-            <button class="accordion-button {{ $isOpen ? '' : 'collapsed' }}" type="button"
+            <button class="accordion-button p-2 {{ $isOpen ? '' : 'collapsed' }}" type="button"
                     data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
                 @if($ht->archived)<span class="fa fa-archive me-2 text-muted" title="Archived"></span>@endif{{ $ht->label ?? '(unlabelled)' }}
