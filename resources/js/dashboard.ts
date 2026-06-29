@@ -105,12 +105,6 @@ if (availEl) {
       if (highlightListEl && data.highlights) {
         const rest = data.highlightsRest ?? [];
         const topCount = data.highlights.length;
-        const restRow = rest.length > 0
-          ? `<li class="d-flex justify-content-between text-muted">
-               <span>${rest.map((f, i) => btnHtml(f, topCount + i, 'text-muted')).join(', ')}</span>
-               <span class="ms-2 flex-shrink-0">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
-             </li>`
-          : '';
         const eventsMap = new Map<string, HighlightEvent[]>();
         const allHighlights = [...data.highlights, ...rest];
         allHighlights.forEach((f, i) => eventsMap.set(String(i), f.events ?? []));
@@ -118,6 +112,13 @@ if (availEl) {
         const btnHtml = (f: Highlight, i: number, cls: string) =>
           `<button class="btn btn-link p-0 text-start text-decoration-none highlight-events-btn ${cls}"
                    data-idx="${i}" data-label="${esc(f.label)}">${esc(f.label)}</button>`;
+
+        const restRow = rest.length > 0
+          ? `<li class="d-flex justify-content-between text-muted">
+               <span>${rest.map((f, i) => btnHtml(f, topCount + i, 'text-muted')).join(', ')}</span>
+               <span class="ms-2 flex-shrink-0">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
+             </li>`
+          : '';
 
         highlightListEl.innerHTML = data.highlights.map((f, i) => `
           <li class="d-flex justify-content-between">
@@ -198,6 +199,5 @@ if (uploadEl) {
       if (uploads.length > 0) {
         attachUploadPreviews();
       }
-    })
     });
 }
