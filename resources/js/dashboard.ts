@@ -103,19 +103,24 @@ if (availEl) {
       const highlightListEl = document.getElementById('highlight-list');
       if (highlightListEl && data.highlights) {
         const rest = data.highlightsRest ?? [];
+        const topCount = data.highlights.length;
         const restRow = rest.length > 0
           ? `<li class="d-flex justify-content-between text-muted">
-               <span>${rest.map(f => `<button class="btn btn-link p-0 text-muted text-decoration-none highlight-events-btn"
-                 data-label="${esc(f.label)}"
-                 data-events="${esc(JSON.stringify(f.events ?? []))}">${esc(f.label)}</button>`).join(', ')}</span>
+               <span>${rest.map((f, i) => btnHtml(f, topCount + i, 'text-muted')).join(', ')}</span>
                <span class="ms-2 flex-shrink-0">&le;&nbsp;${esc(fmtMin(rest[0].minutes))}</span>
              </li>`
           : '';
-        highlightListEl.innerHTML = data.highlights.map(f => `
+        const eventsMap = new Map<string, HighlightEvent[]>();
+        const allHighlights = [...data.highlights, ...rest];
+        allHighlights.forEach((f, i) => eventsMap.set(String(i), f.events ?? []));
+
+        const btnHtml = (f: Highlight, i: number, cls: string) =>
+          `<button class="btn btn-link p-0 text-start text-decoration-none highlight-events-btn ${cls}"
+                   data-idx="${i}" data-label="${esc(f.label)}">${esc(f.label)}</button>`;
+
+        highlightListEl.innerHTML = data.highlights.map((f, i) => `
           <li class="d-flex justify-content-between">
-            <button class="btn btn-link p-0 text-start text-body text-decoration-none highlight-events-btn"
-                    data-label="${esc(f.label)}"
-                    data-events="${esc(JSON.stringify(f.events ?? []))}">${esc(f.label)}</button>
+            ${btnHtml(f, i, 'text-body')}
             <span class="ms-2 flex-shrink-0">${esc(fmtMin(f.minutes))}</span>
           </li>`).join('') + restRow;
 
@@ -126,7 +131,7 @@ if (availEl) {
           const modalBody = document.getElementById('highlightEventsModalBody')!;
           highlightListEl.querySelectorAll<HTMLButtonElement>('.highlight-events-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-              const events: HighlightEvent[] = JSON.parse(btn.dataset.events ?? '[]');
+              const events = eventsMap.get(btn.dataset.idx ?? '') ?? [];
               modalLabel.textContent = btn.dataset.label ?? '';
               modalBody.innerHTML = events.length > 0
                 ? events.map(e => `<tr><td>${esc(e.name)}</td><td class="text-nowrap">${esc(e.start)}</td><td class="text-nowrap">${esc(e.end)}</td></tr>`).join('')
