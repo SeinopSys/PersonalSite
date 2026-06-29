@@ -192,16 +192,28 @@ class DashboardController extends Controller
                     $totalMin = 0;
                 } else {
                     $tokenWords    = $words;
+                    $filter = fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w));
                     $minutesByDate = $service->computeFilteredMinutesByDate(
                         $events, [],
                         $past30Start->copy()->subDay(),
                         $now->copy()->endOfDay(),
                         $tz,
-                        fn($e) => (bool)array_filter($tokenWords, fn($w) => str_contains($e['name'], $w))
+                        $filter
                     );
                     $totalMin = array_sum($minutesByDate);
+                    $matchedEvents = array_values(array_filter($events, function ($e) use ($filter, $past30Start, $now) {
+                        return $filter($e)
+                            && $e['start']->lte($now->copy()->endOfDay())
+                            && $e['end']->gte($past30Start);
+                    }));
+                    usort($matchedEvents, fn($a, $b) => $a['start'] <=> $b['start']);
+                    $matchedEvents = array_map(fn($e) => [
+                        'name'  => $e['name'],
+                        'start' => $e['start']->format('Y-m-d H:i'),
+                        'end'   => $e['end']->format('Y-m-d H:i'),
+                    ], $matchedEvents);
                 }
-                $highlightsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin, 'archived' => $token->archived];
+                $highlightsData[] = ['label' => $token->label ?? 'Unnamed', 'minutes' => $totalMin, 'archived' => $token->archived, 'events' => $matchedEvents ?? []];
             }
             usort($highlightsData, fn($a, $b) => $b['minutes'] <=> $a['minutes']);
 

@@ -22,7 +22,8 @@ interface AvailRow {
   freeLabel: string | null; freePct: number | null;
 }
 
-interface Highlight { label: string; minutes: number; }
+interface HighlightEvent { name: string; start: string; end: string; }
+interface Highlight { label: string; minutes: number; events?: HighlightEvent[]; }
 
 interface AvailResponse {
   error?: string;
@@ -110,9 +111,28 @@ if (availEl) {
           : '';
         highlightListEl.innerHTML = data.highlights.map(f => `
           <li class="d-flex justify-content-between">
-            <span>${esc(f.label)}</span>
-            <span class="ms-2">${esc(fmtMin(f.minutes))}</span>
+            <button class="btn btn-link p-0 text-start text-body text-decoration-none highlight-events-btn"
+                    data-label="${esc(f.label)}"
+                    data-events="${esc(JSON.stringify(f.events ?? []))}">${esc(f.label)}</button>
+            <span class="ms-2 flex-shrink-0">${esc(fmtMin(f.minutes))}</span>
           </li>`).join('') + restRow;
+
+        const modalEl = document.getElementById('highlightEventsModal');
+        if (modalEl) {
+          const modal = new window.bootstrap.Modal(modalEl);
+          const modalLabel = document.getElementById('highlightEventsModalLabel')!;
+          const modalBody = document.getElementById('highlightEventsModalBody')!;
+          highlightListEl.querySelectorAll<HTMLButtonElement>('.highlight-events-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const events: HighlightEvent[] = JSON.parse(btn.dataset.events ?? '[]');
+              modalLabel.textContent = btn.dataset.label ?? '';
+              modalBody.innerHTML = events.length > 0
+                ? events.map(e => `<tr><td>${esc(e.name)}</td><td class="text-nowrap">${esc(e.start)}</td><td class="text-nowrap">${esc(e.end)}</td></tr>`).join('')
+                : '<tr><td colspan="3" class="text-muted p-3">No matched events.</td></tr>';
+              modal.show();
+            });
+          });
+        }
       }
 
       const noTimeSectionEl = document.getElementById('highlight-no-time-section');

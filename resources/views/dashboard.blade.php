@@ -53,6 +53,24 @@
                             @endforeach
                         </div>
 
+                        {{-- Highlight events modal --}}
+                        <div class="modal fade" id="highlightEventsModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="highlightEventsModalLabel"></h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-0">
+                                        <table class="table table-sm mb-0 small">
+                                            <thead><tr><th>Event</th><th>Start</th><th>End</th></tr></thead>
+                                            <tbody id="highlightEventsModalBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Friends section: headings are static, lists are updated by JS --}}
                         @if(!empty($highlightLabels))
                             <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
