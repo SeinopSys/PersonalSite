@@ -50,15 +50,15 @@ function boldWords(text: string, words: string[]): string {
   }, esc(text));
 }
 
-function renderAvailRow(row: AvailRow): string {
+function renderAvailRow(row: AvailRow, index: number): string {
   const labelSpan = row.notAvail
     ? '<span class="text-muted">Not available</span>'
     : (() => {
       const parts = [
-        row.sleepPct > 0 ? `<span>${esc(row.sleepLabel)} sleep</span>` : '',
-        row.workPct > 0 ? `<span class="text-primary">${esc(row.workLabel!)} work</span>` : '',
-        row.busyPct > 0 ? `<span class="text-danger">${esc(row.busyLabel!)} busy</span>` : '',
-        row.freePct !== null ? `<span class="text-secondary">${esc(row.freeLabel!)} free</span>` : '',
+        row.sleepPct > 0 ? `<span>${esc(index > 0 ? `${row.sleepPct}%` : row.sleepLabel)} sleep</span>` : '',
+        row.workPct > 0 ? `<span class="text-primary">${esc(index > 0 ? `${row.workPct}%` : row.workLabel!)} work</span>` : '',
+        row.busyPct > 0 ? `<span class="text-danger">${esc(index > 0 ? `${row.busyPct}%` : row.busyLabel!)} busy</span>` : '',
+        row.freePct !== null ? `<span class="text-secondary">${esc(index > 0 ? `${row.freePct}%` : row.freeLabel!)} free</span>` : '',
       ].filter(Boolean);
       return `<span>${parts.join(' &middot; ')}</span>`;
     })();
@@ -120,8 +120,7 @@ if (availEl) {
           wordsMap.set(String(i), f.words ?? []);
         });
 
-        const btnHtml = (f: Highlight, i: number, cls: string) =>
-          `<button class="btn btn-link p-0 text-start text-decoration-none highlight-events-btn ${cls}"
+        const btnHtml = (f: Highlight, i: number, cls: string) => `<button class="btn btn-link p-0 text-start text-decoration-none highlight-events-btn ${cls}"
                    data-idx="${i}" data-label="${esc(f.label)}">${esc(f.label)}</button>`;
 
         const restRow = rest.length > 0
