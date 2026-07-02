@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
 class DashboardController extends Controller
 {
     private const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    private const PAST_DAYS = 90;
+    private const PAST_DAYS = 30;
 
     public function __construct()
     {
