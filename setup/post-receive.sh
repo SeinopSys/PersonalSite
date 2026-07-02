@@ -18,8 +18,7 @@ echo "$ $CMD_FETCH"
 eval ${CMD_FETCH}
 echo "$ $CMD_COMPOSER"
 eval ${CMD_COMPOSER}
-FRONTEND_CHANGED=$(git diff --name-only "$oldrev" "$newrev" | grep -E '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)')
-if [ -n "$FRONTEND_CHANGED" ]; then
+if env -i git diff --name-only "$oldrev" "$newrev" | grep -qE '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)'; then
   echo "Frontend files changed, running install + build"
   echo "$ $CMD_NPM"
   eval ${CMD_NPM}
