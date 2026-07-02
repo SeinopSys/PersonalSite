@@ -3,8 +3,9 @@ echo "##### post-receive hook #####"
 read oldrev newrev refname
 echo "Push triggered update to revision $newrev ($refname)"
 
+GIT="env -i git"
 CMD_CD="cd $(readlink -nf "$PWD/..")"
-CMD_FETCH="env -i git fetch"
+CMD_FETCH="$GIT fetch"
 CMD_COMPOSER="sudo -u www-data composer install --no-dev 2>&1"
 CMD_NPM="sudo -u www-data pnpm install --frozen-lockfile"
 CMD_BUILD="sudo -u www-data nice pnpm run build"
@@ -18,7 +19,7 @@ echo "$ $CMD_FETCH"
 eval ${CMD_FETCH}
 echo "$ $CMD_COMPOSER"
 eval ${CMD_COMPOSER}
-if env -i git diff --name-only "$oldrev" "$newrev" | grep -qE '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)'; then
+if $GIT diff --name-only "$oldrev" "$newrev" | grep -qE '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)'; then
   echo "Frontend files changed, running install + build"
   echo "$ $CMD_NPM"
   eval ${CMD_NPM}
