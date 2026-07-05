@@ -29,6 +29,11 @@ class CalendarHighlightToken extends Model
         return $this->hasMany(CalendarHighlightWord::class, 'token_id');
     }
 
+    public function connections(): HasMany
+    {
+        return $this->hasMany(Connection::class, 'highlight_token_id');
+    }
+
     /** Base64url-encoded token for display and API use. */
     public function getTokenBase64Attribute(): string
     {

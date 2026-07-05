@@ -175,6 +175,11 @@
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
                 @if($ht->archived)<span class="fa fa-archive me-2 text-muted" title="Archived"></span>@endif{{ $ht->label ?? '(unlabelled)' }}
                 <span class="badge bg-secondary fw-normal ms-2">{{ $ht->words->count() }}</span>
+                @if($ht->connections->isNotEmpty())
+                    <span class="badge bg-info text-dark fw-normal ms-2" title="Linked to a connection">
+                        <span class="fa fa-user me-1"></span>Connected
+                    </span>
+                @endif
                 <span class="text-muted small fw-normal ms-2"><span class="fa fa-clock me-1"></span>{{ $ht->created_at->format('Y-m-d H:i') }}</span>
             </button>
         </h2>
@@ -206,6 +211,25 @@
                                     onclick="return confirm('Delete this token and all its words?')">Delete token</button>
                         </form>
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label mb-1 small fw-semibold">Connection</label>
+                    @if($ht->connections->isEmpty())
+                        <div>
+                            <form method="POST" action="/dashboard/highlights/{{ $ht->id }}/create-connection">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Create connection for this token</button>
+                            </form>
+                        </div>
+                    @else
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($ht->connections as $linkedConnection)
+                                <a href="/connections?connection={{ $linkedConnection->id }}#connection-detail"
+                                   class="btn btn-sm btn-outline-info">{{ $linkedConnection->name }}</a>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
                 <div class="mb-3">

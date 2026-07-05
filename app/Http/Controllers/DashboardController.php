@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CalendarHighlightToken;
 use App\Models\CalendarHighlightWord;
+use App\Models\Connection;
 use App\Services\AvailabilityService;
 use App\Util\Core;
 use App\Util\JSON;
@@ -282,7 +283,7 @@ class DashboardController extends Controller
             if (!in_array($sort, ['created_at', 'label'])) $sort = 'created_at';
             if (!in_array($dir, ['asc', 'desc'])) $dir = 'asc';
 
-            $data['highlights']  = $user->highlightTokens()->with('words')->orderBy($sort, $dir)->get();
+            $data['highlights']  = $user->highlightTokens()->with(['words', 'connections'])->orderBy($sort, $dir)->get();
             $data['isDeveloper'] = true;
             $data['sort']        = $sort;
             $data['dir']         = $dir;
@@ -409,6 +410,27 @@ class DashboardController extends Controller
         }
 
         return redirect('/availability#highlights')->with('success', 'Highlight token created.');
+    }
+
+    /** Quick-create a new connection (named after this token) and link it, when none is linked yet. */
+    public function createConnectionForHighlight(string $id)
+    {
+        abort_unless(Permission::Sufficient('developer'), 403);
+
+        $token = CalendarHighlightToken::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+
+        if ($token->connections()->exists()) {
+            return redirect('/availability#highlights')->with('success', 'This token is already linked to a connection.');
+        }
+
+        $connection = Connection::create([
+            'user_id'            => Auth::id(),
+            'name'               => $token->label ?? 'Unnamed',
+            'highlight_token_id' => $token->id,
+        ]);
+
+        return redirect('/connections?connection=' . $connection->id . '#connection-detail')
+            ->with('success', 'Connection created and linked.');
     }
 
     public function updateHighlight(Request $request, string $id)
