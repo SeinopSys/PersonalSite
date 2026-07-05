@@ -39,6 +39,38 @@ document.querySelectorAll<HTMLElement>('.list-group-item.active').forEach(item =
   item.scrollIntoView({ block: 'nearest' });
 });
 
+function copyTokenText(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  try {
+    document.execCommand('copy');
+    return Promise.resolve();
+  } catch {
+    return Promise.reject(new Error('Copy failed'));
+  } finally {
+    document.body.removeChild(el);
+  }
+}
+
+document.querySelectorAll<HTMLButtonElement>('.copy-token-btn').forEach(copyBtn => {
+  const el = copyBtn;
+  el.addEventListener('click', () => {
+    const token = el.dataset.token ?? '';
+    const orig = el.textContent;
+    copyTokenText(token)
+      .then(() => { el.textContent = 'Copied!'; })
+      .catch(() => { el.textContent = 'Failed'; })
+      .finally(() => { setTimeout(() => { el.textContent = orig; }, 1500); });
+  });
+});
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

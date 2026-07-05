@@ -85,6 +85,13 @@ Route::group(['middleware' => ['auth']], function () {
     Route::put('/connections/{id}', [ConnectionsController::class, 'update']);
     Route::post('/connections/{id}/archive', [ConnectionsController::class, 'archive']);
     Route::post('/connections/{id}/create-highlight', [ConnectionsController::class, 'createHighlightForConnection']);
+    Route::post('/connections/{id}/highlight-token/link', [ConnectionsController::class, 'linkExistingHighlightToken']);
+    Route::post('/connections/{id}/highlight-token/unlink', [ConnectionsController::class, 'unlinkHighlightToken']);
+    Route::post('/connections/{id}/highlight-token/regenerate', [ConnectionsController::class, 'regenerateConnectionHighlightToken']);
+    Route::post('/connections/{id}/highlight-token/toggle-archive', [ConnectionsController::class, 'toggleConnectionHighlightArchived']);
+    Route::delete('/connections/{id}/highlight-token', [ConnectionsController::class, 'destroyConnectionHighlightToken']);
+    Route::post('/connections/{id}/highlight-token/words', [ConnectionsController::class, 'storeConnectionHighlightWord']);
+    Route::delete('/connections/{id}/highlight-token/words/{wordId}', [ConnectionsController::class, 'destroyConnectionHighlightWord']);
     Route::delete('/connections/{id}', [ConnectionsController::class, 'destroy']);
     Route::get('/connections/{id}/events', [ConnectionsController::class, 'events']);
     Route::post('/connections/sources', [ConnectionsController::class, 'storeSource']);
@@ -97,8 +104,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/connections/import', [ConnectionsController::class, 'importConnections']);
     Route::post('/connections/import-connman', [ConnectionsController::class, 'importConnman']);
     Route::get('/connections/graph', [ConnectionsController::class, 'graph']);
-    Route::post('/connections/graph-edges', [ConnectionsController::class, 'storeGraphEdge']);
-    Route::delete('/connections/graph-edges/{id}', [ConnectionsController::class, 'destroyGraphEdge']);
+    Route::post('/connections/{id}/edges', [ConnectionsController::class, 'storeEdge']);
+    Route::put('/connections/{id}/edges/{edgeId}', [ConnectionsController::class, 'updateEdge']);
+    Route::delete('/connections/{id}/edges/{edgeId}', [ConnectionsController::class, 'destroyEdge']);
     Route::post('/connections/auto-link-highlights', [ConnectionsController::class, 'autoLinkHighlightTokens']);
     Route::get('/uploads', [UploadsController::class, 'index']);
     Route::post('/uploads/regen', [UploadsController::class, 'regen']);

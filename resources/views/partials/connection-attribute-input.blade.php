@@ -55,6 +55,10 @@
                {{ $currentValue ? 'checked' : '' }}>
         @break
 
+    @case('date')
+        <input type="date" name="attributes[{{ $definition->id }}]" class="form-control form-control-sm" value="{{ $currentValue }}">
+        @break
+
     @default
         <input type="text" name="attributes[{{ $definition->id }}]" class="form-control form-control-sm" value="{{ $currentValue }}">
 @endswitch

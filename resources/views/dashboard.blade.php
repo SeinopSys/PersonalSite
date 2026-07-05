@@ -162,11 +162,10 @@
                     @if(!$hasConnections)
                         <p class="text-muted mb-0">
                             No connections tracked yet.
-                            <a href="/connections">Add some on the Connections page</a> to see your network graph here.
+                            Add some on the <a href="/connections">Connections page</a> to see your network graph here.
                         </p>
                     @else
                         <canvas id="connections-graph" width="400" height="260" style="width:100%;height:260px"></canvas>
-                        <p class="text-muted small mb-0 mt-1">Each dot is a connection. Solid lines are mutual links; arrows show "introduced by".</p>
                     @endif
                 </div>
             </div>

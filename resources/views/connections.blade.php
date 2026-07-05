@@ -46,7 +46,7 @@
             @if(!$selectedSource)
                 <p class="text-muted">Select a source from the list, or add a new one.</p>
             @else
-                @php $categoryColorValue = $categoryColors->get($selectedSource->category)?->color ?? '#993366'; @endphp
+                @php $categoryColorValue = $categoryColors->get($selectedSource->category)?->color ?? \App\Models\ConnectionSourceCategory::DEFAULT_COLOR; @endphp
                 <form method="POST" action="/connections/sources/{{ $selectedSource->id }}" class="d-flex gap-2 flex-wrap align-items-end mb-2">
                     @csrf
                     @method('PUT')
@@ -79,6 +79,38 @@
                     <button type="submit" class="btn btn-sm btn-outline-danger"
                             onclick="return confirm('Remove this source? Connections referencing it will keep their other data.')">Delete</button>
                 </form>
+
+                <h5 class="h6 mt-3">Connections met via this source</h5>
+                @if($sourceEdges->isEmpty())
+                    <p class="text-muted small mb-1">No connections linked to this source yet.</p>
+                @else
+                <ul class="list-group mb-2" style="max-width:480px">
+                    @foreach($sourceEdges as $edge)
+                    <li class="list-group-item d-flex align-items-center gap-2">
+                        <span class="flex-grow-1 text-truncate">{{ $edge->fromConnection->name }}</span>
+                        <form method="PUT" action="/connections/{{ $edge->from_connection_id }}/edges/{{ $edge->id }}" class="d-flex gap-1 align-items-center">
+                            @csrf
+                            @method('PUT')
+                            <select name="target_id" class="form-select form-select-sm" style="max-width:160px">
+                                <option hidden value="" selected>Move to…</option>
+                                @foreach($sources->where('id', '!=', $selectedSource->id) as $otherSource)
+                                    <option value="{{ $otherSource->id }}">{{ $otherSource->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Move</button>
+                        </form>
+                        <form method="POST" action="/connections/{{ $edge->from_connection_id }}/edges/{{ $edge->id }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Unlink</button>
+                        </form>
+                    </li>
+                    @endforeach
+                </ul>
+                @error('target_id')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+                @endif
             @endif
         </div>
     </div>
@@ -175,9 +207,8 @@
 
     <h3 id="graph" class="mt-4">Connection graph</h3>
     <p class="text-muted small">
-        "Introduced by" is a directed "met through" link, set per-connection below. Mutual links ("they know each
-        other", no clear direction) are also managed per-connection below. Both show up in the graph on your
-        <a href="/dashboard">dashboard</a>.
+        "Introduced/met through" links are directional; "know each other" links have no particular direction —
+        both are managed per-connection below and show up in the graph on your <a href="/dashboard">dashboard</a>.
     </p>
 
     <form method="POST" action="/connections/import-connman" enctype="multipart/form-data" class="d-flex gap-2 align-items-center mb-4">
@@ -193,15 +224,16 @@
         a distinct file format from the JSON export/import below. Unlike that one, this <strong>replaces</strong> your
         entire connections list each time (meant to be re-run against fresh exports of the same network): "person"
         entries become connections (matched by name), "group" entries become sources (a person linked to a group
-        gets that group as their "met via" source), one-way links set "introduced by", bi-directional links become
-        mutual links.
+        gets a "met via" edge to that source), one-way links become "introduced/met through" edges, bi-directional
+        links become "know each other" edges.
     </p>
 
     <h3 id="highlight-links" class="mt-4">Calendar highlight links</h3>
     <p class="text-muted small">
-        Connections show a badge below when linked to one of your calendar highlight tokens. Try to auto-link any
-        unlinked connections by matching their name against your highlight tokens' words — ambiguous matches (more
-        than one token) are left for you to pick manually.
+        Connections show a badge below when linked to one of your calendar highlight tokens. Auto-linking matches
+        any unlinked connection's name against your highlight tokens' words; if a connection matches more than one
+        token it's left for you to pick manually, but if it matches none at all, a brand new token (named after the
+        connection) is created and linked automatically.
     </p>
     <form method="POST" action="/connections/auto-link-highlights" class="mb-4">
         @csrf
@@ -260,11 +292,6 @@
                 </div>
 
                 @php $valuesByDefinition = $selected->attributeValues->keyBy('attribute_definition_id'); @endphp
-                @unless($selected->highlight_token_id)
-                <form id="create-highlight-{{ $selected->id }}" method="POST" action="/connections/{{ $selected->id }}/create-highlight" class="d-none">
-                    @csrf
-                </form>
-                @endunless
                 <form method="POST" action="/connections/{{ $selected->id }}" class="mb-4">
                     @csrf
                     @method('PUT')
@@ -274,44 +301,7 @@
                             <input type="text" name="name" class="form-control form-control-sm" style="max-width:220px"
                                    maxlength="1000" required value="{{ $selected->name }}">
                         </div>
-                        <div>
-                            <label class="form-label small mb-1">Met via</label>
-                            <select name="source_id" class="form-select form-select-sm" style="max-width:180px">
-                                <option value="">—</option>
-                                @foreach($sources as $source)
-                                    <option value="{{ $source->id }}" {{ $selected->source_id === $source->id ? 'selected' : '' }}>{{ $source->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label small mb-1">Introduced by</label>
-                            <select name="introduced_by_connection_id" class="form-select form-select-sm" style="max-width:180px">
-                                <option value="">—</option>
-                                @foreach($connectionList->where('id', '!=', $selected->id) as $person)
-                                    <option value="{{ $person->id }}" {{ $selected->introduced_by_connection_id === $person->id ? 'selected' : '' }}>{{ $person->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label small mb-1">Met on</label>
-                            <input type="date" name="met_at" class="form-control form-control-sm" style="max-width:160px"
-                                   value="{{ $selected->met_at_date?->format('Y-m-d') }}">
-                        </div>
-                        <div>
-                            <label class="form-label small mb-1">Calendar highlight</label>
-                            <select name="highlight_token_id" class="form-select form-select-sm" style="max-width:200px">
-                                <option value="">No linked calendar highlight</option>
-                                @foreach($highlightTokens as $token)
-                                    <option value="{{ $token->id }}" {{ $selected->highlight_token_id === $token->id ? 'selected' : '' }}>{{ $token->label ?? '(unlabelled)' }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                     </div>
-                    @unless($selected->highlight_token_id)
-                    <p class="mb-2">
-                        <button type="submit" form="create-highlight-{{ $selected->id }}" class="btn btn-sm btn-outline-secondary">Create calendar highlight for this connection</button>
-                    </p>
-                    @endunless
 
                     @if($attributeDefinitions->isNotEmpty())
                     <label class="form-label mb-1 small fw-semibold">Custom attributes</label>
@@ -331,41 +321,169 @@
                     <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 </form>
 
-                <div class="mb-3">
-                    <label class="form-label mb-1 small fw-semibold">Mutual connections</label>
-                    @if($mutualEdges->isEmpty())
-                        <p class="text-muted small mb-1">No mutual links yet.</p>
+                <fieldset class="border rounded p-3 mb-3">
+                    <legend class="fs-6 fw-semibold w-auto px-2 mb-0">Calendar highlight</legend>
+                    @if(!$selected->highlightToken)
+                        <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/link" class="d-flex gap-2 align-items-center mb-2">
+                            @csrf
+                            <select name="highlight_token_id" class="form-select form-select-sm" style="max-width:220px" required>
+                                <option value="">Select an existing token…</option>
+                                @foreach($highlightTokens as $token)
+                                    <option value="{{ $token->id }}">{{ $token->label ?? '(unlabelled)' }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Link</button>
+                        </form>
+                        <form method="POST" action="/connections/{{ $selected->id }}/create-highlight">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Create calendar highlight for this connection</button>
+                        </form>
                     @else
-                    <ul class="list-group mb-2" style="max-width:360px">
-                        @foreach($mutualEdges as $edge)
-                        @php $other = $edge->connection_a_id === $selected->id ? $edge->connectionB : $edge->connectionA; @endphp
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>{{ $other->name }}</span>
-                            <form method="POST" action="/connections/graph-edges/{{ $edge->id }}">
+                        @php $ht = $selected->highlightToken; @endphp
+                        <p class="text-muted small">
+                            @if($ht->archived)<span class="fa fa-archive me-1"></span>@endif
+                            Label is kept in sync with this connection's name — no separate rename needed here.
+                        </p>
+
+                        <div class="mb-2">
+                            <label class="form-label mb-1 small fw-semibold">Token</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <code class="text-break small">{{ $ht->token_base64 }}</code>
+                                <button type="button" class="btn btn-sm btn-outline-secondary copy-token-btn" data-token="{{ $ht->token_base64 }}">Copy</button>
+                                <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/regenerate">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                                            onclick="return confirm('Regenerate this token? Anyone using the old token will lose access.')">Regenerate</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label mb-1 small fw-semibold">Words</label>
+                            @if($ht->words->isEmpty())
+                                <p class="text-muted small mb-1">No words yet.</p>
+                            @else
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                @foreach($ht->words as $word)
+                                <span class="badge bg-secondary d-flex align-items-center gap-1">
+                                    {{ $word->word }}
+                                    <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/words/{{ $word->id }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-close btn-close-white" style="font-size:0.6rem" aria-label="Remove word"></button>
+                                    </form>
+                                </span>
+                                @endforeach
+                            </div>
+                            @endif
+                            <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/words" class="d-flex gap-2">
+                                @csrf
+                                <input type="text" name="word" class="form-control form-control-sm @error('word') is-invalid @enderror"
+                                       style="max-width:200px" placeholder="Add word…" maxlength="255" required value="{{ old('word') }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                            </form>
+                            @error('word')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/toggle-archive">
+                                @csrf
+                                <button type="submit" class="btn btn-sm {{ $ht->archived ? 'btn-warning' : 'btn-outline-secondary' }}">
+                                    {{ $ht->archived ? 'Unarchive' : 'Archive' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="/connections/{{ $selected->id }}/highlight-token/unlink">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
+                            </form>
+                            <form method="POST" action="/connections/{{ $selected->id }}/highlight-token">
                                 @csrf
                                 @method('DELETE')
-                                <input type="hidden" name="return_to" value="{{ $selected->id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Delete this highlight token entirely? Anyone using it will lose access.')">Delete token</button>
+                            </form>
+                        </div>
+                    @endif
+                </fieldset>
+
+                <fieldset class="border rounded p-3 mb-3">
+                    <legend class="fs-6 fw-semibold w-auto px-2 mb-0">Connections</legend>
+                    <p class="text-muted small">
+                        How you met this person (a source, or introduced/met through someone) and who they know.
+                        There's no limit on how many of either kind you can add.
+                    </p>
+
+                    @php
+                        $oneWayEdges = $selected->edgesFrom->where('type', \App\Models\ConnectionEdge::TYPE_ONE_WAY);
+                    @endphp
+                    @if($oneWayEdges->isEmpty() && $mutualEdges->isEmpty())
+                        <p class="text-muted small mb-2">None recorded.</p>
+                    @else
+                    <ul class="list-group mb-3" style="max-width:420px">
+                        @foreach($oneWayEdges as $edge)
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ $edge->toSource ? 'Met via ' . $edge->toSource->name : 'Introduced/met through ' . $edge->toConnection->name }}</span>
+                            <form method="POST" action="/connections/{{ $selected->id }}/edges/{{ $edge->id }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-close" aria-label="Remove link"></button>
+                            </form>
+                        </li>
+                        @endforeach
+                        @foreach($mutualEdges as $edge)
+                        @php $other = $edge->from_connection_id === $selected->id ? $edge->toConnection : $edge->fromConnection; @endphp
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Know each other: {{ $other->name }}</span>
+                            <form method="POST" action="/connections/{{ $selected->id }}/edges/{{ $edge->id }}">
+                                @csrf
+                                @method('DELETE')
                                 <button type="submit" class="btn-close" aria-label="Remove link"></button>
                             </form>
                         </li>
                         @endforeach
                     </ul>
                     @endif
-                    <form method="POST" action="/connections/graph-edges" class="d-flex gap-2 align-items-center">
-                        @csrf
-                        <input type="hidden" name="connection_a_id" value="{{ $selected->id }}">
-                        <select name="connection_b_id" class="form-select form-select-sm" style="max-width:220px" required>
-                            <option value="">Link to…</option>
-                            @foreach($connectionList->where('id', '!=', $selected->id) as $person)
-                                <option value="{{ $person->id }}">{{ $person->name }}</option>
-                            @endforeach
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Link</button>
-                    </form>
-                    @error('connection_b_id')
+
+                    <div class="mb-3">
+                        <label class="form-label mb-1 small fw-semibold">Add "met via" a source</label>
+                        <form method="POST" action="/connections/{{ $selected->id }}/edges" class="d-flex gap-2 align-items-center">
+                            @csrf
+                            <input type="hidden" name="target_type" value="source">
+                            <input type="hidden" name="type" value="{{ \App\Models\ConnectionEdge::TYPE_ONE_WAY }}">
+                            <select name="target_id" class="form-select form-select-sm" style="max-width:220px" required>
+                                <option value="">Add source…</option>
+                                @foreach($sources as $source)
+                                    <option value="{{ $source->id }}">{{ $source->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                        </form>
+                    </div>
+
+                    <div>
+                        <label class="form-label mb-1 small fw-semibold">Add a connection link</label>
+                        <form method="POST" action="/connections/{{ $selected->id }}/edges" class="d-flex gap-2 align-items-center">
+                            @csrf
+                            <input type="hidden" name="target_type" value="connection">
+                            <select name="target_id" class="form-select form-select-sm" style="max-width:200px" required>
+                                <option value="">Add connection…</option>
+                                @foreach($connectionList->where('id', '!=', $selected->id) as $person)
+                                    <option value="{{ $person->id }}">{{ $person->name }}</option>
+                                @endforeach
+                            </select>
+                            <select name="type" class="form-select form-select-sm" style="max-width:200px" required>
+                                <option value="{{ \App\Models\ConnectionEdge::TYPE_ONE_WAY }}">Introduced/met through</option>
+                                <option value="{{ \App\Models\ConnectionEdge::TYPE_BI_DIRECTIONAL }}">Know each other</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Add</button>
+                        </form>
+                    </div>
+                    @error('target_id')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
-                </div>
+                </fieldset>
 
                 @if($selected->highlightToken)
                 <div class="mb-1">

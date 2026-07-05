@@ -75,6 +75,16 @@ class ConnectionAttributeValidator
                 }
                 return [null, "\"{$definition->label}\" must be a yes/no value."];
 
+            case 'date':
+                if (!is_string($raw) || $raw === '') {
+                    return [null, "\"{$definition->label}\" must be a date."];
+                }
+                try {
+                    return [\Carbon\Carbon::parse($raw)->toDateString(), null];
+                } catch (\Exception) {
+                    return [null, "\"{$definition->label}\" must be a valid date."];
+                }
+
             default:
                 return [null, "Unknown attribute type for \"{$definition->label}\"."];
         }

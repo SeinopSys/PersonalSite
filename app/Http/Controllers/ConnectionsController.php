@@ -44,15 +44,18 @@ class ConnectionsController extends Controller
 
         if ($selectedId) {
             $selected = $user->connections()
-                ->with(['source', 'introducedBy', 'attributeValues.definition', 'highlightToken'])
+                ->with(['attributeValues.definition', 'highlightToken.words', 'edgesFrom.toConnection', 'edgesFrom.toSource'])
                 ->find($selectedId);
 
             if ($selected) {
+                // A "know each other" edge has no particular direction, so it may have been stored with
+                // this connection on either side - it isn't necessarily in edgesFrom.
                 $mutualEdges = ConnectionEdge::where('user_id', $user->id)
+                    ->where('type', ConnectionEdge::TYPE_BI_DIRECTIONAL)
                     ->where(function ($q) use ($selectedId) {
-                        $q->where('connection_a_id', $selectedId)->orWhere('connection_b_id', $selectedId);
+                        $q->where('from_connection_id', $selectedId)->orWhere('to_connection_id', $selectedId);
                     })
-                    ->with(['connectionA', 'connectionB'])
+                    ->with(['fromConnection', 'toConnection'])
                     ->get();
             }
         }
@@ -60,6 +63,18 @@ class ConnectionsController extends Controller
         // Plaintext taxonomy - name can be ORDER BY'd in SQL directly, unlike connections' encrypted name.
         $sources = $user->connectionSources()->orderBy('name')->get();
         $selectedSource = $request->query('source') ? $sources->firstWhere('id', $request->query('source')) : null;
+
+        // Connections "met via" the selected source - a source is always the "to" side of a one_way edge,
+        // so the connection is always on from_connection_id here (a source can never be the "from" side).
+        $sourceEdges = collect();
+        if ($selectedSource) {
+            $sourceEdges = ConnectionEdge::where('user_id', $user->id)
+                ->where('to_source_id', $selectedSource->id)
+                ->with('fromConnection')
+                ->get()
+                ->sortBy(fn(ConnectionEdge $e) => mb_strtolower($e->fromConnection->name))
+                ->values();
+        }
 
         $attributeDefinitions = $user->connectionAttributeDefinitions()->orderBy('sort_order')->orderBy('label')->get();
         $highlightTokens = $user->highlightTokens()->orderBy('label')->get();
@@ -74,6 +89,7 @@ class ConnectionsController extends Controller
             'mutualEdges'          => $mutualEdges,
             'sources'              => $sources,
             'selectedSource'       => $selectedSource,
+            'sourceEdges'          => $sourceEdges,
             'attributeDefinitions' => $attributeDefinitions,
             'attributeTypes'       => ConnectionAttributeDefinition::TYPES,
             'highlightTokens'      => $highlightTokens,
@@ -97,9 +113,6 @@ class ConnectionsController extends Controller
         $connection = Connection::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
 
         $validated = $this->validateConnection($request);
-        if (($validated['introduced_by_connection_id'] ?? null) === $id) {
-            return back()->withErrors(['introduced_by_connection_id' => 'A connection cannot be introduced by itself.'])->withInput();
-        }
 
         // Custom attribute values are submitted alongside the core fields as attributes[definition_id],
         // one consolidated form/request instead of a separate save action per attribute. Validate all of
@@ -126,6 +139,14 @@ class ConnectionsController extends Controller
             $connection->fill($validated);
             $connection->save();
 
+            // The linked highlight token (if any) has no separate "label" input of its own here - it's
+            // always kept in sync with the connection's name whenever the connection is saved.
+            if ($connection->highlight_token_id) {
+                CalendarHighlightToken::where('id', $connection->highlight_token_id)
+                    ->where('user_id', Auth::id())
+                    ->update(['label' => $connection->name]);
+            }
+
             foreach ($attributesToSave as $definitionId => $typedValue) {
                 if ($typedValue === null) {
                     ConnectionAttributeValue::where('connection_id', $connection->id)
@@ -145,28 +166,9 @@ class ConnectionsController extends Controller
 
     private function validateConnection(Request $request): array
     {
-        $validated = $request->validate([
-            'name'              => 'required|string|max:1000',
-            'met_at'            => 'nullable|date',
-            'source_id'         => [
-                'nullable',
-                Rule::exists('connection_sources', 'id')->where('user_id', Auth::id()),
-            ],
-            'introduced_by_connection_id' => [
-                'nullable',
-                Rule::exists('connections', 'id')->where('user_id', Auth::id()),
-            ],
-            'highlight_token_id' => [
-                'nullable',
-                Rule::exists('calendar_highlight_tokens', 'id')->where('user_id', Auth::id()),
-            ],
+        return $request->validate([
+            'name' => 'required|string|max:1000',
         ]);
-
-        if (!empty($validated['met_at'])) {
-            $validated['met_at'] = Carbon::parse($validated['met_at'])->toDateString();
-        }
-
-        return $validated;
     }
 
     public function archive(string $id)
@@ -199,9 +201,10 @@ class ConnectionsController extends Controller
         $label = $connection->name;
 
         $token = CalendarHighlightToken::create([
-            'user_id' => $userId,
-            'token'   => CalendarHighlightToken::generateToken(),
-            'label'   => $label,
+            'user_id'  => $userId,
+            'token'    => CalendarHighlightToken::generateToken(),
+            'label'    => $label,
+            'archived' => true,
         ]);
 
         if (!CalendarHighlightWord::where('user_id', $userId)->where('word', $label)->exists()) {
@@ -212,6 +215,102 @@ class ConnectionsController extends Controller
         $connection->save();
 
         return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Calendar highlight created and linked.');
+    }
+
+    public function linkExistingHighlightToken(Request $request, string $id)
+    {
+        $connection = Connection::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+
+        $validated = $request->validate([
+            'highlight_token_id' => [
+                'required',
+                Rule::exists('calendar_highlight_tokens', 'id')->where('user_id', Auth::id()),
+            ],
+        ]);
+
+        $connection->highlight_token_id = $validated['highlight_token_id'];
+        $connection->save();
+
+        // No separate "label" input for the token - it's always kept in sync with the connection's name.
+        CalendarHighlightToken::where('id', $validated['highlight_token_id'])
+            ->where('user_id', Auth::id())
+            ->update(['label' => $connection->name]);
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Linked to existing highlight token.');
+    }
+
+    public function unlinkHighlightToken(string $id)
+    {
+        $connection = Connection::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        $connection->highlight_token_id = null;
+        $connection->save();
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Highlight token unlinked.');
+    }
+
+    /** @return array{0: Connection, 1: CalendarHighlightToken} */
+    private function connectionWithLinkedHighlightToken(string $id): array
+    {
+        $connection = Connection::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        $token = $connection->highlight_token_id
+            ? CalendarHighlightToken::where('id', $connection->highlight_token_id)->where('user_id', Auth::id())->first()
+            : null;
+        abort_if(!$token, 404);
+
+        return [$connection, $token];
+    }
+
+    public function regenerateConnectionHighlightToken(string $id)
+    {
+        [, $token] = $this->connectionWithLinkedHighlightToken($id);
+        $token->token = CalendarHighlightToken::generateToken();
+        $token->save();
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Token regenerated.');
+    }
+
+    public function toggleConnectionHighlightArchived(string $id)
+    {
+        [, $token] = $this->connectionWithLinkedHighlightToken($id);
+        $token->archived = !$token->archived;
+        $token->save();
+
+        $msg = $token->archived ? 'Token archived.' : 'Token unarchived.';
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', $msg);
+    }
+
+    public function destroyConnectionHighlightToken(string $id)
+    {
+        [, $token] = $this->connectionWithLinkedHighlightToken($id);
+        $token->delete();
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Highlight token deleted.');
+    }
+
+    public function storeConnectionHighlightWord(Request $request, string $id)
+    {
+        [$connection, $token] = $this->connectionWithLinkedHighlightToken($id);
+
+        $validated = $request->validate(['word' => 'required|string|max:255']);
+        $word = $validated['word'];
+        $userId = Auth::id();
+
+        if (CalendarHighlightWord::where('user_id', $userId)->where('word', $word)->exists()) {
+            return back()->withErrors(['word' => "\"$word\" is already used in one of your highlight groups."])->withInput();
+        }
+
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $userId, 'word' => $word]);
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Word added.');
+    }
+
+    public function destroyConnectionHighlightWord(string $id, string $wordId)
+    {
+        [, $token] = $this->connectionWithLinkedHighlightToken($id);
+
+        CalendarHighlightWord::where('id', $wordId)->where('token_id', $token->id)->firstOrFail()->delete();
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Word removed.');
     }
 
     /** Recent/upcoming calendar events matched against the connection's linked highlight token's words. */
@@ -249,8 +348,10 @@ class ConnectionsController extends Controller
 
     /**
      * Anonymized graph data for the dashboard visualization: no names, just node ids (colored by their
-     * source category, if any) and edges. "introduced" edges point from the introducer to the person
-     * they introduced; "mutual" edges (from connection_edges) carry no direction.
+     * first "met via" source's category, if any) and edges. One-way edges point from the introduced
+     * person to whoever/whatever they were introduced through; bi-directional edges ("know each other")
+     * carry no direction. Only connection<->connection edges are graph edges - connection<->source edges
+     * only affect a node's color, since a source isn't a person to draw as its own node here.
      */
     public function graph(): JsonResponse
     {
@@ -258,9 +359,14 @@ class ConnectionsController extends Controller
 
         $categoryColors = ConnectionSourceCategory::where('user_id', $userId)->pluck('color', 'name');
 
-        $nodes = Connection::where('user_id', $userId)->with('source')->orderBy('id')->get(['id', 'source_id'])
-            ->map(function (Connection $c) use ($categoryColors) {
-                $category = $c->source?->category;
+        $primarySourceByConnection = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_source_id')
+            ->with('toSource')->orderBy('created_at')->get()
+            ->groupBy('from_connection_id')
+            ->map(fn($edges) => $edges->first());
+
+        $nodes = Connection::where('user_id', $userId)->orderBy('id')->get(['id'])
+            ->map(function (Connection $c) use ($primarySourceByConnection, $categoryColors) {
+                $category = $primarySourceByConnection->get($c->id)?->toSource?->category;
                 return [
                     'id'    => $c->id,
                     'color' => $category ? ($categoryColors[$category] ?? null) : null,
@@ -268,17 +374,14 @@ class ConnectionsController extends Controller
             })
             ->values();
 
-        $introducedEdges = Connection::where('user_id', $userId)
-            ->whereNotNull('introduced_by_connection_id')
+        $edges = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_connection_id')
             ->orderBy('id')
-            ->get(['id', 'introduced_by_connection_id'])
-            ->map(fn(Connection $c) => ['from' => $c->introduced_by_connection_id, 'to' => $c->id, 'kind' => 'introduced'])
-            ->values();
-
-        $mutualEdges = ConnectionEdge::where('user_id', $userId)
-            ->orderBy('id')
-            ->get(['connection_a_id', 'connection_b_id'])
-            ->map(fn(ConnectionEdge $e) => ['from' => $e->connection_a_id, 'to' => $e->connection_b_id, 'kind' => 'mutual'])
+            ->get(['from_connection_id', 'to_connection_id', 'type'])
+            ->map(fn(ConnectionEdge $e) => [
+                'from' => $e->from_connection_id,
+                'to'   => $e->to_connection_id,
+                'kind' => $e->type === ConnectionEdge::TYPE_BI_DIRECTIONAL ? 'mutual' : 'introduced',
+            ])
             ->values();
 
         return response()->json([
@@ -286,58 +389,117 @@ class ConnectionsController extends Controller
             // every reload instead of a fresh random scatter each time.
             'seed'  => crc32($userId),
             'nodes' => $nodes,
-            'edges' => $introducedEdges->concat($mutualEdges)->values(),
+            'edges' => $edges,
         ]);
     }
 
-    public function storeGraphEdge(Request $request)
+    /**
+     * Add a relationship edge from a connection to either another connection or a source. There's no
+     * limit on how many of these a connection can have and no "primary" one - every relationship
+     * (met via, introduced through, know each other) is just a row here, ConnMan-style.
+     */
+    public function storeEdge(Request $request, string $id)
     {
+        $connection = Connection::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+
         $validated = $request->validate([
-            'connection_a_id' => [
+            'target_type' => ['required', Rule::in(['connection', 'source'])],
+            'target_id'   => ['required', 'string'],
+            'type'        => ['required', Rule::in(ConnectionEdge::TYPES)],
+        ]);
+
+        $attrs = ['user_id' => Auth::id(), 'from_connection_id' => $connection->id, 'type' => $validated['type']];
+
+        if ($validated['target_type'] === 'connection') {
+            if ($validated['target_id'] === $id) {
+                return back()->withErrors(['target_id' => 'A connection cannot be linked to itself.'])->withInput();
+            }
+            $target = Connection::where('id', $validated['target_id'])->where('user_id', Auth::id())->first();
+            if (!$target) {
+                return back()->withErrors(['target_id' => 'Connection not found.'])->withInput();
+            }
+            $attrs['to_connection_id'] = $target->id;
+        } else {
+            $target = ConnectionSource::where('id', $validated['target_id'])->where('user_id', Auth::id())->first();
+            if (!$target) {
+                return back()->withErrors(['target_id' => 'Source not found.'])->withInput();
+            }
+            $attrs['to_source_id'] = $target->id;
+        }
+
+        $duplicateQuery = ConnectionEdge::where('user_id', Auth::id())->where('type', $validated['type']);
+        if ($validated['type'] === ConnectionEdge::TYPE_BI_DIRECTIONAL && $validated['target_type'] === 'connection') {
+            // "Know each other" is symmetric - it doesn't matter which side is stored as from/to.
+            $duplicateQuery->where(function ($q) use ($attrs) {
+                $q->where(fn($q2) => $q2->where('from_connection_id', $attrs['from_connection_id'])->where('to_connection_id', $attrs['to_connection_id']))
+                    ->orWhere(fn($q2) => $q2->where('from_connection_id', $attrs['to_connection_id'])->where('to_connection_id', $attrs['from_connection_id']));
+            });
+        } else {
+            $duplicateQuery->where('from_connection_id', $attrs['from_connection_id']);
+            if (isset($attrs['to_connection_id'])) $duplicateQuery->where('to_connection_id', $attrs['to_connection_id']);
+            if (isset($attrs['to_source_id'])) $duplicateQuery->where('to_source_id', $attrs['to_source_id']);
+        }
+        if ($duplicateQuery->exists()) {
+            return back()->withErrors(['target_id' => 'This connection already exists.'])->withInput();
+        }
+
+        ConnectionEdge::create($attrs);
+
+        return redirect('/connections?connection=' . $id . '#connection-detail')->with('success', 'Connection added.');
+    }
+
+    public function destroyEdge(string $id, string $edgeId)
+    {
+        ConnectionEdge::where('id', $edgeId)->where('user_id', Auth::id())
+            ->where(function ($q) use ($id) {
+                $q->where('from_connection_id', $id)->orWhere('to_connection_id', $id);
+            })
+            ->firstOrFail()->delete();
+
+        // Used both from a connection's own detail page and from a source's "linked connections" list -
+        // back() returns to whichever of those the request came from instead of assuming one.
+        return back()->with('success', 'Connection removed.');
+    }
+
+    /**
+     * Re-point a "met via" edge at a different source - used from a source's "linked connections" list to
+     * move a connection to another source without having to unlink and re-add it.
+     */
+    public function updateEdge(Request $request, string $id, string $edgeId)
+    {
+        $edge = ConnectionEdge::where('id', $edgeId)->where('user_id', Auth::id())
+            ->where('from_connection_id', $id)
+            ->whereNotNull('to_source_id')
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'target_id' => [
                 'required',
-                Rule::exists('connections', 'id')->where('user_id', Auth::id()),
-            ],
-            'connection_b_id' => [
-                'required',
-                Rule::exists('connections', 'id')->where('user_id', Auth::id()),
+                Rule::exists('connection_sources', 'id')->where('user_id', Auth::id()),
             ],
         ]);
 
-        if ($validated['connection_a_id'] === $validated['connection_b_id']) {
-            return back()->withErrors(['connection_b_id' => 'A connection cannot be linked to itself.'])->withInput();
-        }
-
-        $exists = ConnectionEdge::where('user_id', Auth::id())
-            ->where(function ($q) use ($validated) {
-                // Passing an array to orWhere() ORs the individual keys together instead of ANDing them
-                // like where(array) does - nested closures are required to get (a=X AND b=Y) OR (a=Y AND b=X).
-                $q->where(fn($q2) => $q2->where('connection_a_id', $validated['connection_a_id'])->where('connection_b_id', $validated['connection_b_id']))
-                    ->orWhere(fn($q2) => $q2->where('connection_a_id', $validated['connection_b_id'])->where('connection_b_id', $validated['connection_a_id']));
-            })
+        $duplicate = ConnectionEdge::where('user_id', Auth::id())
+            ->where('id', '!=', $edge->id)
+            ->where('from_connection_id', $id)
+            ->where('to_source_id', $validated['target_id'])
             ->exists();
-        if ($exists) {
-            return back()->withErrors(['connection_b_id' => 'These two connections are already linked.'])->withInput();
+        if ($duplicate) {
+            return back()->withErrors(['target_id' => 'This connection already exists.'])->withInput();
         }
 
-        ConnectionEdge::create(array_merge($validated, ['user_id' => Auth::id()]));
+        $edge->update(['to_source_id' => $validated['target_id']]);
 
-        return redirect('/connections?connection=' . $validated['connection_a_id'] . '#connection-detail')->with('success', 'Connections linked.');
-    }
-
-    public function destroyGraphEdge(Request $request, string $id)
-    {
-        ConnectionEdge::where('id', $id)->where('user_id', Auth::id())->firstOrFail()->delete();
-
-        $returnTo = $request->input('return_to');
-        return redirect($returnTo ? '/connections?connection=' . $returnTo : '/connections')->with('success', 'Link removed.');
+        return back()->with('success', 'Connection updated.');
     }
 
     public function autoLinkHighlightTokens()
     {
-        [$linked, $ambiguous] = $this->autoLinkHighlightTokensForUser(Auth::id());
+        [$linked, $created, $ambiguous] = $this->autoLinkHighlightTokensForUser(Auth::id(), createIfUnmatched: true);
 
         return redirect('/connections')->with('success',
-            "Auto-link complete: $linked connection(s) linked; $ambiguous had more than one matching token and were left for manual linking."
+            "Auto-link complete: $linked connection(s) linked to an existing token, $created new token(s) created; "
+            . "$ambiguous had more than one matching token and were left for manual linking."
         );
     }
 
@@ -347,21 +509,28 @@ class ConnectionsController extends Controller
      * containing the other). Ambiguous matches (more than one token) are left alone for manual linking.
      * Connections that already have a highlight token are never touched or reconsidered here.
      *
-     * @param  bool  $renameToLabel  When a match is found, also rename the connection to the token's
-     *                               label (if it has one) - used by the ConnMan import, where the
-     *                               token's label is often the person's "real" preferred name, whereas
-     *                               ConnMan's own name field may just be a handle/nickname. The manual
-     *                               "Auto-link" button leaves names untouched (default false).
-     * @return array{0: int, 1: int} [linked count, ambiguous count]
+     * @param  bool  $renameToLabel     When a match is found, also rename the connection to the token's
+     *                                  label (if it has one) - used by the ConnMan import, where the
+     *                                  token's label is often the person's "real" preferred name, whereas
+     *                                  ConnMan's own name field may just be a handle/nickname. The manual
+     *                                  "Auto-link" button leaves names untouched (default false).
+     * @param  bool  $createIfUnmatched When a connection has no matching token at all (not even an
+     *                                  ambiguous one), create a brand new token/word pair for it (named
+     *                                  after the connection) and link that instead of leaving it unlinked.
+     *                                  Only the manual "Auto-link" button opts into this - ConnMan import
+     *                                  leaves genuinely unmatched connections alone, since importing e.g.
+     *                                  150 people would otherwise spam 150 new tokens as a side effect.
+     * @return array{0: int, 1: int, 2: int} [linked count, created count, ambiguous count]
      */
-    private function autoLinkHighlightTokensForUser(string $userId, bool $renameToLabel = false): array
+    private function autoLinkHighlightTokensForUser(string $userId, bool $renameToLabel = false, bool $createIfUnmatched = false): array
     {
         $tokens = CalendarHighlightToken::where('user_id', $userId)->with('words')->get();
 
         $linked = 0;
+        $created = 0;
         $ambiguous = 0;
 
-        Connection::where('user_id', $userId)->whereNull('highlight_token_id')->get()->each(function (Connection $connection) use ($tokens, $renameToLabel, &$linked, &$ambiguous) {
+        Connection::where('user_id', $userId)->whereNull('highlight_token_id')->get()->each(function (Connection $connection) use ($tokens, $renameToLabel, $createIfUnmatched, $userId, &$linked, &$created, &$ambiguous) {
             $name = mb_strtolower($connection->name);
             $matches = $tokens->filter(function (CalendarHighlightToken $token) use ($name) {
                 return $token->words->contains(function ($word) use ($name) {
@@ -380,10 +549,25 @@ class ConnectionsController extends Controller
                 $linked++;
             } elseif ($matches->count() > 1) {
                 $ambiguous++;
+            } elseif ($createIfUnmatched) {
+                $label = $connection->name;
+                $token = CalendarHighlightToken::create([
+                    'user_id'  => $userId,
+                    'token'    => CalendarHighlightToken::generateToken(),
+                    'label'    => $label,
+                    'archived' => true,
+                ]);
+                if (!CalendarHighlightWord::where('user_id', $userId)->where('word', $label)->exists()) {
+                    CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $userId, 'word' => $label]);
+                }
+                $connection->highlight_token_id = $token->id;
+                $connection->save();
+                $tokens->push($token->load('words'));
+                $created++;
             }
         });
 
-        return [$linked, $ambiguous];
+        return [$linked, $created, $ambiguous];
     }
 
     public function storeSource(Request $request)
@@ -544,6 +728,7 @@ class ConnectionsController extends Controller
             case 'text':
             case 'textarea':
             case 'boolean':
+            case 'date':
                 return [null, null];
 
             default:
@@ -564,7 +749,7 @@ class ConnectionsController extends Controller
         $user = Auth::user();
 
         $connections = $user->connections()
-            ->with(['source', 'introducedBy', 'attributeValues.definition', 'highlightToken'])
+            ->with(['attributeValues.definition', 'highlightToken', 'edgesFrom.toConnection', 'edgesFrom.toSource'])
             ->get();
 
         $data = [
@@ -579,17 +764,19 @@ class ConnectionsController extends Controller
                 'sort_order' => $d->sort_order,
             ])->values()->toArray(),
             'connections' => $connections->map(fn(Connection $c) => [
-                'name'              => $c->name,
-                'met_at'            => $c->met_at,
-                'source'            => $c->source?->name,
-                'introduced_by_name' => $c->introducedBy?->name,
-                'archived'          => $c->archived,
-                'created_at'        => $c->created_at->toIso8601String(),
-                'attribute_values'  => $c->attributeValues->map(fn($v) => [
+                'name'             => $c->name,
+                'archived'         => $c->archived,
+                'created_at'       => $c->created_at->toIso8601String(),
+                'attribute_values' => $c->attributeValues->map(fn($v) => [
                     'attribute_label' => $v->definition->label,
                     'value'           => $v->typed_value,
                 ])->values()->toArray(),
                 'highlight_token_label' => $c->highlightToken?->label,
+                'edges' => $c->edgesFrom->map(fn(ConnectionEdge $e) => [
+                    'type'        => $e->type,
+                    'target_kind' => $e->to_source_id ? 'source' : 'connection',
+                    'target_name' => $e->to_source_id ? $e->toSource->name : $e->toConnection->name,
+                ])->values()->toArray(),
             ])->values()->toArray(),
         ];
 
@@ -663,23 +850,18 @@ class ConnectionsController extends Controller
 
             $tokensByLabel = CalendarHighlightToken::where('user_id', $userId)->whereNotNull('label')->get()->keyBy('label');
 
-            // Pass 1: create all connections (without introduced_by links, since a referenced
-            // connection may not exist yet if it appears later in the file).
+            // Pass 1: create all connections (without edges, since a referenced connection may not
+            // exist yet if it appears later in the file).
             $connectionsByName = [];
             foreach (Connection::where('user_id', $userId)->get() as $c) {
                 $connectionsByName[$c->name] = $c;
             }
-            $pendingIntroducedBy = [];
+            $pendingEdges = [];
 
             foreach ($data['connections'] as $item) {
                 if (!is_array($item) || empty($item['name']) || !is_string($item['name'])) {
                     $skipped++;
                     continue;
-                }
-
-                $sourceId = null;
-                if (!empty($item['source']) && is_string($item['source']) && isset($sourcesByName[$item['source']])) {
-                    $sourceId = $sourcesByName[$item['source']]->id;
                 }
 
                 $createdAt = null;
@@ -693,18 +875,16 @@ class ConnectionsController extends Controller
                 }
 
                 $connection = Connection::create([
-                    'user_id'           => $userId,
-                    'name'              => $item['name'],
-                    'met_at'            => is_string($item['met_at'] ?? null) ? $item['met_at'] : null,
-                    'source_id'         => $sourceId,
+                    'user_id'            => $userId,
+                    'name'               => $item['name'],
                     'highlight_token_id' => $highlightTokenId,
-                    'archived'          => !empty($item['archived']),
-                    'created_at'        => $createdAt ?? now(),
+                    'archived'           => !empty($item['archived']),
+                    'created_at'         => $createdAt ?? now(),
                 ]);
                 $connectionsByName[$connection->name] = $connection;
 
-                if (!empty($item['introduced_by_name']) && is_string($item['introduced_by_name'])) {
-                    $pendingIntroducedBy[$connection->id] = $item['introduced_by_name'];
+                if (!empty($item['edges']) && is_array($item['edges'])) {
+                    $pendingEdges[$connection->id] = $item['edges'];
                 }
 
                 foreach ($item['attribute_values'] ?? [] as $v) {
@@ -719,29 +899,42 @@ class ConnectionsController extends Controller
                         continue;
                     }
                     ConnectionAttributeValue::create([
-                        'connection_id'            => $connection->id,
-                        'attribute_definition_id'  => $definition->id,
-                        'user_id'                  => $userId,
-                        'value'                    => JSON::Encode($typedValue),
+                        'connection_id'           => $connection->id,
+                        'attribute_definition_id' => $definition->id,
+                        'user_id'                 => $userId,
+                        'value'                   => JSON::Encode($typedValue),
                     ]);
                 }
 
                 $imported++;
             }
 
-            // Pass 2: now that every connection in the file exists, resolve introduced_by_name
-            // references (which may point at a connection that appeared later in the file).
-            foreach ($pendingIntroducedBy as $connectionId => $introducedByName) {
-                if (!isset($connectionsByName[$introducedByName])) {
-                    $skipped++;
-                    continue;
+            // Pass 2: now that every connection in the file exists, resolve edge target names (which may
+            // point at a connection that appeared later in the file).
+            foreach ($pendingEdges as $connectionId => $edges) {
+                foreach ($edges as $edge) {
+                    if (!is_array($edge) || empty($edge['target_name']) || !is_string($edge['target_name'])
+                        || !in_array($edge['type'] ?? null, ConnectionEdge::TYPES, true)) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    $attrs = ['user_id' => $userId, 'from_connection_id' => $connectionId, 'type' => $edge['type']];
+                    if (($edge['target_kind'] ?? 'connection') === 'source') {
+                        if (!isset($sourcesByName[$edge['target_name']])) {
+                            $skipped++;
+                            continue;
+                        }
+                        $attrs['to_source_id'] = $sourcesByName[$edge['target_name']]->id;
+                    } else {
+                        if (!isset($connectionsByName[$edge['target_name']]) || $connectionsByName[$edge['target_name']]->id === $connectionId) {
+                            $skipped++;
+                            continue;
+                        }
+                        $attrs['to_connection_id'] = $connectionsByName[$edge['target_name']]->id;
+                    }
+                    ConnectionEdge::create($attrs);
                 }
-                $introducerId = $connectionsByName[$introducedByName]->id;
-                if ($introducerId === $connectionId) {
-                    $skipped++;
-                    continue;
-                }
-                Connection::where('id', $connectionId)->update(['introduced_by_connection_id' => $introducerId]);
             }
         });
 
@@ -755,12 +948,12 @@ class ConnectionsController extends Controller
      * ConnMan network, so existing connections and edges (not sources/attributes) are wiped first.
      *   - people with type "person" become Connection rows (matched/created by name, like the main import).
      *   - people with type "group" become ConnectionSource rows (category "group").
-     *   - a "one-way" connection is a "met through" relationship: it sets introduced_by_connection_id on
-     *     the `from` connection to the `to` connection (only if not already set).
-     *   - a "bi-directional" connection means "they know each other" with no clear direction: it becomes a
-     *     connection_edges row instead.
-     *   - a connection touching a group (either direction) sets the person's source_id to that group's
-     *     ConnectionSource, rather than being imported as an introduction/mutual link.
+     *   - a connection between two people becomes a connection_edges row: "one-way" maps to a one_way edge
+     *     (met/introduced through, directional), "bi-directional" maps to a bi_directional edge (know each
+     *     other, no particular direction). There's no limit on how many of either a person can have.
+     *   - a connection touching a group (either direction) becomes a one_way edge from the person to that
+     *     group's ConnectionSource - a source doesn't "know" the person back, so it's always one-way
+     *     regardless of the edge's own type in the file.
      *   - a connection between two groups has no equivalent here and is skipped.
      */
     public function importConnman(Request $request)
@@ -777,19 +970,16 @@ class ConnectionsController extends Controller
         $userId = Auth::id();
         $importedPeople = 0;
         $importedGroups = 0;
-        $importedIntroductions = 0;
-        $importedMutual = 0;
-        $importedSourceLinks = 0;
+        $importedEdges = 0;
         $skippedEdges = 0;
 
         DB::transaction(function () use (
-            $data, $userId, &$importedPeople, &$importedGroups, &$importedIntroductions,
-            &$importedMutual, &$importedSourceLinks, &$skippedEdges
+            $data, $userId, &$importedPeople, &$importedGroups, &$importedEdges, &$skippedEdges
         ) {
             // ConnMan import replaces the connections list wholesale: it's meant to be re-run against
             // fresh exports of the same network, so stale connections/edges from a previous ConnMan
             // import (or manual entries) are cleared first rather than merged. Deleting connections
-            // cascades to their attribute values, common events, and connection_edges rows.
+            // cascades to their attribute values and connection_edges rows.
             Connection::where('user_id', $userId)->delete();
 
             $connectionsByName = [];
@@ -827,6 +1017,13 @@ class ConnectionsController extends Controller
                 }
             }
 
+            // Groups default to the "group" source category - give it a visible default color (unless
+            // the user already picked one) so group-linked nodes aren't indistinguishable from ungrouped
+            // ones in the dashboard graph.
+            if (ConnectionSource::where('user_id', $userId)->where('category', 'group')->exists()) {
+                ConnectionSourceCategory::firstOrCreate(['user_id' => $userId, 'name' => 'group'], ['color' => ConnectionSourceCategory::DEFAULT_COLOR]);
+            }
+
             foreach ($data['connections'] as $edge) {
                 if (!is_array($edge) || empty($edge['from']) || empty($edge['to'])) {
                     $skippedEdges++;
@@ -840,7 +1037,7 @@ class ConnectionsController extends Controller
                     continue;
                 }
 
-                // A group on either end: link the person to that group as their "met via" source.
+                // A group on either end: the person "met via" that group.
                 if ($from['kind'] === 'source' || $to['kind'] === 'source') {
                     if ($from['kind'] === $to['kind']) {
                         // Both groups - nothing to attach the source to.
@@ -851,37 +1048,33 @@ class ConnectionsController extends Controller
                     $person = $from['kind'] === 'connection' ? $from['model'] : $to['model'];
                     /** @var ConnectionSource $source */
                     $source = $from['kind'] === 'source' ? $from['model'] : $to['model'];
-                    if ($person->source_id) {
-                        $skippedEdges++;
-                        continue;
-                    }
-                    $person->source_id = $source->id;
-                    $person->save();
-                    $importedSourceLinks++;
+
+                    ConnectionEdge::create([
+                        'user_id'            => $userId,
+                        'from_connection_id' => $person->id,
+                        'to_source_id'       => $source->id,
+                        'type'               => ConnectionEdge::TYPE_ONE_WAY,
+                    ]);
+                    $importedEdges++;
                     continue;
                 }
 
                 $fromConn = $from['model'];
                 $toConn = $to['model'];
-
-                if (($edge['type'] ?? null) === 'one-way') {
-                    if ($fromConn->introduced_by_connection_id) {
-                        $skippedEdges++;
-                        continue;
-                    }
-                    $fromConn->introduced_by_connection_id = $toConn->id;
-                    $fromConn->save();
-                    $importedIntroductions++;
-                    continue;
-                }
+                $type = ($edge['type'] ?? null) === 'one-way' ? ConnectionEdge::TYPE_ONE_WAY : ConnectionEdge::TYPE_BI_DIRECTIONAL;
 
                 $exists = ConnectionEdge::where('user_id', $userId)
-                    ->where(function ($q) use ($fromConn, $toConn) {
-                        // Passing an array to orWhere() ORs the individual keys together instead of ANDing
-                        // them like where(array) does - nested closures are required to get
-                        // (a=X AND b=Y) OR (a=Y AND b=X) instead of the much broader (a=X AND b=Y) OR a=Y OR b=X.
-                        $q->where(fn($q2) => $q2->where('connection_a_id', $fromConn->id)->where('connection_b_id', $toConn->id))
-                            ->orWhere(fn($q2) => $q2->where('connection_a_id', $toConn->id)->where('connection_b_id', $fromConn->id));
+                    ->where('type', $type)
+                    ->where(function ($q) use ($fromConn, $toConn, $type) {
+                        if ($type === ConnectionEdge::TYPE_BI_DIRECTIONAL) {
+                            // Passing an array to orWhere() ORs the individual keys together instead of
+                            // ANDing them like where(array) does - nested closures are required to get
+                            // (from=X AND to=Y) OR (from=Y AND to=X).
+                            $q->where(fn($q2) => $q2->where('from_connection_id', $fromConn->id)->where('to_connection_id', $toConn->id))
+                                ->orWhere(fn($q2) => $q2->where('from_connection_id', $toConn->id)->where('to_connection_id', $fromConn->id));
+                        } else {
+                            $q->where('from_connection_id', $fromConn->id)->where('to_connection_id', $toConn->id);
+                        }
                     })
                     ->exists();
                 if ($exists) {
@@ -889,17 +1082,21 @@ class ConnectionsController extends Controller
                     continue;
                 }
 
-                ConnectionEdge::create(['user_id' => $userId, 'connection_a_id' => $fromConn->id, 'connection_b_id' => $toConn->id]);
-                $importedMutual++;
+                ConnectionEdge::create([
+                    'user_id'            => $userId,
+                    'from_connection_id' => $fromConn->id,
+                    'to_connection_id'   => $toConn->id,
+                    'type'               => $type,
+                ]);
+                $importedEdges++;
             }
         });
 
-        [$autoLinked, $autoLinkAmbiguous] = $this->autoLinkHighlightTokensForUser($userId, renameToLabel: true);
+        [$autoLinked, , $autoLinkAmbiguous] = $this->autoLinkHighlightTokensForUser($userId, renameToLabel: true);
 
         return redirect('/connections#graph')->with('success',
-            "ConnMan import complete: $importedPeople people, $importedGroups sources, $importedIntroductions introductions, "
-            . "$importedMutual mutual links, $importedSourceLinks source links imported; $skippedEdges edges skipped. "
-            . "Auto-linked $autoLinked connection(s) to highlight tokens ($autoLinkAmbiguous ambiguous)."
+            "ConnMan import complete: $importedPeople people, $importedGroups sources, $importedEdges edges imported; "
+            . "$skippedEdges edges skipped. Auto-linked $autoLinked connection(s) to highlight tokens ($autoLinkAmbiguous ambiguous)."
         );
     }
 }

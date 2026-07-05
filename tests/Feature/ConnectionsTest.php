@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Connection;
 use App\Models\ConnectionAttributeDefinition;
+use App\Models\ConnectionEdge;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -46,19 +47,20 @@ class ConnectionsTest extends TestCase
 
         $source = \App\Models\ConnectionSource::where('user_id', $user->id)->firstOrFail();
 
-        $this->post('/connections', [
-            'name'      => 'Alex Example',
-            'met_at'    => '2024-01-15',
-            'source_id' => $source->id,
-        ])->assertRedirect();
+        $this->post('/connections', ['name' => 'Alex Example'])->assertRedirect();
 
         $connection = Connection::where('user_id', $user->id)->firstOrFail();
         $this->assertSame('Alex Example', $connection->name);
-        $this->assertSame('2024-01-15', $connection->met_at_date->format('Y-m-d'));
 
         // Encrypted at rest: raw DB value must not contain the plaintext name.
         $raw = DB::table('connections')->where('id', $connection->id)->value('name');
         $this->assertStringNotContainsString('Alex Example', $raw);
+
+        $this->post("/connections/{$connection->id}/edges", [
+            'target_type' => 'source', 'target_id' => $source->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ])->assertRedirect();
+        $edge = ConnectionEdge::where('from_connection_id', $connection->id)->firstOrFail();
+        $this->assertSame($source->id, $edge->to_source_id);
 
         $this->put("/connections/{$connection->id}", [
             'name'       => $connection->name,
@@ -94,8 +96,10 @@ class ConnectionsTest extends TestCase
         $definition = ConnectionAttributeDefinition::create([
             'user_id' => $user->id, 'label' => 'Nickname', 'type' => 'text',
         ]);
-        $connection = Connection::create([
-            'user_id' => $user->id, 'name' => 'Roundtrip Person', 'source_id' => $source->id,
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Roundtrip Person']);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $connection->id, 'to_source_id' => $source->id,
+            'type' => ConnectionEdge::TYPE_ONE_WAY,
         ]);
         $connection->attributeValues()->create([
             'attribute_definition_id' => $definition->id,
@@ -109,7 +113,8 @@ class ConnectionsTest extends TestCase
         $data = json_decode($json, true);
 
         $this->assertSame('Roundtrip Person', $data['connections'][0]['name']);
-        $this->assertSame('VRChat', $data['connections'][0]['source']);
+        $this->assertSame('source', $data['connections'][0]['edges'][0]['target_kind']);
+        $this->assertSame('VRChat', $data['connections'][0]['edges'][0]['target_name']);
         $this->assertSame('Buddy', $data['connections'][0]['attribute_values'][0]['value']);
 
         // Wipe and re-import
@@ -122,7 +127,8 @@ class ConnectionsTest extends TestCase
 
         $imported = Connection::where('user_id', $user->id)->firstOrFail();
         $this->assertSame('Roundtrip Person', $imported->name);
-        $this->assertSame('VRChat', $imported->source->name);
+        $edge = $imported->edgesFrom()->firstOrFail();
+        $this->assertSame('VRChat', $edge->toSource->name);
         $this->assertSame('Buddy', $imported->attributeValues()->firstOrFail()->typed_value);
     }
 
@@ -140,6 +146,7 @@ class ConnectionsTest extends TestCase
             'radio'         => ['options' => ['choices' => ['Cat', 'Dog']], 'value' => 'Dog'],
             'text'          => ['options' => null, 'value' => 'hello'],
             'textarea'      => ['options' => null, 'value' => "hello\nworld"],
+            'date'          => ['options' => null, 'value' => '2024-01-15'],
         ];
 
         foreach ($types as $type => $spec) {
@@ -157,70 +164,57 @@ class ConnectionsTest extends TestCase
         $this->get("/connections?connection={$connection->id}")->assertOk()->assertSee('Full House');
     }
 
-    public function test_connection_can_be_linked_to_and_unlinked_from_its_introducer()
+    public function test_store_edge_creates_one_way_edge_to_source()
     {
         $user = $this->makeUser();
         $this->actingAs($user);
 
-        $introducer = Connection::create(['user_id' => $user->id, 'name' => 'Alice']);
-        $introduced = Connection::create(['user_id' => $user->id, 'name' => 'Bob']);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+        $source = \App\Models\ConnectionSource::create(['user_id' => $user->id, 'name' => 'VRChat']);
 
-        $this->put("/connections/{$introduced->id}", [
-            'name' => 'Bob',
-            'introduced_by_connection_id' => $introducer->id,
+        $this->post("/connections/{$connection->id}/edges", [
+            'target_type' => 'source', 'target_id' => $source->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
         ])->assertRedirect();
 
-        $introduced->refresh();
-        $this->assertSame($introducer->id, $introduced->introduced_by_connection_id);
-        $this->assertSame('Alice', $introduced->introducedBy->name);
-
-        // A real FK with nullOnDelete: deleting the introducer clears the reference automatically.
-        $this->delete("/connections/{$introducer->id}")->assertRedirect();
-        $introduced->refresh();
-        $this->assertNull($introduced->introduced_by_connection_id);
+        $edge = ConnectionEdge::where('from_connection_id', $connection->id)->firstOrFail();
+        $this->assertSame($source->id, $edge->to_source_id);
+        $this->assertNull($edge->to_connection_id);
+        $this->assertSame(ConnectionEdge::TYPE_ONE_WAY, $edge->type);
     }
 
-    public function test_connection_cannot_be_introduced_by_itself()
+    public function test_store_edge_supports_unlimited_edges_per_connection()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Bob']);
+        $alice = Connection::create(['user_id' => $user->id, 'name' => 'Alice']);
+        $carol = Connection::create(['user_id' => $user->id, 'name' => 'Carol']);
+
+        $this->post("/connections/{$connection->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $alice->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ])->assertRedirect();
+        $this->post("/connections/{$connection->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $carol->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ])->assertRedirect();
+
+        // No "primary" edge concept - both introducer links can coexist.
+        $this->assertSame(2, ConnectionEdge::where('from_connection_id', $connection->id)->count());
+    }
+
+    public function test_store_edge_rejects_self_link()
     {
         $user = $this->makeUser();
         $this->actingAs($user);
 
         $connection = Connection::create(['user_id' => $user->id, 'name' => 'Solo']);
 
-        $this->put("/connections/{$connection->id}", [
-            'name' => 'Solo',
-            'introduced_by_connection_id' => $connection->id,
-        ])->assertSessionHasErrors('introduced_by_connection_id');
-
-        $this->assertNull($connection->refresh()->introduced_by_connection_id);
+        $this->post("/connections/{$connection->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $connection->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ])->assertSessionHasErrors('target_id');
     }
 
-    public function test_export_import_round_trip_preserves_introduced_by()
-    {
-        $user = $this->makeUser();
-        $this->actingAs($user);
-
-        $introducer = Connection::create(['user_id' => $user->id, 'name' => 'Alice']);
-        $introduced = Connection::create([
-            'user_id' => $user->id, 'name' => 'Bob', 'introduced_by_connection_id' => $introducer->id,
-        ]);
-
-        $json = $this->get('/connections/export')->streamedContent();
-        $data = json_decode($json, true);
-        $bobExport = collect($data['connections'])->firstWhere('name', 'Bob');
-        $this->assertSame('Alice', $bobExport['introduced_by_name']);
-
-        Connection::where('user_id', $user->id)->delete();
-
-        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('connections.json', $json);
-        $this->post('/connections/import', ['file' => $file])->assertRedirect();
-
-        $importedBob = Connection::where('user_id', $user->id)->get()->firstWhere('name', 'Bob');
-        $this->assertNotNull($importedBob);
-        $this->assertSame('Alice', $importedBob->introducedBy->name);
-    }
-
-    public function test_mutual_graph_edge_can_be_created_and_removed()
+    public function test_store_edge_rejects_duplicate_bidirectional_link_in_either_direction()
     {
         $user = $this->makeUser();
         $this->actingAs($user);
@@ -228,22 +222,96 @@ class ConnectionsTest extends TestCase
         $a = Connection::create(['user_id' => $user->id, 'name' => 'A']);
         $b = Connection::create(['user_id' => $user->id, 'name' => 'B']);
 
-        $this->post('/connections/graph-edges', [
-            'connection_a_id' => $a->id, 'connection_b_id' => $b->id,
+        $this->post("/connections/{$a->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $b->id, 'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
         ])->assertRedirect();
 
-        $edge = \App\Models\ConnectionEdge::where('user_id', $user->id)->firstOrFail();
-        $this->assertSame($a->id, $edge->connection_a_id);
-        $this->assertSame($b->id, $edge->connection_b_id);
+        // Duplicate in the reverse direction is still rejected, since "know each other" is symmetric.
+        $this->post("/connections/{$b->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $a->id, 'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
+        ])->assertSessionHasErrors('target_id');
 
-        // Duplicate in either order is rejected.
-        $this->post('/connections/graph-edges', [
-            'connection_a_id' => $b->id, 'connection_b_id' => $a->id,
-        ])->assertSessionHasErrors('connection_b_id');
-        $this->assertSame(1, \App\Models\ConnectionEdge::where('user_id', $user->id)->count());
+        $this->assertSame(1, ConnectionEdge::where('user_id', $user->id)->count());
+    }
 
-        $this->delete("/connections/graph-edges/{$edge->id}")->assertRedirect();
-        $this->assertSame(0, \App\Models\ConnectionEdge::where('user_id', $user->id)->count());
+    public function test_destroy_edge_removes_edge_regardless_of_which_side_the_connection_is_on()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $a = Connection::create(['user_id' => $user->id, 'name' => 'A']);
+        $b = Connection::create(['user_id' => $user->id, 'name' => 'B']);
+
+        $this->post("/connections/{$a->id}/edges", [
+            'target_type' => 'connection', 'target_id' => $b->id, 'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
+        ])->assertRedirect();
+        $edge = ConnectionEdge::where('user_id', $user->id)->firstOrFail();
+
+        // Deletable from the "to" side too, not just the "from" side that created it.
+        $this->delete("/connections/{$b->id}/edges/{$edge->id}")->assertRedirect();
+        $this->assertNull(ConnectionEdge::find($edge->id));
+    }
+
+    public function test_source_edit_page_lists_linked_connections_and_supports_moving_and_unlinking()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $vrchat = \App\Models\ConnectionSource::create(['user_id' => $user->id, 'name' => 'VRChat']);
+        $discord = \App\Models\ConnectionSource::create(['user_id' => $user->id, 'name' => 'Discord']);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+        $edge = ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $connection->id, 'to_source_id' => $vrchat->id,
+            'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ]);
+
+        $this->get("/connections?source={$vrchat->id}")->assertOk()->assertSee('Alex');
+
+        $this->put("/connections/{$connection->id}/edges/{$edge->id}", ['target_id' => $discord->id])
+            ->assertRedirect();
+        $this->assertSame($discord->id, $edge->fresh()->to_source_id);
+
+        $this->delete("/connections/{$connection->id}/edges/{$edge->id}")->assertRedirect();
+        $this->assertNull(ConnectionEdge::find($edge->id));
+    }
+
+    public function test_update_edge_rejects_move_that_would_duplicate_an_existing_link()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $vrchat = \App\Models\ConnectionSource::create(['user_id' => $user->id, 'name' => 'VRChat']);
+        $discord = \App\Models\ConnectionSource::create(['user_id' => $user->id, 'name' => 'Discord']);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $connection->id, 'to_source_id' => $discord->id,
+            'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ]);
+        $edge = ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $connection->id, 'to_source_id' => $vrchat->id,
+            'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ]);
+
+        $this->put("/connections/{$connection->id}/edges/{$edge->id}", ['target_id' => $discord->id])
+            ->assertSessionHasErrors('target_id');
+        $this->assertSame($vrchat->id, $edge->fresh()->to_source_id);
+    }
+
+    public function test_deleting_a_connection_cascades_its_edges()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $a = Connection::create(['user_id' => $user->id, 'name' => 'A']);
+        $b = Connection::create(['user_id' => $user->id, 'name' => 'B']);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $a->id, 'to_connection_id' => $b->id,
+            'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
+        ]);
+
+        $this->delete("/connections/{$a->id}")->assertRedirect();
+
+        $this->assertSame(0, ConnectionEdge::where('user_id', $user->id)->count());
     }
 
     public function test_graph_endpoint_returns_no_names()
@@ -252,8 +320,16 @@ class ConnectionsTest extends TestCase
         $this->actingAs($user);
 
         $a = Connection::create(['user_id' => $user->id, 'name' => 'Secret Alice']);
-        $b = Connection::create(['user_id' => $user->id, 'name' => 'Secret Bob', 'introduced_by_connection_id' => $a->id]);
-        \App\Models\ConnectionEdge::create(['user_id' => $user->id, 'connection_a_id' => $a->id, 'connection_b_id' => $b->id]);
+        $b = Connection::create(['user_id' => $user->id, 'name' => 'Secret Bob']);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $b->id, 'to_connection_id' => $a->id,
+            'type' => ConnectionEdge::TYPE_ONE_WAY,
+        ]);
+        $c = Connection::create(['user_id' => $user->id, 'name' => 'Secret Carol']);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $b->id, 'to_connection_id' => $c->id,
+            'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
+        ]);
 
         $response = $this->getJson('/connections/graph');
         $response->assertOk();
@@ -261,7 +337,7 @@ class ConnectionsTest extends TestCase
 
         $this->assertStringNotContainsString('Secret Alice', json_encode($body));
         $this->assertStringNotContainsString('Secret Bob', json_encode($body));
-        $this->assertCount(2, $body['nodes']);
+        $this->assertCount(3, $body['nodes']);
         $kinds = collect($body['edges'])->pluck('kind')->sort()->values()->toArray();
         $this->assertSame(['introduced', 'mutual'], $kinds);
     }
@@ -278,7 +354,7 @@ class ConnectionsTest extends TestCase
         $this->assertIsInt($first['seed']);
     }
 
-    public function test_connman_import_maps_one_way_to_introduced_by_and_bidirectional_to_mutual_edge()
+    public function test_connman_import_creates_edges_for_one_way_and_bidirectional_links()
     {
         $user = $this->makeUser();
         $this->actingAs($user);
@@ -307,18 +383,112 @@ class ConnectionsTest extends TestCase
         $alice = $all->firstWhere('name', 'Alice');
         $carol = $all->firstWhere('name', 'Carol');
 
-        $this->assertSame($alice->id, $bob->introduced_by_connection_id);
+        $introducedEdge = ConnectionEdge::where('from_connection_id', $bob->id)
+            ->where('to_connection_id', $alice->id)->firstOrFail();
+        $this->assertSame(ConnectionEdge::TYPE_ONE_WAY, $introducedEdge->type);
 
-        $edge = \App\Models\ConnectionEdge::where('user_id', $user->id)->firstOrFail();
-        $this->assertContains($edge->connection_a_id, [$bob->id, $carol->id]);
-        $this->assertContains($edge->connection_b_id, [$bob->id, $carol->id]);
-        $this->assertSame(1, \App\Models\ConnectionEdge::where('user_id', $user->id)->count());
+        $mutualEdge = ConnectionEdge::where('type', ConnectionEdge::TYPE_BI_DIRECTIONAL)->firstOrFail();
+        $this->assertContains($mutualEdge->from_connection_id, [$bob->id, $carol->id]);
+        $this->assertContains($mutualEdge->to_connection_id, [$bob->id, $carol->id]);
 
-        // The group became a source, and Carol (who linked to it) got it as her "met via" source.
+        // The group became a source, and Carol (who linked to it) got a "met via" edge to it.
         $source = \App\Models\ConnectionSource::where('user_id', $user->id)->firstOrFail();
         $this->assertSame('Some Server', $source->name);
         $this->assertSame('group', $source->category);
-        $this->assertSame($source->id, $carol->refresh()->source_id);
+        $sourceEdge = ConnectionEdge::where('from_connection_id', $carol->id)->where('to_source_id', $source->id)->firstOrFail();
+        $this->assertSame(ConnectionEdge::TYPE_ONE_WAY, $sourceEdge->type);
+    }
+
+    public function test_connman_import_creates_unlimited_edges_without_skipping_conflicts()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $connman = [
+            'people' => [
+                ['id' => 'p1', 'name' => 'Alice', 'type' => 'person'],
+                ['id' => 'p2', 'name' => 'Bob', 'type' => 'person'],
+                ['id' => 'p3', 'name' => 'Carol', 'type' => 'person'],
+                ['id' => 'g1', 'name' => 'Group One', 'type' => 'group'],
+                ['id' => 'g2', 'name' => 'Group Two', 'type' => 'group'],
+            ],
+            'connections' => [
+                // Bob is introduced through both Alice and Carol - both become edges, no primary/extra split.
+                ['id' => 'e1', 'from' => 'p2', 'to' => 'p1', 'type' => 'one-way'],
+                ['id' => 'e2', 'from' => 'p2', 'to' => 'p3', 'type' => 'one-way'],
+                // Bob belongs to both groups - both become "met via" edges.
+                ['id' => 'e3', 'from' => 'p2', 'to' => 'g1', 'type' => 'one-way'],
+                ['id' => 'e4', 'from' => 'p2', 'to' => 'g2', 'type' => 'one-way'],
+            ],
+        ];
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('network.json', json_encode($connman));
+        $this->post('/connections/import-connman', ['file' => $file])->assertRedirect();
+
+        $bob = Connection::where('user_id', $user->id)->get()->firstWhere('name', 'Bob');
+        $alice = Connection::where('user_id', $user->id)->get()->firstWhere('name', 'Alice');
+        $carol = Connection::where('user_id', $user->id)->get()->firstWhere('name', 'Carol');
+
+        $bobEdges = ConnectionEdge::where('from_connection_id', $bob->id)->get();
+        $this->assertSame(4, $bobEdges->count());
+        $this->assertTrue($bobEdges->contains('to_connection_id', $alice->id));
+        $this->assertTrue($bobEdges->contains('to_connection_id', $carol->id));
+
+        $group1 = \App\Models\ConnectionSource::where('user_id', $user->id)->where('name', 'Group One')->firstOrFail();
+        $group2 = \App\Models\ConnectionSource::where('user_id', $user->id)->where('name', 'Group Two')->firstOrFail();
+        $this->assertTrue($bobEdges->contains('to_source_id', $group1->id));
+        $this->assertTrue($bobEdges->contains('to_source_id', $group2->id));
+    }
+
+    public function test_connman_import_gives_the_group_category_a_default_color_for_the_graph()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $connman = [
+            'people' => [
+                ['id' => 'p1', 'name' => 'Carol', 'type' => 'person'],
+                ['id' => 'g1', 'name' => 'Some Server', 'type' => 'group'],
+            ],
+            'connections' => [
+                ['id' => 'e1', 'from' => 'p1', 'to' => 'g1', 'type' => 'one-way'],
+            ],
+        ];
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('network.json', json_encode($connman));
+        $this->post('/connections/import-connman', ['file' => $file])->assertRedirect();
+
+        $category = \App\Models\ConnectionSourceCategory::where('user_id', $user->id)->where('name', 'group')->firstOrFail();
+        $this->assertNotNull($category->color);
+
+        $carol = Connection::where('user_id', $user->id)->firstOrFail();
+        $body = $this->getJson('/connections/graph')->json();
+        $node = collect($body['nodes'])->firstWhere('id', $carol->id);
+        $this->assertSame($category->color, $node['color']);
+    }
+
+    public function test_connman_import_does_not_override_a_user_chosen_group_color()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        \App\Models\ConnectionSourceCategory::create(['user_id' => $user->id, 'name' => 'group', 'color' => '#123456']);
+
+        $connman = [
+            'people' => [
+                ['id' => 'p1', 'name' => 'Carol', 'type' => 'person'],
+                ['id' => 'g1', 'name' => 'Some Server', 'type' => 'group'],
+            ],
+            'connections' => [
+                ['id' => 'e1', 'from' => 'p1', 'to' => 'g1', 'type' => 'one-way'],
+            ],
+        ];
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('network.json', json_encode($connman));
+        $this->post('/connections/import-connman', ['file' => $file])->assertRedirect();
+
+        $category = \App\Models\ConnectionSourceCategory::where('user_id', $user->id)->where('name', 'group')->firstOrFail();
+        $this->assertSame('#123456', $category->color);
     }
 
     public function test_connman_import_wipes_existing_connections_and_edges_first()
@@ -328,7 +498,10 @@ class ConnectionsTest extends TestCase
 
         $preExisting = Connection::create(['user_id' => $user->id, 'name' => 'Manually Added']);
         $other = Connection::create(['user_id' => $user->id, 'name' => 'Other']);
-        \App\Models\ConnectionEdge::create(['user_id' => $user->id, 'connection_a_id' => $preExisting->id, 'connection_b_id' => $other->id]);
+        ConnectionEdge::create([
+            'user_id' => $user->id, 'from_connection_id' => $preExisting->id, 'to_connection_id' => $other->id,
+            'type' => ConnectionEdge::TYPE_BI_DIRECTIONAL,
+        ]);
 
         $connman = ['people' => [['id' => 'p1', 'name' => 'Fresh Person', 'type' => 'person']], 'connections' => []];
         $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('network.json', json_encode($connman));
@@ -336,7 +509,7 @@ class ConnectionsTest extends TestCase
 
         $this->assertSame(1, Connection::where('user_id', $user->id)->count());
         $this->assertSame('Fresh Person', Connection::where('user_id', $user->id)->first()->name);
-        $this->assertSame(0, \App\Models\ConnectionEdge::where('user_id', $user->id)->count());
+        $this->assertSame(0, ConnectionEdge::where('user_id', $user->id)->count());
     }
 
     public function test_auto_link_highlight_tokens_by_name()
@@ -368,7 +541,14 @@ class ConnectionsTest extends TestCase
 
         $this->assertSame($token->id, $alice->refresh()->highlight_token_id);
         $this->assertNull($bob->refresh()->highlight_token_id);
-        $this->assertNull($unrelated->refresh()->highlight_token_id);
+
+        // No matching token at all: a brand new one is created and linked instead of being left unlinked.
+        $unrelated->refresh();
+        $this->assertNotNull($unrelated->highlight_token_id);
+        $newToken = \App\Models\CalendarHighlightToken::find($unrelated->highlight_token_id);
+        $this->assertSame('Zzz Nomatch', $newToken->label);
+        $this->assertTrue($newToken->words->pluck('word')->contains('Zzz Nomatch'));
+        $this->assertTrue($newToken->archived);
     }
 
     public function test_auto_link_never_changes_an_already_linked_connection()
@@ -408,6 +588,20 @@ class ConnectionsTest extends TestCase
 
         $imported = Connection::where('user_id', $user->id)->firstOrFail();
         $this->assertSame($token->id, $imported->highlight_token_id);
+    }
+
+    public function test_connman_import_does_not_create_tokens_for_unmatched_connections()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $connman = ['people' => [['id' => 'p1', 'name' => 'Nobody Matches Me', 'type' => 'person']], 'connections' => []];
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('network.json', json_encode($connman));
+        $this->post('/connections/import-connman', ['file' => $file])->assertRedirect();
+
+        $imported = Connection::where('user_id', $user->id)->firstOrFail();
+        $this->assertNull($imported->highlight_token_id);
+        $this->assertSame(0, \App\Models\CalendarHighlightToken::where('user_id', $user->id)->count());
     }
 
     public function test_connman_import_renames_connection_to_matched_highlight_token_label()
@@ -540,5 +734,133 @@ class ConnectionsTest extends TestCase
             'name' => 'Alex', 'attributes' => [$definition->id => '0'],
         ])->assertRedirect();
         $this->assertSame(false, $connection->attributeValues()->firstOrFail()->fresh()->typed_value);
+    }
+
+    public function test_date_attribute_validates_and_saves()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $definition = ConnectionAttributeDefinition::create(['user_id' => $user->id, 'label' => 'Met on', 'type' => 'date']);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+
+        $this->put("/connections/{$connection->id}", [
+            'name' => 'Alex', 'attributes' => [$definition->id => '2024-01-15'],
+        ])->assertRedirect();
+        $this->assertSame('2024-01-15', $connection->attributeValues()->firstOrFail()->typed_value);
+
+        $this->put("/connections/{$connection->id}", [
+            'name' => 'Alex', 'attributes' => [$definition->id => 'not-a-date'],
+        ])->assertSessionHasErrors('attributes');
+    }
+
+    public function test_create_highlight_for_connection_is_archived_by_default()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+
+        $this->post("/connections/{$connection->id}/create-highlight")->assertRedirect();
+
+        $connection->refresh();
+        $this->assertNotNull($connection->highlight_token_id);
+        $token = \App\Models\CalendarHighlightToken::find($connection->highlight_token_id);
+        $this->assertTrue($token->archived);
+    }
+
+    public function test_link_existing_highlight_token_syncs_its_label_to_the_connection_name()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $token = \App\Models\CalendarHighlightToken::create([
+            'user_id' => $user->id, 'token' => \App\Models\CalendarHighlightToken::generateToken(), 'label' => 'Old Label',
+        ]);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex']);
+
+        $this->post("/connections/{$connection->id}/highlight-token/link", [
+            'highlight_token_id' => $token->id,
+        ])->assertRedirect();
+
+        $this->assertSame($token->id, $connection->refresh()->highlight_token_id);
+        $this->assertSame('Alex', $token->refresh()->label);
+    }
+
+    public function test_saving_connection_keeps_linked_token_label_in_sync()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $token = \App\Models\CalendarHighlightToken::create([
+            'user_id' => $user->id, 'token' => \App\Models\CalendarHighlightToken::generateToken(), 'label' => 'Alex',
+        ]);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex', 'highlight_token_id' => $token->id]);
+
+        $this->put("/connections/{$connection->id}", ['name' => 'Alexandra'])->assertRedirect();
+
+        $this->assertSame('Alexandra', $token->refresh()->label);
+    }
+
+    public function test_unlink_highlight_token_detaches_without_deleting_it()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $token = \App\Models\CalendarHighlightToken::create([
+            'user_id' => $user->id, 'token' => \App\Models\CalendarHighlightToken::generateToken(), 'label' => 'Alex',
+        ]);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex', 'highlight_token_id' => $token->id]);
+
+        $this->post("/connections/{$connection->id}/highlight-token/unlink")->assertRedirect();
+
+        $this->assertNull($connection->refresh()->highlight_token_id);
+        $this->assertNotNull($token->fresh());
+    }
+
+    public function test_regenerate_toggle_archive_and_destroy_connection_highlight_token()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $token = \App\Models\CalendarHighlightToken::create([
+            'user_id' => $user->id, 'token' => \App\Models\CalendarHighlightToken::generateToken(), 'label' => 'Alex',
+        ]);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex', 'highlight_token_id' => $token->id]);
+        $originalBytes = $token->token;
+
+        $this->post("/connections/{$connection->id}/highlight-token/regenerate")->assertRedirect();
+        $this->assertNotSame($originalBytes, $token->fresh()->token);
+
+        $this->post("/connections/{$connection->id}/highlight-token/toggle-archive")->assertRedirect();
+        $this->assertTrue($token->fresh()->archived);
+        $this->post("/connections/{$connection->id}/highlight-token/toggle-archive")->assertRedirect();
+        $this->assertFalse($token->fresh()->archived);
+
+        $this->delete("/connections/{$connection->id}/highlight-token")->assertRedirect();
+        $this->assertNull(\App\Models\CalendarHighlightToken::find($token->id));
+        // Deleting the token via nullOnDelete detaches the connection automatically.
+        $this->assertNull($connection->refresh()->highlight_token_id);
+    }
+
+    public function test_store_and_destroy_connection_highlight_word()
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $token = \App\Models\CalendarHighlightToken::create([
+            'user_id' => $user->id, 'token' => \App\Models\CalendarHighlightToken::generateToken(), 'label' => 'Alex',
+        ]);
+        $connection = Connection::create(['user_id' => $user->id, 'name' => 'Alex', 'highlight_token_id' => $token->id]);
+
+        $this->post("/connections/{$connection->id}/highlight-token/words", ['word' => 'Alexandra'])->assertRedirect();
+        $word = \App\Models\CalendarHighlightWord::where('token_id', $token->id)->where('word', 'Alexandra')->firstOrFail();
+
+        // Duplicate word (already used by any of the user's tokens) is rejected.
+        $this->post("/connections/{$connection->id}/highlight-token/words", ['word' => 'Alexandra'])
+            ->assertSessionHasErrors('word');
+
+        $this->delete("/connections/{$connection->id}/highlight-token/words/{$word->id}")->assertRedirect();
+        $this->assertNull(\App\Models\CalendarHighlightWord::find($word->id));
     }
 }

@@ -18,7 +18,7 @@ class ConnectionAttributeDefinition extends Model
 
     protected $casts = ['options' => 'array'];
 
-    public const TYPES = ['number', 'numeric_range', 'enum', 'text', 'textarea', 'radio', 'boolean'];
+    public const TYPES = ['number', 'numeric_range', 'enum', 'text', 'textarea', 'radio', 'boolean', 'date'];
 
     public function user(): BelongsTo
     {
