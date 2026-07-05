@@ -68,6 +68,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'availability_settings' => 'array',
+        'calendar_url' => 'encrypted',
         'two_factor_secret' => 'encrypted',
         'two_factor_confirmed_at' => 'datetime',
     ];
