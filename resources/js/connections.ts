@@ -38,7 +38,7 @@ document.querySelectorAll<HTMLSelectElement>('.attribute-type-select').forEach(t
 // scroll it into view within its own scrollable list container, since the selected item can be well
 // below the fold in a long alphabetical list.
 document.querySelectorAll<HTMLElement>('.list-group-item.active').forEach(item => {
-  item.scrollIntoView({ block: 'nearest' });
+  item.scrollIntoView({ block: 'center' });
 });
 
 function copyTokenText(text: string): Promise<void> {
