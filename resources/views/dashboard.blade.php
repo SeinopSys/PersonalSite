@@ -92,8 +92,10 @@
             </div>
         </div>
 
-        {{-- Uploads --}}
+        {{-- Uploads & Connections (wrapper) --}}
         <div class="col-md-6">
+        {{-- Uploads --}}
+        <div class="d-flex flex-column gap-4 h-100 align-content-between">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{{ __('global.uploads') }}</h5>
@@ -149,6 +151,26 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Connections graph --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ __('global.connections') }}</h5>
+                    <a href="/connections" class="btn btn-sm btn-outline-secondary">Manage</a>
+                </div>
+                <div class="card-body">
+                    @if(!$hasConnections)
+                        <p class="text-muted mb-0">
+                            No connections tracked yet.
+                            <a href="/connections">Add some on the Connections page</a> to see your network graph here.
+                        </p>
+                    @else
+                        <canvas id="connections-graph" width="400" height="260" style="width:100%;height:260px"></canvas>
+                        <p class="text-muted small mb-0 mt-1">Each dot is a connection. Solid lines are mutual links; arrows show "introduced by".</p>
+                    @endif
+                </div>
+            </div>
+        </div>
         </div>
 
     </div>

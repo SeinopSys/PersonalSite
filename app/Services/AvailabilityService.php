@@ -263,4 +263,24 @@ class AvailabilityService
         }
         return $total;
     }
+
+    /** Events whose name contains at least one of the given words (substring match). */
+    public function matchEventsByWords(array $events, array $words): array
+    {
+        if (empty($words)) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($events as $event) {
+            foreach ($words as $word) {
+                if (str_contains($event['name'], $word)) {
+                    $matched[] = $event;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
 }

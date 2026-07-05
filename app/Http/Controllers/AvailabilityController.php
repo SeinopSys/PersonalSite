@@ -98,20 +98,6 @@ class AvailabilityController extends Controller
 
     private function filterHighlightedEvents(array $events, array $words): array
     {
-        if (empty($words)) {
-            return [];
-        }
-
-        $matched = [];
-        foreach ($events as $event) {
-            foreach ($words as $word) {
-                if (strpos($event['name'], $word) !== false) {
-                    $matched[] = $event;
-                    break;
-                }
-            }
-        }
-
-        return $matched;
+        return (new AvailabilityService())->matchEventsByWords($events, $words);
     }
 }

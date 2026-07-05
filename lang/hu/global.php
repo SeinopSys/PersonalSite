@@ -9,6 +9,7 @@ return [
     'about' => 'Rólam',
     'dashboard' => 'Kezelőpult',
     'availability' => 'Elérhetőség',
+    'connections' => 'Kapcsolatok',
     'account' => 'Fiók',
     'uploads' => 'Feltöltések',
     'tools' => 'Eszközök',

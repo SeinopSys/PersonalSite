@@ -18,6 +18,7 @@
                 @if(Auth::check())
                     {!! \App\Util\Core::NavbarItem('dashboard') !!}
                     {!! \App\Util\Core::NavbarItem('availability') !!}
+                    {!! \App\Util\Core::NavbarItem('connections') !!}
                     {!! \App\Util\Core::NavbarItem('uploads') !!}
                 @endif
                 <li class="nav-item dropdown">

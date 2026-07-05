@@ -43,6 +43,8 @@ class DashboardController extends Controller
         $imageUpload = $user->imageUpload()->first();
         $data['uploadingEnabled'] = !empty($imageUpload);
 
+        $data['hasConnections'] = $user->connections()->exists();
+
         return view('dashboard', $data);
     }
 
@@ -509,6 +511,7 @@ class DashboardController extends Controller
             'label'      => $ht->label,
             'token'      => $ht->token_base64,
             'created_at' => $ht->created_at->toIso8601String(),
+            'archived'   => $ht->archived,
             'words'      => $ht->words->pluck('word')->values()->toArray(),
         ])->toArray();
 
@@ -591,6 +594,7 @@ class DashboardController extends Controller
                     'user_id'    => $userId,
                     'token'      => $item['_bytes'],
                     'label'      => $label,
+                    'archived'   => !empty($item['archived']),
                     'created_at' => $createdAt ?? now(),
                 ]);
 

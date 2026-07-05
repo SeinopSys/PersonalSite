@@ -115,6 +115,21 @@ class User extends Authenticatable
         return $this->hasMany(CalendarHighlightToken::class);
     }
 
+    public function connections(): HasMany
+    {
+        return $this->hasMany(Connection::class);
+    }
+
+    public function connectionSources(): HasMany
+    {
+        return $this->hasMany(ConnectionSource::class);
+    }
+
+    public function connectionAttributeDefinitions(): HasMany
+    {
+        return $this->hasMany(ConnectionAttributeDefinition::class);
+    }
+
     public function hasTwoFactorEnabled(): bool
     {
         return !is_null($this->two_factor_confirmed_at);
