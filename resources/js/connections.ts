@@ -19,11 +19,13 @@ document.querySelectorAll<HTMLSelectElement>('.attribute-type-select').forEach(t
   const sync = () => {
     const current = typeSelect.value;
     optionGroups.forEach(group => {
-      const forTypes = (group.dataset.for ?? '').split(',');
+      const el = group;
+      const forTypes = (el.dataset.for ?? '').split(',');
       const active = forTypes.includes(current);
-      group.style.display = active ? '' : 'none';
-      group.querySelectorAll<HTMLInputElement>('input').forEach(input => {
-        input.disabled = !active;
+      el.style.display = active ? '' : 'none';
+      el.querySelectorAll<HTMLInputElement>('input').forEach(inputEl => {
+        const field = inputEl;
+        field.disabled = !active;
       });
     });
   };
@@ -79,26 +81,27 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-document.querySelectorAll<HTMLElement>('.connection-events').forEach(container => {
-  const connectionId = container.dataset.connectionId;
+document.querySelectorAll<HTMLElement>('.connection-events').forEach(containerEl => {
+  const el = containerEl;
+  const { connectionId } = el.dataset;
   if (!connectionId) return;
 
   fetch(`/connections/${encodeURIComponent(connectionId)}/events`)
     .then(r => r.json() as Promise<ConnectionEventsResponse>)
     .then(data => {
       if (data.error) {
-        container.innerHTML = `<p class="text-danger small mb-0">${data.error}</p>`;
+        el.innerHTML = `<p class="text-danger small mb-0">${data.error}</p>`;
         return;
       }
       const events = data.events ?? [];
       if (events.length === 0) {
-        container.innerHTML = '<p class="text-muted small mb-0">No matching calendar events found.</p>';
+        el.innerHTML = '<p class="text-muted small mb-0">No matching calendar events found.</p>';
         return;
       }
       const items = events.map(e => `<li class="list-group-item small py-1">${escapeHtml(e.name)} <span class="text-muted">(${escapeHtml(e.start)} – ${escapeHtml(e.end)})</span></li>`).join('');
-      container.innerHTML = `<ul class="list-group">${items}</ul>`;
+      el.innerHTML = `<ul class="list-group">${items}</ul>`;
     })
     .catch(() => {
-      container.innerHTML = '<p class="text-danger small mb-0">Failed to load events.</p>';
+      el.innerHTML = '<p class="text-danger small mb-0">Failed to load events.</p>';
     });
 });

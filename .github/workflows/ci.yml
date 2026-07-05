@@ -49,6 +49,13 @@ jobs:
           extensions: mbstring, pdo, pdo_pgsql
           coverage: none
       - run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - run: cp .env.example .env
       - run: php artisan key:generate
       - run: php artisan migrate --force
