@@ -57,8 +57,8 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
       friendly-challenge:
-        specifier: ^0.9.16
-        version: 0.9.19
+        specifier: ^0.9.20
+        version: 0.9.20
       html-minifier:
         specifier: ^4.0.0
         version: 4.0.0
@@ -2339,8 +2339,8 @@ packages:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
     engines: {node: '>= 0.6'}
 
-  friendly-challenge@0.9.19:
-    resolution: {integrity: sha512-DyN9Zn/2RyzXtJKFlpuOgsbeNQfFD0jKCaX8Eji4cQwZqOOaGJQK04TX7PXLNg3AvVd8KNQT4lGHRl0JzcBdyA==}
+  friendly-challenge@0.9.20:
+    resolution: {integrity: sha512-aldDMirOcXp6/VwLPZPZNG1q0ODsDzOjUzC/BVCwkX4oWFZrqZ7nNfm+cbAVOsx4rCtHXQqVUFNZlvyHdbElSQ==}
 
   friendly-pow@0.2.2:
     resolution: {integrity: sha512-oTGCqr6d9iIv8TEWmqJK8p1Gkr9hDEgb7g22pTCDZz+Y9zaaWtCNxmrD+/+KIYbf1/64rgba5Vj4hU7AxE/vkA==}
@@ -3050,8 +3050,8 @@ packages:
     resolution: {integrity: sha512-2eznPJP8z2BFLX50tf0LuODrpINqP1RVIm/CObbTcBRITQgmC/TjcREF1NeTBzIcR5XO/ukWo+YHOjBbFwIupg==}
     hasBin: true
 
-  nanoid@3.3.12:
-    resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
+  nanoid@3.3.15:
+    resolution: {integrity: sha512-y7Wygv/7mEOvxTuEQDB8StXdMRBWf1kR/tlhAzBRUFkB2jfcLOAxO/SHmOO2zgz1pVgK29/kyupn059/bCHdjA==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -3762,6 +3762,11 @@ packages:
 
   semver@7.8.4:
     resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -5560,7 +5565,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.61.0
       debug: 4.4.3
       minimatch: 10.2.5
-      semver: 7.8.4
+      semver: 7.8.5
       tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@5.8.3)
       typescript: 5.8.3
@@ -7065,7 +7070,7 @@ snapshots:
 
   fresh@0.5.2: {}
 
-  friendly-challenge@0.9.19:
+  friendly-challenge@0.9.20:
     dependencies:
       core-js: 3.49.0
       friendly-pow: 0.2.2
@@ -7839,7 +7844,7 @@ snapshots:
       dns-packet: 5.6.1
       thunky: 1.1.0
 
-  nanoid@3.3.12: {}
+  nanoid@3.3.15: {}
 
   napi-postinstall@0.3.4: {}
 
@@ -8299,7 +8304,7 @@ snapshots:
 
   postcss@8.5.15:
     dependencies:
-      nanoid: 3.3.12
+      nanoid: 3.3.15
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -8566,6 +8571,8 @@ snapshots:
   semver@6.3.1: {}
 
   semver@7.8.4: {}
+
+  semver@7.8.5: {}
 
   send@0.19.2:
     dependencies:

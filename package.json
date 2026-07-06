@@ -18,7 +18,7 @@
     "date-fns": "^2.29.3",
     "date-fns-tz": "^1.3.7",
     "file-saver": "^2.0.5",
-    "friendly-challenge": "^0.9.16",
+    "friendly-challenge": "^0.9.20",
     "html-minifier": "^4.0.0",
     "jquery": "^3.6.1",
     "jsmediatags": "^3.9.7",
