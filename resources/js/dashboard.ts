@@ -118,17 +118,21 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
   const nodeRadius = Math.max(2.5, Math.min(6, 6 * scale));
   const edgeLineWidth = Math.max(0.75, Math.min(1.5, 1.5 * scale));
 
-  // A source ("met via" this) is drawn as a single hub node - visibly larger than the plain connection
-  // dots, and growing further with how many connections point at it, rather than as a small dot
-  // repeated once per connection.
-  const sourceBaseRadius = Math.max(6, Math.min(14, 14 * scale));
-  const sourceMaxRadius = sourceBaseRadius * 2.2;
+  // A source ("met via" this) is drawn as a single hub node - growing with how many connections point
+  // at it, rather than as a small dot repeated once per connection. One with an uploaded icon is drawn
+  // noticeably larger (a cropped photo/logo needs the room); one without is only slightly bigger than a
+  // plain connection dot, since it's otherwise just a colored circle with nothing else to distinguish it.
+  const sourceIconRadius = Math.max(6, Math.min(14, 14 * scale));
+  const sourceIconMaxRadius = sourceIconRadius * 2.2;
+  const sourcePlainRadius = Math.max(3.5, Math.min(8, 8 * scale));
+  const sourcePlainMaxRadius = sourcePlainRadius * 1.6;
   const inDegreeById = new Map<string, number>();
   edges.forEach(e => inDegreeById.set(e.to, (inDegreeById.get(e.to) ?? 0) + 1));
   const nodeRadiusFor = (n: SimNode): number => {
     if (n.type !== 'source') return nodeRadius;
     const degree = inDegreeById.get(n.id) ?? 0;
-    return Math.min(sourceMaxRadius, sourceBaseRadius * (1 + Math.log2(degree + 1) * 0.35));
+    if (n.icon) return Math.min(sourceIconMaxRadius, sourceIconRadius * (1 + Math.log2(degree + 1) * 0.35));
+    return Math.min(sourcePlainMaxRadius, sourcePlainRadius * (1 + Math.log2(degree + 1) * 0.25));
   };
 
   const iconImages = new Map<string, HTMLImageElement>();
