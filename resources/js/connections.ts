@@ -81,6 +81,76 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Case-insensitively bolds every occurrence of `query` within `text`, HTML-escaping the rest. */
+function highlightMatch(text: string, query: string): string {
+  if (!query) return escapeHtml(text);
+  const re = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+  return escapeHtml(text).replace(re, '<strong>$1</strong>');
+}
+
+/**
+ * Wires a "new entry" name input to live-filter the existing list of items below it: as the user
+ * types, items whose name doesn't contain the input (case-insensitively) are hidden, and the matched
+ * part of the remaining ones' names is bolded. Purely a display filter - it doesn't touch form
+ * submission, so submitting still creates a new entry with whatever was typed.
+ */
+function attachNameFilter(inputId: string, listId: string, nameSelector: string): void {
+  const input = document.getElementById(inputId) as HTMLInputElement | null;
+  const list = document.getElementById(listId);
+  if (!input || !list) return;
+
+  const items = Array.from(list.querySelectorAll<HTMLElement>('[data-name]'));
+  const noResultsEl = list.querySelector<HTMLElement>('[data-no-results]');
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    const lowerQuery = query.toLowerCase();
+    let visibleCount = 0;
+    let firstVisible: HTMLElement | null = null;
+    let lastVisible: HTMLElement | null = null;
+
+    items.forEach(itemEl => {
+      const item = itemEl;
+      const name = item.dataset.name ?? '';
+      const matches = lowerQuery === '' || name.toLowerCase().includes(lowerQuery);
+      item.classList.toggle('d-none', !matches);
+      // Bootstrap strips the top border from every `.list-group-item` that follows another one in the
+      // DOM (via `.list-group-item + .list-group-item`) and only rounds the corners of the true
+      // `:first-child`/`:last-child` - none of that is aware of `display:none`. So once the true first
+      // or last item is filtered out, whatever is now visually first/last would render borderless with
+      // square corners the scrollable container's own rounded clip cuts straight into. Reset both
+      // overrides on every item, then reapply them to whichever item is now visually first/last.
+      item.style.borderTopWidth = '';
+      item.classList.remove('rounded-top', 'rounded-bottom');
+      if (matches) {
+        visibleCount++;
+        if (!firstVisible) firstVisible = item;
+        lastVisible = item;
+      }
+
+      const nameEl = item.querySelector<HTMLElement>(nameSelector);
+      if (nameEl && matches) {
+        nameEl.innerHTML = highlightMatch(name, query);
+      }
+    });
+
+    if (firstVisible) {
+      (firstVisible as HTMLElement).style.borderTopWidth = '1px';
+      (firstVisible as HTMLElement).classList.add('rounded-top');
+    }
+    if (lastVisible) (lastVisible as HTMLElement).classList.add('rounded-bottom');
+
+    noResultsEl?.classList.toggle('d-none', visibleCount > 0);
+  });
+}
+
+attachNameFilter('new-source-name', 'sources-list-group', '.source-name');
+attachNameFilter('new-connection-name', 'connections-list-group', '.connection-name');
+
 document.querySelectorAll<HTMLElement>('.connection-events').forEach(containerEl => {
   const el = containerEl;
   const { connectionId } = el.dataset;

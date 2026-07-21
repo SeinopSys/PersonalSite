@@ -17,8 +17,8 @@
         <div class="col-md-4">
             <form method="POST" action="/connections/sources" class="d-flex gap-2 mb-3">
                 @csrf
-                <input type="text" name="name" class="form-control form-control-sm @error('name') is-invalid @enderror"
-                       placeholder="New source name" maxlength="255" required value="{{ old('name') }}">
+                <input type="text" name="name" id="new-source-name" class="form-control form-control-sm @error('name') is-invalid @enderror"
+                       placeholder="New source name" maxlength="255" required value="{{ old('name') }}" autocomplete="off">
                 <button type="submit" class="btn btn-sm btn-primary">Add</button>
             </form>
             @error('name')
@@ -27,17 +27,21 @@
             @if($sources->isEmpty())
                 <p class="text-muted small">No sources yet.</p>
             @else
-            <div class="list-group" style="max-height:360px;overflow-y:auto">
+            <div class="list-group" id="sources-list-group" style="height:50vh;overflow-y:auto">
                 @foreach($sources as $source)
-                <a href="/connections?source={{ $source->id }}{{ $connectionParam }}#sources"
+                <a href="/connections?source={{ $source->id }}{{ $connectionParam }}#sources" data-name="{{ $source->name }}"
                    class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ optional($selectedSource)->id === $source->id ? 'active' : '' }}">
                     @php $listColor = $categoryColors->get($source->category)?->color; @endphp
-                    @if($listColor)
+                    @if($source->icon_url)
+                        <img src="{{ $source->icon_url }}" alt=""
+                             style="width:20px;height:20px;border-radius:50%;object-fit:cover;{{ $listColor ? "border:2px solid $listColor" : '' }}">
+                    @elseif($listColor)
                         <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ $listColor }}"></span>
                     @endif
-                    <span class="flex-grow-1 text-truncate">{{ $source->name }}</span>
+                    <span class="flex-grow-1 text-truncate source-name">{{ $source->name }}</span>
                 </a>
                 @endforeach
+                <p class="text-muted small p-2 mb-0 d-none" data-no-results>No matching sources.</p>
             </div>
             @endif
         </div>
@@ -47,7 +51,7 @@
                 <p class="text-muted">Select a source from the list, or add a new one.</p>
             @else
                 @php $categoryColorValue = $categoryColors->get($selectedSource->category)?->color ?? \App\Models\ConnectionSourceCategory::DEFAULT_COLOR; @endphp
-                <form method="POST" action="/connections/sources/{{ $selectedSource->id }}" class="d-flex gap-2 flex-wrap align-items-end mb-2">
+                <form method="POST" action="/connections/sources/{{ $selectedSource->id }}" enctype="multipart/form-data" class="d-flex gap-2 flex-wrap align-items-end mb-2">
                     @csrf
                     @method('PUT')
                     <div>
@@ -71,8 +75,27 @@
                                    oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)) this.previousElementSibling.value=this.value">
                         </div>
                     </div>
+                    <div>
+                        <label class="form-label small mb-1">Icon</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            @if($selectedSource->icon_url)
+                                <img src="{{ $selectedSource->icon_url }}" alt=""
+                                     style="width:32px;height:32px;border-radius:50%;object-fit:cover;{{ $categoryColorValue ? "border:2px solid $categoryColorValue" : '' }}">
+                            @endif
+                            <input type="file" name="icon" accept="image/*" class="form-control form-control-sm" style="max-width:160px">
+                        </div>
+                        @if($selectedSource->icon_url)
+                            <div class="form-check mt-1">
+                                <input type="checkbox" name="remove_icon" value="1" class="form-check-input" id="remove-icon-{{ $selectedSource->id }}">
+                                <label class="form-check-label small" for="remove-icon-{{ $selectedSource->id }}">Remove icon</label>
+                            </div>
+                        @endif
+                    </div>
                     <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 </form>
+                @error('icon')
+                    <div class="text-danger small mb-2">{{ $message }}</div>
+                @enderror
                 <form method="POST" action="/connections/sources/{{ $selectedSource->id }}">
                     @csrf
                     @method('DELETE')
@@ -245,23 +268,24 @@
         <div class="col-md-4">
             <form method="POST" action="/connections" class="d-flex gap-2 mb-3">
                 @csrf
-                <input type="text" name="name" class="form-control form-control-sm" placeholder="New connection name"
-                       maxlength="1000" required value="{{ old('name') }}">
+                <input type="text" name="name" id="new-connection-name" class="form-control form-control-sm" placeholder="New connection name"
+                       maxlength="1000" required value="{{ old('name') }}" autocomplete="off">
                 <button type="submit" class="btn btn-sm btn-primary">Add</button>
             </form>
             @if($connectionList->isEmpty())
                 <p class="text-muted small">No connections yet.</p>
             @else
             @php $sourceParam = $selectedSource ? '&source=' . $selectedSource->id : ''; @endphp
-            <div class="list-group" style="max-height:520px;overflow-y:auto">
+            <div class="list-group" id="connections-list-group" style="height:50vh;overflow-y:auto">
                 @foreach($connectionList as $item)
-                <a href="/connections?connection={{ $item->id }}{{ $sourceParam }}#connection-detail"
+                <a href="/connections?connection={{ $item->id }}{{ $sourceParam }}#connection-detail" data-name="{{ $item->name }}"
                    class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ optional($selected)->id === $item->id ? 'active' : '' }}">
                     @if($item->archived)<span class="fa fa-archive small" title="Archived"></span>@endif
-                    <span class="flex-grow-1 text-truncate">{{ $item->name }}</span>
+                    <span class="flex-grow-1 text-truncate connection-name">{{ $item->name }}</span>
                     @if($item->highlight_token_id)<span class="fa fa-calendar-check small" title="Linked to calendar highlight"></span>@endif
                 </a>
                 @endforeach
+                <p class="text-muted small p-2 mb-0 d-none" data-no-results>No matching connections.</p>
             </div>
             @endif
         </div>

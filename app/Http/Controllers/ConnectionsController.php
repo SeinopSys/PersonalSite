@@ -13,6 +13,7 @@ use App\Models\ConnectionSourceCategory;
 use App\Services\AvailabilityService;
 use App\Util\ConnectionAttributeValidator;
 use App\Util\JSON;
+use App\Util\UploadUtil;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -347,11 +348,12 @@ class ConnectionsController extends Controller
     }
 
     /**
-     * Anonymized graph data for the dashboard visualization: no names, just node ids (colored by their
-     * first "met via" source's category, if any) and edges. One-way edges point from the introduced
-     * person to whoever/whatever they were introduced through; bi-directional edges ("know each other")
-     * carry no direction. Only connection<->connection edges are graph edges - connection<->source edges
-     * only affect a node's color, since a source isn't a person to draw as its own node here.
+     * Anonymized graph data for the dashboard visualization: no names, just node ids and edges.
+     * Connections are plain "person" nodes. Each source a connection was "met via" is its own hub node
+     * (colored/iconed from its category, if any) with an edge from every connection that lists it - so a
+     * source with many connections renders as a single node with many edges into it, not a dot repeated
+     * per connection. One-way edges point from the introduced person to whoever/whatever they were
+     * introduced through; bi-directional edges ("know each other") carry no direction.
      */
     public function graph(): JsonResponse
     {
@@ -359,37 +361,50 @@ class ConnectionsController extends Controller
 
         $categoryColors = ConnectionSourceCategory::where('user_id', $userId)->pluck('color', 'name');
 
-        $primarySourceByConnection = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_source_id')
-            ->with('toSource')->orderBy('created_at')->get()
-            ->groupBy('from_connection_id')
-            ->map(fn($edges) => $edges->first());
+        $connectionNodes = Connection::where('user_id', $userId)->orderBy('id')->get(['id'])
+            ->map(fn(Connection $c) => ['id' => $c->id, 'type' => 'connection', 'color' => null, 'icon' => null]);
 
-        $nodes = Connection::where('user_id', $userId)->orderBy('id')->get(['id'])
-            ->map(function (Connection $c) use ($primarySourceByConnection, $categoryColors) {
-                $category = $primarySourceByConnection->get($c->id)?->toSource?->category;
-                return [
-                    'id'    => $c->id,
-                    'color' => $category ? ($categoryColors[$category] ?? null) : null,
-                ];
-            })
-            ->values();
-
-        $edges = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_connection_id')
+        $connectionEdges = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_connection_id')
             ->orderBy('id')
             ->get(['from_connection_id', 'to_connection_id', 'type'])
             ->map(fn(ConnectionEdge $e) => [
                 'from' => $e->from_connection_id,
                 'to'   => $e->to_connection_id,
                 'kind' => $e->type === ConnectionEdge::TYPE_BI_DIRECTIONAL ? 'mutual' : 'introduced',
-            ])
-            ->values();
+            ]);
+
+        $sourceEdgeRows = ConnectionEdge::where('user_id', $userId)->whereNotNull('to_source_id')
+            ->with('toSource')->orderBy('id')->get();
+
+        $sourceNodesById = [];
+        $sourceEdges = collect();
+        foreach ($sourceEdgeRows as $edge) {
+            $source = $edge->toSource;
+            if (!$source) continue;
+
+            if (!isset($sourceNodesById[$source->id])) {
+                $category = $source->category;
+                $sourceNodesById[$source->id] = [
+                    'id'    => $source->id,
+                    'type'  => 'source',
+                    'color' => $category ? ($categoryColors[$category] ?? null) : null,
+                    'icon'  => $source->icon_url,
+                ];
+            }
+
+            $sourceEdges->push([
+                'from' => $edge->from_connection_id,
+                'to'   => $source->id,
+                'kind' => 'introduced',
+            ]);
+        }
 
         return response()->json([
             // Deterministic per user, so the client-side layout simulation produces the same graph on
             // every reload instead of a fresh random scatter each time.
             'seed'  => crc32($userId),
-            'nodes' => $nodes,
-            'edges' => $edges,
+            'nodes' => $connectionNodes->concat(array_values($sourceNodesById))->values(),
+            'edges' => $connectionEdges->concat($sourceEdges)->values(),
         ]);
     }
 
@@ -596,16 +611,27 @@ class ConnectionsController extends Controller
         $source = ConnectionSource::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
 
         $validated = $request->validate([
-            'name'     => [
+            'name'        => [
                 'required', 'string', 'max:255',
                 Rule::unique('connection_sources')->where('user_id', Auth::id())->ignore($source->id),
             ],
-            'category' => 'nullable|string|max:100',
-            'color'    => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'category'    => 'nullable|string|max:100',
+            'color'       => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'icon'        => 'nullable|image|max:2048',
+            'remove_icon' => 'nullable|boolean',
         ]);
 
         $source->name = $validated['name'];
         $source->category = $validated['category'] ?? null;
+
+        if (isset($validated['icon'])) {
+            UploadUtil::deleteConnectionSourceIcon($source->icon_path);
+            $source->icon_path = UploadUtil::saveConnectionSourceIcon($validated['icon']);
+        } elseif (!empty($validated['remove_icon'])) {
+            UploadUtil::deleteConnectionSourceIcon($source->icon_path);
+            $source->icon_path = null;
+        }
+
         $source->save();
         $this->saveCategoryColor($validated);
 
@@ -627,7 +653,9 @@ class ConnectionsController extends Controller
 
     public function destroySource(string $id)
     {
-        ConnectionSource::where('id', $id)->where('user_id', Auth::id())->firstOrFail()->delete();
+        $source = ConnectionSource::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        UploadUtil::deleteConnectionSourceIcon($source->icon_path);
+        $source->delete();
 
         return redirect('/connections#sources')->with('success', 'Source removed.');
     }

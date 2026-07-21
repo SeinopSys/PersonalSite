@@ -461,9 +461,10 @@ class ConnectionsTest extends TestCase
         $category = \App\Models\ConnectionSourceCategory::where('user_id', $user->id)->where('name', 'group')->firstOrFail();
         $this->assertNotNull($category->color);
 
-        $carol = Connection::where('user_id', $user->id)->firstOrFail();
+        $group = \App\Models\ConnectionSource::where('user_id', $user->id)->where('name', 'Some Server')->firstOrFail();
         $body = $this->getJson('/connections/graph')->json();
-        $node = collect($body['nodes'])->firstWhere('id', $carol->id);
+        $node = collect($body['nodes'])->firstWhere('id', $group->id);
+        $this->assertSame('source', $node['type']);
         $this->assertSame($category->color, $node['color']);
     }
 
@@ -659,6 +660,119 @@ class ConnectionsTest extends TestCase
         ])->assertRedirect();
         $this->assertSame(1, \App\Models\ConnectionSourceCategory::where('user_id', $user->id)->count());
         $this->assertSame('#e34948', $category->refresh()->color);
+    }
+
+    public function test_source_icon_can_be_uploaded_replaced_and_removed()
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $this->post('/connections/sources', ['name' => 'VRChat'])->assertRedirect();
+        $source = \App\Models\ConnectionSource::where('user_id', $user->id)->firstOrFail();
+
+        // Icon uploads only happen through the edit form, not the quick "add source" form.
+        $this->put("/connections/sources/{$source->id}", [
+            'name' => 'VRChat',
+            'icon' => \Illuminate\Http\UploadedFile::fake()->image('icon.png'),
+        ])->assertRedirect();
+
+        $source->refresh();
+        $this->assertNotNull($source->icon_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($source->icon_path);
+        $firstIconPath = $source->icon_path;
+
+        // Uploading a new icon replaces the old file.
+        $this->put("/connections/sources/{$source->id}", [
+            'name' => 'VRChat',
+            'icon' => \Illuminate\Http\UploadedFile::fake()->image('icon2.png'),
+        ])->assertRedirect();
+
+        $source->refresh();
+        $this->assertNotNull($source->icon_path);
+        $this->assertNotSame($firstIconPath, $source->icon_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($source->icon_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($firstIconPath);
+
+        $secondIconPath = $source->icon_path;
+
+        // Checking "remove icon" clears it and deletes the file.
+        $this->put("/connections/sources/{$source->id}", [
+            'name' => 'VRChat', 'remove_icon' => '1',
+        ])->assertRedirect();
+
+        $source->refresh();
+        $this->assertNull($source->icon_path);
+        $this->assertNull($source->icon_url);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($secondIconPath);
+    }
+
+    public function test_destroying_source_deletes_its_icon_file()
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $this->post('/connections/sources', ['name' => 'VRChat'])->assertRedirect();
+        $source = \App\Models\ConnectionSource::where('user_id', $user->id)->firstOrFail();
+
+        $this->put("/connections/sources/{$source->id}", [
+            'name' => 'VRChat',
+            'icon' => \Illuminate\Http\UploadedFile::fake()->image('icon.png'),
+        ])->assertRedirect();
+
+        $iconPath = $source->refresh()->icon_path;
+
+        $this->delete("/connections/sources/{$source->id}")->assertRedirect();
+
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($iconPath);
+    }
+
+    public function test_graph_endpoint_represents_a_source_as_a_single_node_with_its_icon()
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $this->post('/connections/sources', ['name' => 'VRChat'])->assertRedirect();
+        $source = \App\Models\ConnectionSource::where('user_id', $user->id)->firstOrFail();
+        $this->put("/connections/sources/{$source->id}", [
+            'name' => 'VRChat',
+            'icon' => \Illuminate\Http\UploadedFile::fake()->image('icon.png'),
+        ])->assertRedirect();
+        $source->refresh();
+
+        $this->post('/connections', ['name' => 'Alex Example'])->assertRedirect();
+        $this->post('/connections', ['name' => 'Blake Example'])->assertRedirect();
+        $connections = Connection::where('user_id', $user->id)->get();
+        $alex = $connections->firstWhere('name', 'Alex Example');
+        $blake = $connections->firstWhere('name', 'Blake Example');
+
+        foreach ([$alex, $blake] as $connection) {
+            $this->post("/connections/{$connection->id}/edges", [
+                'target_type' => 'source', 'target_id' => $source->id, 'type' => ConnectionEdge::TYPE_ONE_WAY,
+            ])->assertRedirect();
+        }
+
+        $body = $this->get('/connections/graph')->assertOk()->json();
+
+        // The source appears exactly once as its own "source" node, not duplicated per connection.
+        $sourceNodes = collect($body['nodes'])->where('id', $source->id);
+        $this->assertCount(1, $sourceNodes);
+        $sourceNode = $sourceNodes->first();
+        $this->assertSame('source', $sourceNode['type']);
+        $this->assertSame($source->icon_url, $sourceNode['icon']);
+
+        // Every connection has its own edge pointing into that single source node.
+        $edgesToSource = collect($body['edges'])->where('to', $source->id);
+        $this->assertCount(2, $edgesToSource);
+        $this->assertSame(['introduced', 'introduced'], $edgesToSource->pluck('kind')->values()->toArray());
+        $this->assertEqualsCanonicalizing([$alex->id, $blake->id], $edgesToSource->pluck('from')->values()->toArray());
+
+        // Connection nodes themselves carry no color/icon of their own anymore.
+        $connectionNode = collect($body['nodes'])->firstWhere('id', $alex->id);
+        $this->assertSame('connection', $connectionNode['type']);
+        $this->assertNull($connectionNode['icon']);
     }
 
     public function test_index_lists_connections_alphabetically_and_only_selected_gets_full_detail()

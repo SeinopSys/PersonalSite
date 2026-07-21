@@ -4,7 +4,7 @@ function esc(s: string): string {
   return d.innerHTML;
 }
 
-interface GraphNode { id: string; color: string | null; }
+interface GraphNode { id: string; type: 'connection' | 'source'; color: string | null; icon: string | null; }
 interface GraphEdge { from: string; to: string; kind: 'introduced' | 'mutual'; }
 interface GraphResponse { seed: number; nodes: GraphNode[]; edges: GraphEdge[]; }
 
@@ -118,6 +118,21 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
   const nodeRadius = Math.max(2.5, Math.min(6, 6 * scale));
   const edgeLineWidth = Math.max(0.75, Math.min(1.5, 1.5 * scale));
 
+  // A source ("met via" this) is drawn as a single hub node - visibly larger than the plain connection
+  // dots, and growing further with how many connections point at it, rather than as a small dot
+  // repeated once per connection.
+  const sourceBaseRadius = Math.max(6, Math.min(14, 14 * scale));
+  const sourceMaxRadius = sourceBaseRadius * 2.2;
+  const inDegreeById = new Map<string, number>();
+  edges.forEach(e => inDegreeById.set(e.to, (inDegreeById.get(e.to) ?? 0) + 1));
+  const nodeRadiusFor = (n: SimNode): number => {
+    if (n.type !== 'source') return nodeRadius;
+    const degree = inDegreeById.get(n.id) ?? 0;
+    return Math.min(sourceMaxRadius, sourceBaseRadius * (1 + Math.log2(degree + 1) * 0.35));
+  };
+
+  const iconImages = new Map<string, HTMLImageElement>();
+
   const draw = () => {
     ctx.clearRect(0, 0, width, height);
 
@@ -134,8 +149,27 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
 
     // Pass 2: node circles, on top of lines.
     nodes.forEach(n => {
+      const r = nodeRadiusFor(n);
+      const icon = n.icon ? iconImages.get(n.icon) : undefined;
+      if (icon && icon.complete && icon.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.clip();
+        // Cover-fit the (already-square) icon into the circle's bounding box.
+        ctx.drawImage(icon, n.x - r, n.y - r, r * 2, r * 2);
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.lineWidth = Math.max(1.5, edgeLineWidth);
+        ctx.strokeStyle = n.color ?? NODE_COLOR;
+        ctx.stroke();
+        return;
+      }
+
       ctx.beginPath();
-      ctx.arc(n.x, n.y, nodeRadius, 0, Math.PI * 2);
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = n.color ?? NODE_COLOR;
       ctx.fill();
       ctx.lineWidth = Math.max(0.75, edgeLineWidth);
@@ -151,7 +185,7 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
       const dx = b.x - a.x; const dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       const ux = dx / dist; const uy = dy / dist;
-      const tipX = b.x - ux * (nodeRadius + arrowLen); const tipY = b.y - uy * (nodeRadius + arrowLen);
+      const tipX = b.x - ux * (nodeRadiusFor(b) + arrowLen); const tipY = b.y - uy * (nodeRadiusFor(b) + arrowLen);
       const angle = Math.atan2(dy, dx);
       ctx.beginPath();
       ctx.moveTo(tipX, tipY);
@@ -164,6 +198,16 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
   };
 
   draw();
+
+  // Icons load asynchronously - kick off loading for every distinct URL up front and redraw once
+  // each one lands, so the graph doesn't have to wait for all of them before showing anything.
+  const iconUrls = new Set(nodes.map(n => n.icon).filter((url): url is string => !!url));
+  iconUrls.forEach(url => {
+    const img = new Image();
+    img.onload = () => draw();
+    img.src = url;
+    iconImages.set(url, img);
+  });
 }
 
 const graphCanvas = document.getElementById('connections-graph') as HTMLCanvasElement | null;
