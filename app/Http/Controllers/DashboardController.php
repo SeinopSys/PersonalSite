@@ -41,7 +41,7 @@ class DashboardController extends Controller
                 ->toArray();
         }
 
-        $imageUpload = $user->imageUpload()->first();
+        $imageUpload = $user->rootImageUploadKey()->first();
         $data['uploadingEnabled'] = !empty($imageUpload);
 
         $data['hasConnections'] = $user->connections()->exists();
@@ -240,7 +240,7 @@ class DashboardController extends Controller
     public function statsUploads(): JsonResponse
     {
         $user = Auth::user();
-        $imageUpload = $user->imageUpload()->first();
+        $imageUpload = $user->rootImageUploadKey()->first();
         if (empty($imageUpload)) {
             return response()->json(['error' => 'not_enabled']);
         }
