@@ -7,7 +7,7 @@
     },
     "servers": [
         {
-            "url": "http://seinopsys.lc/api"
+            "url": "https://seinopsys.dev/api"
         }
     ],
     "paths": {
