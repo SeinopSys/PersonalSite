@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/availability/{name}', [AvailabilityController::class, 'show']);
-Route::post('/upload', [UploadsController::class, 'upload'])->middleware('throttle:60,5');
-Route::post('/upload/{key}', [UploadsController::class, 'uploadByKey'])->middleware('throttle:60,5')->name('uploads.uploadByKey');
+Route::post('/upload', [UploadsController::class, 'upload'])->middleware('throttle:300,5');
+Route::post('/upload/{key}', [UploadsController::class, 'uploadByKey'])->middleware('throttle:300,5')->name('uploads.uploadByKey');
 Route::delete('/upload/{deleteKey}', [UploadsController::class, 'deleteByKey'])->middleware('throttle:300,5')->name('uploads.delete');
 

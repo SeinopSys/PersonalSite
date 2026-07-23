@@ -114,6 +114,51 @@ class UploadFoldersTest extends TestCase
         $this->deleteJson("/api/upload/{$deleteKey}")->assertStatus(404);
     }
 
+    public function test_webm_upload_is_kept_as_is_with_no_thumbnail_or_conversion()
+    {
+        $user = $this->makeUser();
+        $key = $this->enableUploads($user);
+
+        $webm = UploadedFile::fake()->createWithContent(
+            'test.webm',
+            file_get_contents(base_path('tests/Fixtures/test.webm')),
+        );
+
+        $json = $this->postJson('/api/upload', [
+            'upload_key' => $key->upload_key,
+            'domain' => config('app.secondary_domain'),
+            'file' => $webm,
+        ])->assertOk()->json();
+        $this->trackUploadFiles($json);
+
+        $this->assertStringEndsWith('.webm', $json['full']);
+        $this->assertNull($json['full_png']);
+        $this->assertNull($json['full_jpg']);
+        $this->assertSame($json['full'], $json['preview']);
+
+        $upload = Upload::findOrFail($json['id']);
+        $this->assertSame('webm', $upload->extension);
+        $this->assertNull($upload->width);
+        $this->assertNull($upload->height);
+
+        $dir = UploadUtil::getUploadDirectory();
+        $this->assertFileExists("$dir/{$upload->filename}.webm");
+        $this->assertFileDoesNotExist("$dir/{$upload->filename}.jpg");
+        $this->assertFileDoesNotExist("$dir/{$upload->filename}p.png");
+    }
+
+    public function test_non_image_non_webm_file_is_rejected()
+    {
+        $user = $this->makeUser();
+        $key = $this->enableUploads($user);
+
+        $this->postJson('/api/upload', [
+            'upload_key' => $key->upload_key,
+            'domain' => config('app.secondary_domain'),
+            'file' => UploadedFile::fake()->createWithContent('test.txt', 'not a real file'),
+        ])->assertStatus(400);
+    }
+
     public function test_delete_with_unrecognized_key_returns_404()
     {
         $this->deleteJson('/api/upload/not-a-real-delete-key')->assertStatus(404);

@@ -173,7 +173,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
@@ -183,9 +183,7 @@
                                     },
                                     "file": {
                                         "type": "string",
-                                        "format": "binary",
-                                        "contentMediaType": "application/octet-stream",
-                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG."
+                                        "description": "Image or WebM video file to upload. GIFs and WebM videos are kept as-is; all other formats are re-encoded as PNG."
                                     },
                                     "domain": {
                                         "type": "string",
@@ -202,7 +200,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
+                        "description": "URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and WebM uploads. full_jpg and preview fall back to the full file URL for WebM uploads (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -221,7 +219,10 @@
                                             ]
                                         },
                                         "full_jpg": {
-                                            "type": "string"
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "preview": {
                                             "type": "string"
@@ -338,15 +339,13 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "multipart/form-data": {
+                        "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
                                     "file": {
                                         "type": "string",
-                                        "format": "binary",
-                                        "contentMediaType": "application/octet-stream",
-                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled."
+                                        "description": "Image or WebM video file to upload. GIFs and WebM videos are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled."
                                     }
                                 },
                                 "required": [
@@ -358,7 +357,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
+                        "description": "URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and WebM uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled or the file is a WebM video (no JPEG copy is generated). preview falls back to the full file URL when the target folder has thumbnails disabled or the file is a WebM video (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
                         "content": {
                             "application/json": {
                                 "schema": {
