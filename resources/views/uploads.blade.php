@@ -119,8 +119,11 @@
         'folder-delete-dialog-title',
         'folder-delete-dialog-text',
         'folder-key-heading',
+        'folder-key-description',
+        'folder-apidocs-link',
         'folder-settings-thumbnails',
         'folder-settings-conversion',
+        'folder-settings-secondary-domain',
         'folder-empty',
         'folder-root',
     ]) !!}

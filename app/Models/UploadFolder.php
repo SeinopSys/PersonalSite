@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $name
  * @property bool $disable_thumbnails
  * @property bool $disable_conversion
+ * @property bool $secondary_domain
  * @property-read User $user
  * @property-read UploadFolder|null $parent
  * @property-read Collection|UploadFolder[] $children
@@ -40,17 +41,19 @@ class UploadFolder extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'user_id', 'parent_id', 'name', 'disable_thumbnails', 'disable_conversion',
+        'user_id', 'parent_id', 'name', 'disable_thumbnails', 'disable_conversion', 'secondary_domain',
     ];
 
     protected $attributes = [
         'disable_thumbnails' => false,
         'disable_conversion' => false,
+        'secondary_domain' => false,
     ];
 
     protected $casts = [
         'disable_thumbnails' => 'bool',
         'disable_conversion' => 'bool',
+        'secondary_domain' => 'bool',
     ];
 
     public function user(): BelongsTo

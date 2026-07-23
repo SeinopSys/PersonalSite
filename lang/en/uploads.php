@@ -51,5 +51,8 @@ return [
     'folder-settings' => 'Folder settings',
     'folder-settings-thumbnails' => 'Disable thumbnail generation for files uploaded into this folder',
     'folder-settings-conversion' => 'Disable format conversion (PNG re-encode + JPEG copy) for files uploaded into this folder',
-    'folder-key-heading' => 'Folder upload key',
+    'folder-settings-secondary-domain' => 'Serve files from the secondary domain',
+    'folder-key-heading' => 'Folder upload URL',
+    'folder-key-description' => 'POST file(s) directly to this URL - no other parameters needed.',
+    'folder-apidocs-link' => 'API documentation for this URL',
 ];

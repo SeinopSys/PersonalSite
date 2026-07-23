@@ -7,8 +7,10 @@ export interface UploadFolderData {
   name: string;
   disable_thumbnails: boolean;
   disable_conversion: boolean;
+  secondary_domain: boolean;
   upload_count: number;
   upload_key: string;
+  upload_url: string;
 }
 
 interface FolderTreeProps {

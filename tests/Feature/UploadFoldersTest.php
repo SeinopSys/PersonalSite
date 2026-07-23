@@ -81,7 +81,25 @@ class UploadFoldersTest extends TestCase
         $this->assertNull($upload->folder_id);
     }
 
-    public function test_folder_key_upload_is_scoped_to_folder_and_respects_disabled_flags()
+    public function test_legacy_endpoint_rejects_folder_keys()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+
+        $folder = new UploadFolder(['user_id' => $user->id, 'name' => 'Sub']);
+        $folder->save();
+        $folderKey = new ImageUploadKey(['user_id' => $user->id, 'folder_id' => $folder->id]);
+        $folderKey->generateUploadKey();
+        $folderKey->save();
+
+        $this->postJson('/api/upload', [
+            'upload_key' => $folderKey->upload_key,
+            'domain' => config('app.secondary_domain'),
+            'file' => UploadedFile::fake()->image('test.png', 10, 10),
+        ])->assertStatus(401);
+    }
+
+    public function test_upload_by_key_scopes_to_folder_and_respects_disabled_flags()
     {
         $user = $this->makeUser();
         $this->enableUploads($user);
@@ -98,9 +116,7 @@ class UploadFoldersTest extends TestCase
         $folderKey->generateUploadKey();
         $folderKey->save();
 
-        $response = $this->postJson('/api/upload', [
-            'upload_key' => $folderKey->upload_key,
-            'domain' => config('app.secondary_domain'),
+        $response = $this->postJson("/api/upload/{$folderKey->upload_key}", [
             'file' => UploadedFile::fake()->image('test.png', 10, 10),
         ])->assertOk();
 
@@ -119,35 +135,48 @@ class UploadFoldersTest extends TestCase
         $this->assertFileDoesNotExist("$dir/{$upload->filename}p.png");
     }
 
-    public function test_multi_file_upload_returns_files_array_and_enforces_quota()
+    public function test_upload_by_key_uses_folders_secondary_domain_setting()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+
+        $folder = new UploadFolder(['user_id' => $user->id, 'name' => 'SecondaryFolder', 'secondary_domain' => true]);
+        $folder->save();
+        $folderKey = new ImageUploadKey(['user_id' => $user->id, 'folder_id' => $folder->id]);
+        $folderKey->generateUploadKey();
+        $folderKey->save();
+
+        $json = $this->postJson("/api/upload/{$folderKey->upload_key}", [
+            'file' => UploadedFile::fake()->image('test.png', 10, 10),
+        ])->assertOk()->json();
+        $this->trackUploadFiles($json);
+
+        $this->assertStringContainsString('https://i.'.config('app.secondary_domain'), $json['full']);
+    }
+
+    public function test_upload_by_key_enforces_quota()
     {
         $user = $this->makeUser();
         $key = $this->enableUploads($user);
 
-        $response = $this->postJson('/api/upload', [
-            'upload_key' => $key->upload_key,
-            'domain' => config('app.secondary_domain'),
-            'file' => [
-                UploadedFile::fake()->image('a.png', 10, 10),
-                UploadedFile::fake()->image('b.png', 10, 10),
-            ],
-        ])->assertOk();
+        config(['app.upload_quota_bytes' => 1]);
 
-        $json = $response->json();
-        $this->assertArrayHasKey('files', $json);
-        $this->assertCount(2, $json['files']);
-        foreach ($json['files'] as $file) {
-            $this->trackUploadFiles($file);
-        }
+        $this->postJson("/api/upload/{$key->upload_key}", [
+            'file' => UploadedFile::fake()->image('a.png', 10, 10),
+        ])->assertStatus(422);
 
-        $this->assertSame(2, Upload::where('uploaded_by', $user->id)->count());
+        $this->assertSame(0, Upload::where('uploaded_by', $user->id)->count());
     }
 
-    public function test_invalid_upload_key_is_rejected()
+    public function test_invalid_upload_key_is_rejected_on_both_endpoints()
     {
         $this->postJson('/api/upload', [
             'upload_key' => 'not-a-real-key',
             'domain' => config('app.secondary_domain'),
+            'file' => UploadedFile::fake()->image('test.png', 10, 10),
+        ])->assertStatus(401);
+
+        $this->postJson('/api/upload/not-a-real-key', [
             'file' => UploadedFile::fake()->image('test.png', 10, 10),
         ])->assertStatus(401);
     }
@@ -161,8 +190,11 @@ class UploadFoldersTest extends TestCase
         $create = $this->postJson('/uploads/folders', ['name' => 'Screenshots'])->assertOk()->json();
         $folderId = $create['id'];
         $this->assertNotEmpty($create['upload_key']);
+        $this->assertNotEmpty($create['upload_url']);
+        $this->assertStringContainsString($create['upload_key'], $create['upload_url']);
         $this->assertFalse($create['disable_thumbnails']);
         $this->assertFalse($create['disable_conversion']);
+        $this->assertFalse($create['secondary_domain']);
 
         // Duplicate sibling name is rejected
         $this->postJson('/uploads/folders', ['name' => 'Screenshots'])
@@ -173,9 +205,7 @@ class UploadFoldersTest extends TestCase
         $sub = $this->postJson('/uploads/folders', ['name' => 'Sub', 'parent_id' => $folderId])->assertOk()->json();
 
         $folderKey = ImageUploadKey::where('folder_id', $sub['id'])->firstOrFail();
-        $uploadResponse = $this->postJson('/api/upload', [
-            'upload_key' => $folderKey->upload_key,
-            'domain' => config('app.secondary_domain'),
+        $uploadResponse = $this->postJson("/api/upload/{$folderKey->upload_key}", [
             'file' => UploadedFile::fake()->image('test.png', 10, 10),
         ])->assertOk()->json();
         $this->trackUploadFiles($uploadResponse);
@@ -187,13 +217,15 @@ class UploadFoldersTest extends TestCase
             ->assertJsonPath('name', 'Renamed');
 
         // Toggle settings
-        $this->putJson("/uploads/folders/{$sub['id']}", ['disable_thumbnails' => true])
+        $this->putJson("/uploads/folders/{$sub['id']}", ['disable_thumbnails' => true, 'secondary_domain' => true])
             ->assertOk()
-            ->assertJsonPath('disable_thumbnails', true);
+            ->assertJsonPath('disable_thumbnails', true)
+            ->assertJsonPath('secondary_domain', true);
 
-        // Key regen changes the value
+        // Key regen changes the value and the URL
         $regen = $this->postJson("/uploads/folders/{$sub['id']}/regen")->assertOk()->json();
         $this->assertNotSame($folderKey->upload_key, $regen['upload_key']);
+        $this->assertStringContainsString($regen['upload_key'], $regen['upload_url']);
 
         // Delete cascades: subfolder, its key, and its upload (with files) are all gone
         $this->deleteJson("/uploads/folders/{$folderId}")->assertOk();
@@ -227,9 +259,7 @@ class UploadFoldersTest extends TestCase
         ])->assertOk()->json();
         $this->trackUploadFiles($rootUpload);
 
-        $folderUpload = $this->postJson('/api/upload', [
-            'upload_key' => $folderKey->upload_key,
-            'domain' => config('app.secondary_domain'),
+        $folderUpload = $this->postJson("/api/upload/{$folderKey->upload_key}", [
             'file' => UploadedFile::fake()->image('folder.png', 10, 10),
         ])->assertOk()->json();
         $this->trackUploadFiles($folderUpload);

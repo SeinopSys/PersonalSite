@@ -11,6 +11,7 @@ use App\Util\UploadUtil;
 use App\Util\Permission;
 use App\Util\Response;
 use Dedoc\Scramble\Attributes\BodyParameter;
+use Dedoc\Scramble\Attributes\PathParameter;
 use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -201,8 +202,8 @@ class UploadsController extends Controller
     }
 
     /**
-     * Processes and stores a single uploaded file, returning the same shape returned by the
-     * single-file upload() response. Shared by both the single-file and multi-file (file[]) paths.
+     * Processes and stores a single uploaded file. Shared by upload() (legacy root-only endpoint)
+     * and uploadByKey() (root or folder, key-in-URL endpoint).
      */
     private function _processSingleUpload(
         UploadedFile $file,
@@ -271,41 +272,20 @@ class UploadsController extends Controller
         ];
     }
 
-    #[BodyParameter('upload_key', 'Secret upload key from your account settings, or from one of your folders. Uploading with a folder\'s key automatically places the file in that folder - no separate folder parameter is needed.', required: true, type: 'string')]
-    #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled. Mutually exclusive with file[].', required: false)]
-    #[BodyParameter('file[]', 'Multiple image files to upload at once, into the same folder. Mutually exclusive with file. When used, the response shape changes to {"files": [...]} with one object per uploaded file, in the same order.', required: false, type: 'string[]', infer: false)]
-    #[BodyParameter('domain', 'Optional secondary domain to serve the image(s) from.', required: false, type: 'string')]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string}|array{files: list<array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string}>}', description: 'URLs for the uploaded image(s) and preview thumbnail(s). The first shape is returned for a single file uploaded via the file parameter; the second (files) shape is returned when files were uploaded via file[] instead. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.')]
+    #[BodyParameter('upload_key', 'Secret upload key from your account settings.', required: true, type: 'string')]
+    #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG.', required: true)]
+    #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
-    #[ApiResponse(status: 422, description: 'Uploading the file(s) would exceed the account\'s storage quota.')]
     public function upload(Request $request)
     {
-        $isMultiple = is_array($request->file('file'));
-
-        // Kept as a single unconditional array (rather than branching to build it) so Scramble's
-        // static analysis can see the literal "image" rule on "file" and correctly document this
-        // endpoint as a binary/multipart upload - the file[] case is validated separately below
-        // without touching this variable, since Scramble can't trace conditional reassignment of it.
         $validation_rules = [
             'upload_key' => 'bail|required|string',
             'domain' => 'string',
             'file' => 'bail|required|image',
         ];
-
-        if (!$isMultiple) {
-            $validator = Validator::make($request->all(array_keys($validation_rules)), $validation_rules);
-        } else {
-            $validator = Validator::make(
-                $request->all(['upload_key', 'domain', 'file']),
-                [
-                    'upload_key' => 'bail|required|string',
-                    'domain' => 'string',
-                    'file' => 'bail|required|array|min:1',
-                    'file.*' => 'bail|required|image',
-                ],
-            );
-        }
+        $validator = Validator::make($request->all(array_keys($validation_rules)), $validation_rules);
         if ($validator->fails()) {
             return response()->json($validator->messages(), 400);
         }
@@ -314,8 +294,41 @@ class UploadsController extends Controller
         $secondary_domain = isset($validated['domain']) && $validated['domain'] === config('app.secondary_domain');
 
         $upload_key = $validated['upload_key'];
+        // Only root-level keys work here - a folder's key is only valid on POST /api/upload/{key}.
         /** @var $upload_allowed ImageUploadKey */
-        $upload_allowed = ImageUploadKey::where('upload_key', $upload_key)->with('folder')->first();
+        $upload_allowed = ImageUploadKey::whereNull('folder_id')->where('upload_key', $upload_key)->first();
+        if (empty($upload_allowed)) {
+            abort(401);
+        }
+
+        /** @var $user User */
+        $user = $upload_allowed->user()->first();
+
+        $uploaddir = UploadUtil::getUploadDirectory();
+        if (!@mkdir($uploaddir, 0777, true) && !is_dir($uploaddir)) {
+            return response()->json(['message' => 'Could not create upload directory'], 500);
+        }
+
+        $file = $validated['file'];
+        $quota = config('app.upload_quota_bytes');
+        if ($this->_usedSpaceInBytes($user) + $file->getSize() > $quota) {
+            $readable = Core::ReadableFilesize($quota);
+            return response()->json(['message' => "Uploading this image would exceed the {$readable} maximum uploadable amount. Delete some images and try again."], 422);
+        }
+
+        return $this->_processSingleUpload($file, $user, null, $secondary_domain);
+    }
+
+    #[PathParameter('key', 'Secret upload key from your account settings, or from one of your folders. Uploading to a folder\'s key automatically places the file in that folder - no other parameters are needed, just POST the file to this URL (similar to an AWS pre-signed URL).', type: 'string')]
+    #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled.', required: true)]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.')]
+    #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
+    #[ApiResponse(status: 401, description: 'Invalid or unrecognized key.')]
+    #[ApiResponse(status: 422, description: 'Uploading the file would exceed the account\'s storage quota.')]
+    public function uploadByKey(Request $request, string $key)
+    {
+        /** @var $upload_allowed ImageUploadKey */
+        $upload_allowed = ImageUploadKey::where('upload_key', $key)->with('folder')->first();
         if (empty($upload_allowed)) {
             abort(401);
         }
@@ -323,28 +336,28 @@ class UploadsController extends Controller
         /** @var $user User */
         $user = $upload_allowed->user()->first();
         $folder = $upload_allowed->folder;
+        $secondary_domain = $folder->secondary_domain ?? false;
+
+        $validator = Validator::make($request->all(['file']), ['file' => 'bail|required|image']);
+        if ($validator->fails()) {
+            return response()->json($validator->messages(), 400);
+        }
+
+        $validated = $validator->valid();
 
         $uploaddir = UploadUtil::getUploadDirectory();
         if (!@mkdir($uploaddir, 0777, true) && !is_dir($uploaddir)) {
             return response()->json(['message' => 'Could not create upload directory'], 500);
         }
 
-        /** @var UploadedFile[] $files */
-        $files = $isMultiple ? $validated['file'] : [$validated['file']];
-
-        $requested_size = array_sum(array_map(fn (UploadedFile $file) => $file->getSize(), $files));
+        $file = $validated['file'];
         $quota = config('app.upload_quota_bytes');
-        if ($this->_usedSpaceInBytes($user) + $requested_size > $quota) {
+        if ($this->_usedSpaceInBytes($user) + $file->getSize() > $quota) {
             $readable = Core::ReadableFilesize($quota);
             return response()->json(['message' => "Uploading this would exceed the {$readable} maximum uploadable amount. Delete some images and try again."], 422);
         }
 
-        $results = array_map(
-            fn (UploadedFile $file) => $this->_processSingleUpload($file, $user, $folder, $secondary_domain),
-            $files,
-        );
-
-        return $isMultiple ? ['files' => $results] : $results[0];
+        return $this->_processSingleUpload($file, $user, $folder, $secondary_domain);
     }
 
     public function wipe(Request $request)

@@ -17,7 +17,9 @@ interface FolderMutationResponse {
   name?: string;
   disable_thumbnails?: boolean;
   disable_conversion?: boolean;
+  secondary_domain?: boolean;
   upload_key?: string;
+  upload_url?: string;
 }
 
 interface FolderTreeControllerOptions {
@@ -72,7 +74,15 @@ function renderPanel() {
   $toolbar.find('#upload-folder-name').text(folder.name);
 
   const $content = $(document.createElement('div')).append(
-    $(document.createElement('h4')).text(window.Laravel.jsLocales['folder-key-heading'] || 'Folder upload key'),
+    $(document.createElement('h4')).text(window.Laravel.jsLocales['folder-key-heading'] || 'Folder upload URL'),
+    $(document.createElement('p')).addClass('text-muted small')
+      .text(window.Laravel.jsLocales['folder-key-description'] || 'POST file(s) directly to this URL - no other parameters needed.'),
+    $(document.createElement('p')).append(
+      $(document.createElement('a')).attr({ href: '/docs/api#/operations/uploads.uploadByKey', target: '_blank' }).append(
+        $(document.createElement('span')).addClass('fa fa-book'),
+        document.createTextNode(` ${window.Laravel.jsLocales['folder-apidocs-link'] || 'API documentation for this URL'}`),
+      ),
+    ),
     $(document.createElement('div')).addClass('input-group mb-3').append(
       $(document.createElement('button')).addClass('btn btn-secondary').attr('id', 'reveal-folder-key')
         .append($(document.createElement('span')).addClass('fa fa-eye')),
@@ -88,21 +98,26 @@ function renderPanel() {
       $(document.createElement('label')).addClass('form-check-label').attr('for', 'folder-disable-thumbnails')
         .text(window.Laravel.jsLocales['folder-settings-thumbnails'] || 'Disable thumbnail generation'),
     ),
-    $(document.createElement('div')).addClass('form-check mb-3').append(
+    $(document.createElement('div')).addClass('form-check').append(
       $(document.createElement('input')).addClass('form-check-input').attr({ type: 'checkbox', id: 'folder-disable-conversion' }).prop('checked', folder.disable_conversion),
       $(document.createElement('label')).addClass('form-check-label').attr('for', 'folder-disable-conversion')
         .text(window.Laravel.jsLocales['folder-settings-conversion'] || 'Disable format conversion'),
+    ),
+    $(document.createElement('div')).addClass('form-check mb-3').append(
+      $(document.createElement('input')).addClass('form-check-input').attr({ type: 'checkbox', id: 'folder-secondary-domain' }).prop('checked', folder.secondary_domain),
+      $(document.createElement('label')).addClass('form-check-label').attr('for', 'folder-secondary-domain')
+        .text(window.Laravel.jsLocales['folder-settings-secondary-domain'] || 'Serve files from the secondary domain'),
       $(document.createElement('span')).addClass('fa fa-spinner fa-spin ms-2 d-none').attr('id', 'folder-settings-spinner'),
     ),
   );
   $panel.empty().append($content);
 
-  let key = folder.upload_key;
+  let url = folder.upload_url;
   let revealed = false;
 
   const $keyDisplay = $('#folder-key-display');
   const applyKeyDisplay = () => {
-    $keyDisplay.val(revealed ? key : key.replace(/./g, '•'));
+    $keyDisplay.val(revealed ? url : url.replace(/./g, '•'));
   };
   applyKeyDisplay();
 
@@ -111,8 +126,8 @@ function renderPanel() {
     applyKeyDisplay();
   });
   $('#copy-folder-key').on('click', e => {
-    if (!key) return;
-    copy(key, e);
+    if (!url) return;
+    copy(url, e);
   });
   $('#regen-folder-key').on('click', () => {
     Dialog.confirm({
@@ -126,12 +141,15 @@ function renderPanel() {
             Dialog.fail(false, data.message);
             return;
           }
-          key = data.upload_key || '';
+          url = data.upload_url || '';
           revealed = true;
           applyKeyDisplay();
           if (selectedId) {
             const updated = findFolder(selectedId);
-            if (updated) updated.upload_key = key;
+            if (updated) {
+              updated.upload_key = data.upload_key || '';
+              updated.upload_url = url;
+            }
           }
           Dialog.close();
         }));
@@ -139,7 +157,7 @@ function renderPanel() {
     });
   });
 
-  const $settingsCheckboxes = $('#folder-disable-thumbnails, #folder-disable-conversion');
+  const $settingsCheckboxes = $('#folder-disable-thumbnails, #folder-disable-conversion, #folder-secondary-domain');
   const $settingsSpinner = $('#folder-settings-spinner');
   let settingsRequestPending = false;
 
@@ -149,8 +167,10 @@ function renderPanel() {
 
     const $thumbnailsCheckbox = $('#folder-disable-thumbnails');
     const $conversionCheckbox = $('#folder-disable-conversion');
+    const $secondaryDomainCheckbox = $('#folder-secondary-domain');
     const previousThumbnails = folder.disable_thumbnails;
     const previousConversion = folder.disable_conversion;
+    const previousSecondaryDomain = folder.secondary_domain;
 
     setElDisabled($settingsCheckboxes, true);
     $settingsSpinner.removeClass('d-none');
@@ -161,6 +181,7 @@ function renderPanel() {
       data: {
         disable_thumbnails: $thumbnailsCheckbox.prop('checked') ? 1 : 0,
         disable_conversion: $conversionCheckbox.prop('checked') ? 1 : 0,
+        secondary_domain: $secondaryDomainCheckbox.prop('checked') ? 1 : 0,
       },
       success: mkAjaxHandler((data: FolderMutationResponse) => {
         settingsRequestPending = false;
@@ -171,6 +192,7 @@ function renderPanel() {
           Dialog.fail(false, data.message);
           $thumbnailsCheckbox.prop('checked', previousThumbnails);
           $conversionCheckbox.prop('checked', previousConversion);
+          $secondaryDomainCheckbox.prop('checked', previousSecondaryDomain);
           return;
         }
         if (selectedId) {
@@ -178,6 +200,12 @@ function renderPanel() {
           if (updated) {
             updated.disable_thumbnails = Boolean(data.disable_thumbnails);
             updated.disable_conversion = Boolean(data.disable_conversion);
+            updated.secondary_domain = Boolean(data.secondary_domain);
+            if (data.upload_url) {
+              updated.upload_url = data.upload_url;
+              url = data.upload_url;
+              applyKeyDisplay();
+            }
           }
         }
       }),
@@ -187,6 +215,7 @@ function renderPanel() {
         $settingsSpinner.addClass('d-none');
         $thumbnailsCheckbox.prop('checked', previousThumbnails);
         $conversionCheckbox.prop('checked', previousConversion);
+        $secondaryDomainCheckbox.prop('checked', previousSecondaryDomain);
         Dialog.fail(false);
       },
     });

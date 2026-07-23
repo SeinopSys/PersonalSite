@@ -51,5 +51,8 @@ return [
     'folder-settings' => 'Mappa beállításai',
     'folder-settings-thumbnails' => 'Bélyegkép generálás kikapcsolása az ebbe a mappába feltöltött fájlokhoz',
     'folder-settings-conversion' => 'Formátumkonverzió (PNG újrakódolás + JPEG másolat) kikapcsolása az ebbe a mappába feltöltött fájlokhoz',
-    'folder-key-heading' => 'Mappa feltöltőkulcsa',
+    'folder-settings-secondary-domain' => 'Fájlok kiszolgálása a másodlagos domainről',
+    'folder-key-heading' => 'Mappa feltöltési URL-je',
+    'folder-key-description' => 'Küldd a fájlokat közvetlenül erre az URL-re - más paraméter nem szükséges.',
+    'folder-apidocs-link' => 'API dokumentáció ehhez az URL-hez',
 ];

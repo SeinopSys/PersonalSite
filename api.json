@@ -179,28 +179,22 @@
                                 "properties": {
                                     "upload_key": {
                                         "type": "string",
-                                        "description": "Secret upload key from your account settings, or from one of your folders. Uploading with a folder's key automatically places the file in that folder - no separate folder parameter is needed."
+                                        "description": "Secret upload key from your account settings."
                                     },
                                     "file": {
                                         "type": "string",
                                         "format": "binary",
                                         "contentMediaType": "application/octet-stream",
-                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled. Mutually exclusive with file[]."
-                                    },
-                                    "file[]": {
-                                        "type": "array",
-                                        "description": "Multiple image files to upload at once, into the same folder. Mutually exclusive with file. When used, the response shape changes to {\"files\": [...]} with one object per uploaded file, in the same order.",
-                                        "items": {
-                                            "type": "string"
-                                        }
+                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG."
                                     },
                                     "domain": {
                                         "type": "string",
-                                        "description": "Optional secondary domain to serve the image(s) from."
+                                        "description": "Optional secondary domain to serve the image from."
                                     }
                                 },
                                 "required": [
-                                    "upload_key"
+                                    "upload_key",
+                                    "file"
                                 ]
                             }
                         }
@@ -208,95 +202,62 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image(s) and preview thumbnail(s). The first shape is returned for a single file uploaded via the file parameter; the second (files) shape is returned when files were uploaded via file[] instead. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.",
+                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "id": {
-                                                    "type": "string"
-                                                },
-                                                "full": {
-                                                    "type": "string"
-                                                },
-                                                "full_png": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "full_jpg": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "preview": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "id",
-                                                "full",
-                                                "full_png",
-                                                "full_jpg",
-                                                "preview"
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "full": {
+                                            "type": "string"
+                                        },
+                                        "full_png": {
+                                            "type": [
+                                                "string",
+                                                "null"
                                             ]
                                         },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "files": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "full": {
-                                                                "type": "string"
-                                                            },
-                                                            "full_png": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "full_jpg": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "preview": {
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "id",
-                                                            "full",
-                                                            "full_png",
-                                                            "full_jpg",
-                                                            "preview"
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "files"
-                                            ]
+                                        "full_jpg": {
+                                            "type": "string"
+                                        },
+                                        "preview": {
+                                            "type": "string"
                                         }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "full",
+                                        "full_png",
+                                        "full_jpg",
+                                        "preview"
                                     ]
                                 }
                             }
                         }
                     },
-                    "401": {
-                        "description": "Invalid or missing upload key.",
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -304,8 +265,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "description": "Error overview.",
-                                            "example": ""
+                                            "const": "Could not create upload directory"
                                         }
                                     },
                                     "required": [
@@ -331,12 +291,177 @@
                             }
                         }
                     },
-                    "422": {
-                        "description": "Uploading the file(s) would exceed the account's storage quota.",
+                    "401": {
+                        "description": "Invalid or missing upload key.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": ""
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/upload/{key}": {
+            "post": {
+                "operationId": "uploads.uploadByKey",
+                "tags": [
+                    "Uploads"
+                ],
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "description": "Secret upload key from your account settings, or from one of your folders. Uploading to a folder's key automatically places the file in that folder - no other parameters are needed, just POST the file to this URL (similar to an AWS pre-signed URL).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentMediaType": "application/octet-stream",
+                                        "description": "Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled."
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "full": {
+                                            "type": "string"
+                                        },
+                                        "full_png": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "full_jpg": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "preview": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "full",
+                                        "full_png",
+                                        "full_jpg",
+                                        "preview"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Uploading the file would exceed the account's storage quota.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Could not create upload directory"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation errors keyed by field name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or unrecognized key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": ""
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
                                 }
                             }
                         }

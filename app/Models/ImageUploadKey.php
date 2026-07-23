@@ -47,7 +47,9 @@ class ImageUploadKey extends Model
 
     public function generateUploadKey(): void
     {
-        $this->upload_key = rtrim(base64_encode(random_bytes(40)), '=');
+        // base64url (RFC 4648 §5): folder keys are used as a URL path segment
+        // (POST /api/upload/{key}), where a raw base64 "/" would break routing.
+        $this->upload_key = rtrim(strtr(base64_encode(random_bytes(40)), '+/', '-_'), '=');
     }
 
     public function isRoot(): bool
