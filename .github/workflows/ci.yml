@@ -69,3 +69,7 @@ jobs:
       - run: php artisan key:generate
       - run: php artisan migrate --force
       - run: php artisan test
+      - name: Verify committed api.json matches the generated OpenAPI spec
+        run: |
+          php artisan scramble:export
+          git diff --exit-code api.json || (echo "::error::api.json is out of date - run 'php artisan scramble:export' and commit the result." && exit 1)
