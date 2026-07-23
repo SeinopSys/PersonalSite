@@ -6,7 +6,6 @@ namespace App\Util;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 
 class Response
 {
@@ -38,7 +37,6 @@ class Response
         if (!empty($data) && \is_array($data)) {
             $response = array_merge($data, $response);
         }
-        Session::flush();
 
         return new JsonResponse($response, $status ? 200 : 500, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
