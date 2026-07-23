@@ -71,9 +71,5 @@ jobs:
       - run: php artisan test
       - name: Verify committed api.json matches the generated OpenAPI spec
         run: |
-          # api.json bakes in APP_URL/APP_NAME, so export against production's values (not this
-          # job's .env.example placeholders) to match what was committed. This only affects this
-          # one command's process env, not config/scramble.php, so local `php artisan scramble:export`
-          # runs (and the local /docs/api page) keep using each dev's own APP_URL/APP_NAME.
-          APP_URL=https://seinopsys.dev APP_NAME=SeinopSys php artisan scramble:export
-          git diff --exit-code api.json || (echo "::error::api.json is out of date - run 'APP_URL=https://seinopsys.dev APP_NAME=SeinopSys php artisan scramble:export' and commit the result." && exit 1)
+          composer docs:export
+          git diff --exit-code api.json || (echo "::error::api.json is out of date - run 'composer docs:export' and commit the result." && exit 1)

@@ -68,6 +68,10 @@
     ],
     "post-create-project-cmd": [
       "@php artisan key:generate --ansi"
-    ]
+    ],
+    "docs:export": "APP_URL=https://seinopsys.dev APP_NAME=SeinopSys php artisan scramble:export"
+  },
+  "scripts-descriptions": {
+    "docs:export": "Regenerate api.json against production's APP_URL/APP_NAME - always use this instead of calling scramble:export directly, or the committed file won't match what CI (and production) generate."
   }
 }
