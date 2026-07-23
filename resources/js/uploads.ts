@@ -1,5 +1,6 @@
 import { ConfirmHandleFunction, Dialog } from './dialog';
 import { copy, mkAjaxHandler, translatePlaceholders } from './utils';
+import { initFolderTree } from './uploads/folder-tree-controller';
 
 const $uploadList = $('#upload-list');
 let $noimgAlert = $('#noimg-alert');
@@ -13,6 +14,13 @@ interface ListUpdateData {
   usedSpace: string;
 }
 
+const initialFolderMatch = window.location.search.match(/[?&]folder=([^&]+)/);
+let currentFolderId: string | null = initialFolderMatch ? decodeURIComponent(initialFolderMatch[1]) : null;
+
+export function getCurrentFolder(): string | null {
+  return currentFolderId;
+}
+
 function applyListUpdate(data: ListUpdateData) {
   const $newhtml = $(data.newhtml);
   $uploadList.empty().append($newhtml.filter('#upload-list').children());
@@ -21,10 +29,7 @@ function applyListUpdate(data: ListUpdateData) {
   $uploadedTotal = $('#uploaded-total');
   $uploadedTotal.text(data.total);
   $('#used-space').text(data.usedSpace);
-  if ($uploadList.children().length === 0) {
-    $noimgAlert.removeClass('hidden');
-    $uploadList.remove();
-  }
+  $noimgAlert.toggleClass('d-none', $uploadList.children().length > 0);
 }
 
 function currentPageParams(): { page: number; orderby: string | null } {
@@ -56,6 +61,7 @@ function wipeUpload($link: JQuery, requireConfirm: boolean) {
     if ($image.parent().siblings().length === 0) page = Math.max(page - 1, 1);
     const params: string[] = [`page=${page}`];
     if (orderby) params.push(`orderby=${orderby}`);
+    if (currentFolderId) params.push(`folder=${encodeURIComponent(currentFolderId)}`);
 
     $.post(`/uploads/wipe?${params.join('&')}`, { ids: [id] }, mkAjaxHandler((data: ListUpdateData) => {
       if (!data.status) {
@@ -92,6 +98,7 @@ function selectionChange($el: JQuery, checked: boolean) {
 function fetchListPage(page: number, orderby: string | null) {
   const params: Record<string, string | number> = { page };
   if (orderby) params.orderby = orderby;
+  if (currentFolderId) params.folder = currentFolderId;
 
   $uploadList.stop().fadeTo(150, 0.4);
 
@@ -106,7 +113,7 @@ function fetchListPage(page: number, orderby: string | null) {
         return;
       }
 
-      const newSearch = `?page=${page}${orderby ? `&orderby=${orderby}` : ''}`;
+      const newSearch = `?page=${page}${orderby ? `&orderby=${orderby}` : ''}${currentFolderId ? `&folder=${encodeURIComponent(currentFolderId)}` : ''}`;
       window.history.pushState(null, '', newSearch);
 
       if (orderby) {
@@ -122,6 +129,11 @@ function fetchListPage(page: number, orderby: string | null) {
       $uploadList.stop().fadeTo(150, 1);
     }),
   });
+}
+
+export function navigateToFolder(folderId: string | null): void {
+  currentFolderId = folderId;
+  fetchListPage(1, currentPageParams().orderby);
 }
 
 $(document).on('keydown', e => {
@@ -262,6 +274,7 @@ $uploadList.on('click', '.wipe-upload', function (e) {
         const { page, orderby } = currentPageParams();
         const params: string[] = [`page=${page}`];
         if (orderby) params.push(`orderby=${orderby}`);
+        if (currentFolderId) params.push(`folder=${encodeURIComponent(currentFolderId)}`);
 
         $.post(`/uploads/wipe?${params.join('&')}`, { ids }, mkAjaxHandler((data: ListUpdateData) => {
           if (!data.status) {
@@ -294,4 +307,9 @@ $uploadList.on('click', '.wipe-upload', function (e) {
     .find('.selection input')
     .prop('checked', false);
   else selectionChange($this, $this.prop('checked'));
+});
+
+initFolderTree({
+  getInitialFolder: getCurrentFolder,
+  onFolderChange: navigateToFolder,
 });

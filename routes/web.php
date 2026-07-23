@@ -13,6 +13,7 @@ use App\Http\Controllers\NetSalaryController;
 use App\Http\Controllers\SelfsignedController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\TwoFactorAuthController;
+use App\Http\Controllers\UploadFoldersController;
 use App\Http\Controllers\UploadsController;
 use Illuminate\Support\Facades\Route;
 
@@ -112,4 +113,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/uploads/regen', [UploadsController::class, 'regen']);
     Route::post('/uploads/setting/{action}', [UploadsController::class, 'setting']);
     Route::post('/uploads/wipe', [UploadsController::class, 'wipe']);
+    Route::get('/uploads/folders', [UploadFoldersController::class, 'tree']);
+    Route::post('/uploads/folders', [UploadFoldersController::class, 'store']);
+    Route::put('/uploads/folders/{id}', [UploadFoldersController::class, 'update']);
+    Route::delete('/uploads/folders/{id}', [UploadFoldersController::class, 'destroy']);
+    Route::post('/uploads/folders/{id}/regen', [UploadFoldersController::class, 'regenKey']);
 });

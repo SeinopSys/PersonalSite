@@ -4,37 +4,33 @@ declare(strict_types=1);
 
 namespace App\Util;
 
-use Illuminate\Support\Facades\App;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
 class Response
 {
-    public static function Fail(string $message = '', $data = [])
+    public static function Fail(string $message = '', $data = []): JsonResponse
     {
         if (empty($message)) {
             $message = Auth::check() ? 'Insufficient permissions.' : '<p>You are not signed in (or your session expired), please sign in before continuing.</p>';
         }
 
-        self::_respond(false, $message, $data);
+        return self::_respond(false, $message, $data);
     }
 
-    public static function Success(string $message, $data = [])
+    public static function Success(string $message, $data = []): JsonResponse
     {
-        self::_respond(true, $message, $data);
+        return self::_respond(true, $message, $data);
     }
 
-    public static function Done(array $data = [])
+    public static function Done(array $data = []): JsonResponse
     {
-        self::_respond(true, '', $data);
+        return self::_respond(true, '', $data);
     }
 
-    private static function _respond(bool $status, string $message, $data)
+    private static function _respond(bool $status, string $message, $data): JsonResponse
     {
-        header('Content-Type: application/json');
-        if (!$status) {
-          http_response_code(500);
-        }
         $response = ['status' => $status];
         if (!empty($message)) {
             $response['message'] = $message;
@@ -42,9 +38,8 @@ class Response
         if (!empty($data) && \is_array($data)) {
             $response = array_merge($data, $response);
         }
-        echo JSON::Encode($response);
         Session::flush();
-        App::terminate();
-        exit;
+
+        return new JsonResponse($response, $status ? 200 : 500, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 }

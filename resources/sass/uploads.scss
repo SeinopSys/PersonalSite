@@ -181,3 +181,21 @@ $images-per-row: 5;
     }
 }
 
+#upload-folder-tree {
+    #upload-folder-tree-list {
+        max-height: 400px;
+        overflow-y: auto;
+
+        .fa {
+            width: 1em;
+            text-align: center;
+        }
+    }
+}
+
+#upload-folder-toolbar {
+    #upload-folder-name {
+        margin-right: .5rem;
+    }
+}
+

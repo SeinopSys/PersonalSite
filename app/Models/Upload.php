@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
  *
  * @property string $id
  * @property string $uploaded_by
+ * @property string|null $folder_id
  * @property string $orig_filename
  * @property string $filename
  * @property string $extension
@@ -70,7 +71,7 @@ class Upload extends Model
      * @var array
      */
     protected $fillable = [
-        'uploader', 'orig_filename', 'filename', 'mimetype', 'size', 'uploaded_at',
+        'uploader', 'orig_filename', 'filename', 'mimetype', 'size', 'uploaded_at', 'folder_id',
     ];
 
     /**
@@ -79,6 +80,14 @@ class Upload extends Model
     public function uploader()
     {
         return $this->hasOne(User::class, 'id', 'uploaded_by');
+    }
+
+    /**
+     * Get the folder this file is logically placed under (null = root)
+     */
+    public function folder()
+    {
+        return $this->belongsTo(UploadFolder::class, 'folder_id');
     }
 
     public function generateRandomName()

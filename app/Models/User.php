@@ -23,7 +23,9 @@ use Illuminate\Notifications\Notifiable;
  * @property Carbon|null $updated_at
  * @property string $lang
  * @property string $role
- * @property-read ImageUpload $imageUpload
+ * @property-read ImageUploadKey|null $rootImageUploadKey
+ * @property-read Collection|ImageUploadKey[] $imageUploadKeys
+ * @property-read Collection|UploadFolder[] $uploadFolders
  * @property-read DatabaseNotificationCollection|DatabaseNotification[] $notifications
  * @property-read Collection|Upload[] $uploads
  * @method static Builder|User whereCreatedAt($value)
@@ -98,11 +100,24 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the upload status data of the user
+     * Get all of the user's upload keys (root key has folder_id === null, plus one per folder)
      */
-    public function imageUpload()
+    public function imageUploadKeys()
     {
-        return $this->hasOne(ImageUpload::class);
+        return $this->hasMany(ImageUploadKey::class);
+    }
+
+    /**
+     * Get the user's root-level upload key, if uploading is enabled
+     */
+    public function rootImageUploadKey()
+    {
+        return $this->hasOne(ImageUploadKey::class)->whereNull('folder_id');
+    }
+
+    public function uploadFolders()
+    {
+        return $this->hasMany(UploadFolder::class);
     }
 
     public function uploads()

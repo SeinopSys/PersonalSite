@@ -34,4 +34,22 @@ return [
     'multiwipe_dialog_text' => 'Szeretnéd törölni mind a(z) :cnt képet?',
 
     'apidocs-link' => 'API dokumentáció',
+
+    'folder-not-found' => 'A megadott mappa nem található.',
+    'folder-name-taken' => 'Már létezik ilyen nevű mappa itt.',
+    'folder-heading' => 'Mappák',
+    'folder-empty' => 'Még nincs mappád — hozz létre egyet az "Új mappa" gombbal.',
+    'folder-root' => 'Gyökér',
+    'folder-create' => 'Új mappa',
+    'folder-create-dialog-title' => 'Mappa létrehozása',
+    'folder-rename' => 'Átnevezés',
+    'folder-rename-dialog-title' => 'Mappa átnevezése',
+    'folder-name-label' => 'Mappa neve',
+    'folder-delete' => 'Mappa törlése',
+    'folder-delete-dialog-title' => ':name mappa törlése',
+    'folder-delete-dialog-text' => 'Ezzel véglegesen törlődik :files fájl és :folders almappa, valamint maga a mappa is. Ez a művelet nem vonható vissza.',
+    'folder-settings' => 'Mappa beállításai',
+    'folder-settings-thumbnails' => 'Bélyegkép generálás kikapcsolása az ebbe a mappába feltöltött fájlokhoz',
+    'folder-settings-conversion' => 'Formátumkonverzió (PNG újrakódolás + JPEG másolat) kikapcsolása az ebbe a mappába feltöltött fájlokhoz',
+    'folder-key-heading' => 'Mappa feltöltőkulcsa',
 ];

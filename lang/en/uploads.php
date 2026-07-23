@@ -34,4 +34,22 @@ return [
     'multiwipe_dialog_text' => 'Are you sure you want to delete these :cnt images?',
 
     'apidocs-link' => 'API documentation',
+
+    'folder-not-found' => 'Could not find the specified folder.',
+    'folder-name-taken' => 'A folder with this name already exists here.',
+    'folder-heading' => 'Folders',
+    'folder-empty' => 'No folders yet — use the "New folder" button to create one.',
+    'folder-root' => 'Root',
+    'folder-create' => 'New folder',
+    'folder-create-dialog-title' => 'Create folder',
+    'folder-rename' => 'Rename',
+    'folder-rename-dialog-title' => 'Rename folder',
+    'folder-name-label' => 'Folder name',
+    'folder-delete' => 'Delete folder',
+    'folder-delete-dialog-title' => 'Delete folder :name',
+    'folder-delete-dialog-text' => 'This will permanently delete :files files and :folders subfolders, along with the folder itself. This cannot be undone.',
+    'folder-settings' => 'Folder settings',
+    'folder-settings-thumbnails' => 'Disable thumbnail generation for files uploaded into this folder',
+    'folder-settings-conversion' => 'Disable format conversion (PNG re-encode + JPEG copy) for files uploaded into this folder',
+    'folder-key-heading' => 'Folder upload key',
 ];

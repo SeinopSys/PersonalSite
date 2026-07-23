@@ -42,6 +42,31 @@
         <p class="mb-4">
             <a href="/docs/api#/operations/uploads.upload" target="_blank"><x-fa icon="book" first></x-fa>&nbsp;{{ __('uploads.apidocs-link') }}</a>
         </p>
+
+        <h3>{{ __('uploads.folder-heading') }}</h3>
+        <div class="row mb-4">
+            <div class="col-lg-4">
+                <div id="upload-folder-tree" data-selected-folder="{{ $folderId ?? '' }}"></div>
+            </div>
+            <div class="col-lg-8">
+                <div id="upload-folder-toolbar" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-success" id="create-folder-btn">
+                        <x-fa icon="folder-plus" first></x-fa> {{ __('uploads.folder-create') }}
+                    </button>
+                    <span class="folder-only d-none d-flex align-items-center gap-2 flex-wrap">
+                        <strong id="upload-folder-name"></strong>
+                        <button type="button" class="btn btn-sm btn-secondary" id="rename-folder-btn">
+                            <x-fa icon="pen" first></x-fa> {{ __('uploads.folder-rename') }}
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger" id="delete-folder-btn">
+                            <x-fa icon="trash" first></x-fa> {{ __('uploads.folder-delete') }}
+                        </button>
+                    </span>
+                </div>
+                <div id="upload-folder-panel"></div>
+            </div>
+        </div>
+
         <?php   /** @var $images \Illuminate\Pagination\LengthAwarePaginator */ ?>
         <h3>
             {{ __('uploads.listheading') }}
@@ -86,5 +111,17 @@
     {!! \App\Util\Core::ExportTranslations('uploads',[
         'multiwipe_dialog_title',
         'multiwipe_dialog_text',
+        'keyregen',
+        'action-dialog-content-regenkey',
+        'folder-create-dialog-title',
+        'folder-rename-dialog-title',
+        'folder-name-label',
+        'folder-delete-dialog-title',
+        'folder-delete-dialog-text',
+        'folder-key-heading',
+        'folder-settings-thumbnails',
+        'folder-settings-conversion',
+        'folder-empty',
+        'folder-root',
     ]) !!}
 @endsection
