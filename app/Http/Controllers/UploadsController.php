@@ -218,6 +218,7 @@ class UploadsController extends Controller
 
         $upload = new Upload;
         $upload->generateRandomName();
+        $upload->generateDeleteKey();
 
         $extension = strtolower($file->getClientOriginalExtension());
         $not_animated = $extension !== 'gif';
@@ -269,13 +270,14 @@ class UploadsController extends Controller
             'full_png' => ($not_animated && !$disableConversion) ? "{$upload->host}/{$filenames['full']}" : null,
             'full_jpg' => $hasJpegCopy ? "{$upload->host}/{$filenames['jpeg']}" : null,
             'preview' => $disableThumbnails ? $full : "{$upload->host}/{$filenames['preview']}",
+            'delete_url' => route('uploads.delete', ['deleteKey' => $upload->delete_key]),
         ];
     }
 
     #[BodyParameter('upload_key', 'Secret upload key from your account settings.', required: true, type: 'string')]
     #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG.', required: true)]
     #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string, preview: string, delete_url: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
     public function upload(Request $request)
@@ -321,7 +323,7 @@ class UploadsController extends Controller
 
     #[PathParameter('key', 'Secret upload key from your account settings, or from one of your folders. Uploading to a folder\'s key automatically places the file in that folder - no other parameters are needed, just POST the file to this URL (similar to an AWS pre-signed URL).', type: 'string')]
     #[BodyParameter('file', 'Image file to upload. GIFs are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled.', required: true)]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or unrecognized key.')]
     #[ApiResponse(status: 422, description: 'Uploading the file would exceed the account\'s storage quota.')]
@@ -358,6 +360,25 @@ class UploadsController extends Controller
         }
 
         return $this->_processSingleUpload($file, $user, $folder, $secondary_domain);
+    }
+
+    #[PathParameter('deleteKey', "The delete_url secret returned when the file was uploaded.", type: 'string')]
+    #[ApiResponse(status: 200, description: 'The file was permanently deleted.')]
+    #[ApiResponse(status: 404, description: 'No file found for this delete key (already deleted, or the key is invalid).')]
+    public function deleteByKey(string $deleteKey)
+    {
+        $upload = Upload::where('delete_key', $deleteKey)->first();
+        if ($upload === null) {
+            abort(404);
+        }
+
+        $uploadsFolderPath = UploadUtil::getUploadDirectory();
+        @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
+        @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
+        @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+        $upload->delete();
+
+        return response()->json(['message' => 'File deleted.']);
     }
 
     public function wipe(Request $request)

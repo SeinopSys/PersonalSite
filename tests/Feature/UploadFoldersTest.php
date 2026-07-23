@@ -81,6 +81,44 @@ class UploadFoldersTest extends TestCase
         $this->assertNull($upload->folder_id);
     }
 
+    public function test_delete_url_removes_file_and_is_single_use()
+    {
+        $user = $this->makeUser();
+        $key = $this->enableUploads($user);
+
+        $json = $this->postJson('/api/upload', [
+            'upload_key' => $key->upload_key,
+            'domain' => config('app.secondary_domain'),
+            'file' => UploadedFile::fake()->image('test.png', 10, 10),
+        ])->assertOk()->json();
+
+        $this->assertArrayHasKey('delete_url', $json);
+        $deleteKey = basename(parse_url($json['delete_url'], PHP_URL_PATH));
+
+        $upload = Upload::findOrFail($json['id']);
+        $this->assertSame($deleteKey, $upload->delete_key);
+
+        $dir = UploadUtil::getUploadDirectory();
+        $this->assertFileExists("$dir/{$upload->filename}.png");
+        $this->assertFileExists("$dir/{$upload->filename}.jpg");
+        $this->assertFileExists("$dir/{$upload->filename}p.png");
+
+        $this->deleteJson("/api/upload/{$deleteKey}")->assertOk();
+
+        $this->assertNull(Upload::find($json['id']));
+        $this->assertFileDoesNotExist("$dir/{$upload->filename}.png");
+        $this->assertFileDoesNotExist("$dir/{$upload->filename}.jpg");
+        $this->assertFileDoesNotExist("$dir/{$upload->filename}p.png");
+
+        // Reusing the same delete key a second time is a no-op 404, not an error
+        $this->deleteJson("/api/upload/{$deleteKey}")->assertStatus(404);
+    }
+
+    public function test_delete_with_unrecognized_key_returns_404()
+    {
+        $this->deleteJson('/api/upload/not-a-real-delete-key')->assertStatus(404);
+    }
+
     public function test_legacy_endpoint_rejects_folder_keys()
     {
         $user = $this->makeUser();

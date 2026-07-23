@@ -28,7 +28,7 @@ class UploadFoldersController extends Controller
             'secondary_domain' => $folder->secondary_domain,
             'upload_count' => $folder->uploads()->count(),
             'upload_key' => $key,
-            'upload_url' => $key ? url("/api/upload/$key") : null,
+            'upload_url' => $key ? route('uploads.uploadByKey', ['key' => $key]) : null,
         ];
     }
 
@@ -195,6 +195,6 @@ class UploadFoldersController extends Controller
         $key->generateUploadKey();
         $key->save();
 
-        return Response::Done(['upload_key' => $key->upload_key, 'upload_url' => url("/api/upload/{$key->upload_key}")]);
+        return Response::Done(['upload_key' => $key->upload_key, 'upload_url' => route('uploads.uploadByKey', ['key' => $key->upload_key])]);
     }
 }

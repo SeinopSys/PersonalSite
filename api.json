@@ -202,7 +202,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads.",
+                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -225,6 +225,9 @@
                                         },
                                         "preview": {
                                             "type": "string"
+                                        },
+                                        "delete_url": {
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
@@ -232,7 +235,8 @@
                                         "full",
                                         "full_png",
                                         "full_jpg",
-                                        "preview"
+                                        "preview",
+                                        "delete_url"
                                     ]
                                 }
                             }
@@ -354,7 +358,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled.",
+                        "description": "URLs for the uploaded image and its preview thumbnail. full_png is null for GIF uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled (no JPEG copy is generated). preview falls back to the same URL as full when the target folder has thumbnails disabled. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -380,6 +384,9 @@
                                         },
                                         "preview": {
                                             "type": "string"
+                                        },
+                                        "delete_url": {
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
@@ -387,7 +394,8 @@
                                         "full",
                                         "full_png",
                                         "full_jpg",
-                                        "preview"
+                                        "preview",
+                                        "delete_url"
                                     ]
                                 }
                             }
@@ -457,6 +465,65 @@
                                             "type": "string",
                                             "description": "Error overview.",
                                             "example": ""
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/upload/{deleteKey}": {
+            "delete": {
+                "operationId": "uploads.delete",
+                "tags": [
+                    "Uploads"
+                ],
+                "parameters": [
+                    {
+                        "name": "deleteKey",
+                        "in": "path",
+                        "required": true,
+                        "description": "The delete_url secret returned when the file was uploaded.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The file was permanently deleted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "File deleted."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No file found for this delete key (already deleted, or the key is invalid).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
                                         }
                                     },
                                     "required": [

@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
  * @property string|null $folder_id
  * @property string $orig_filename
  * @property string $filename
+ * @property string|null $delete_key
  * @property string $extension
  * @property string $mimetype
  * @property int $size
@@ -93,6 +94,15 @@ class Upload extends Model
     public function generateRandomName()
     {
         $this->filename = Str::random(10);
+    }
+
+    /**
+     * Generates the secret used in this file's deletion URL. base64url (not raw base64) since it
+     * lives in a URL path segment (DELETE /api/upload/{deleteKey}), where a "/" would break routing.
+     */
+    public function generateDeleteKey(): void
+    {
+        $this->delete_key = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     }
 
     public function getHostAttribute(): string
