@@ -13,7 +13,16 @@
                 <span
                     class="uploaded">{!! __('uploads.uploaded-at',['at' => \App\Util\Time::Tag($image->uploaded_at)]) !!}</span>
             </div>
-            <img src="{{ "$image->host/{$image->filename}p.png" }}" alt="{{ $image->orig_filename }}">
+            @php
+                $fullUrl = "$image->host/{$image->filename}.{$image->extension}";
+            @endphp
+            @if($image->isVideo())
+                <video src="{{ $fullUrl }}" muted loop playsinline controls preload="metadata"></video>
+            @elseif($image->hasPreviewFile())
+                <img src="{{ "$image->host/{$image->filename}p.png" }}" alt="{{ $image->orig_filename }}">
+            @else
+                <img src="{{ $fullUrl }}" alt="{{ $image->orig_filename }}">
+            @endif
             <div class="actions">
                 <a href="{{ "$image->host/{$image->filename}.{$image->extension}" }}"
                    title="Open full sized image in new window" target="_blank"><span

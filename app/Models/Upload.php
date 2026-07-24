@@ -140,6 +140,19 @@ class Upload extends Model
         return min($this->width, $this->height, 300);
     }
 
+    /**
+     * Whether a generated {filename}p.png thumbnail actually exists on disk. Preview generation
+     * is skipped for video and can be skipped per-folder (disable_thumbnails), and folder settings
+     * can change after upload, so this checks the filesystem rather than trusting current settings.
+     */
+    public function hasPreviewFile(): bool {
+        return is_file(UploadUtil::getUploadDirectory().'/'.$this->getFilenames()['preview']);
+    }
+
+    public function isVideo(): bool {
+        return $this->extension === 'webm';
+    }
+
     public function calculateFileSizes(?array $file_paths = null): void {
         if ($file_paths === null) {
             $file_paths = $this->getFilePaths(UploadUtil::getUploadDirectory(), $this->getFilenames());

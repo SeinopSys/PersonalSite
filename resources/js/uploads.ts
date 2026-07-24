@@ -44,11 +44,15 @@ function currentPageParams(): { page: number; orderby: string | null } {
 function wipeUpload($link: JQuery, requireConfirm: boolean) {
   const $image = $link.closest('.image');
   const id = ($image.attr('id') || '').replace(/^upload-/, '');
+  const href = $link.siblings().first().attr('href') || '';
+  const $preview = /\.webm(\?|$)/i.test(href)
+    ? $(document.createElement('video')).attr({
+      src: href, muted: 'muted', controls: 'controls', playsinline: 'playsinline',
+    })
+    : $(document.createElement('img')).attr('src', href);
   const $content = $(document.createElement('div')).attr('id', 'img-wipe-confirm').append(
     $(document.createElement('p')).append($link.attr('data-dialogcontent') || ''),
-    $(document.createElement('div')).attr('class', 'del-img-wrap').append(
-      $(document.createElement('img')).attr('src', $link.siblings().first().attr('href') || ''),
-    ),
+    $(document.createElement('div')).attr('class', 'del-img-wrap').append($preview),
   );
   const confirm: ConfirmHandleFunction = sure => {
     if (!sure) return;
