@@ -112,6 +112,20 @@ $NoScrollbar: false;
 }
 
 %checker-background {
-    background: url('/img/transparency.svg') repeat;
-    background-size: 16px;
+    background-image:
+        linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%),
+        linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%, transparent 75%, var(--checker-dark) 75%);
+    background-color: var(--checker-light);
+    background-position: 0 0, 8px 8px;
+    background-size: 16px 16px;
+}
+
+html {
+    --checker-light: #fff;
+    --checker-dark: #efefef;
+
+    &[data-bs-theme="dark"] {
+        --checker-light: #2b2b2b;
+        --checker-dark: #3a3a3a;
+    }
 }

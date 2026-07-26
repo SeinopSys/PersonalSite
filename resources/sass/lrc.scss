@@ -262,7 +262,11 @@ $thumbBorder: 2px;
     &.mode-edit .time-entry {
       .timestamp, .text {
         border-color: rgba(black, .2);
-        background: #fff;
+        background: var(--bs-body-bg);
+
+        html[data-bs-theme="dark"] & {
+          border-color: rgba(white, .2);
+        }
       }
 
       .tools {
@@ -277,6 +281,11 @@ $thumbBorder: 2px;
       .timestamp, .text {
         border-color: rgba(black, .1);
         background-color: rgba(white, .5);
+
+        html[data-bs-theme="dark"] & {
+          border-color: rgba(white, .1);
+          background-color: rgba(black, .2);
+        }
       }
 
       .timestamp:empty:before {

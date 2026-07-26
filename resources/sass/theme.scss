@@ -28,13 +28,14 @@
 html {
   font-size: 100%;
   height: 100%;
-  background-color: #fff;
+  background-color: var(--bs-body-bg);
 }
 
 body {
   margin: 0;
   box-sizing: border-box;
   font-family: $font-family;
+  color: var(--bs-body-color);
 
   #wrap {
     background: #678ecb;
@@ -42,6 +43,27 @@ body {
 
   > footer {
     @extend %footer
+  }
+}
+
+html[data-bs-theme="dark"] {
+  body #wrap {
+    background: darken(#678ecb, 30);
+  }
+
+  nav .navbar-brand[href] {
+    background-image: url('/img/logo.svg');
+  }
+}
+
+#theme-toggle {
+  padding-top: $nav-link-padding-y;
+  padding-bottom: $nav-link-padding-y;
+  color: var(--bs-navbar-color);
+  border: none;
+
+  &:hover, &:focus {
+    color: var(--bs-navbar-hover-color);
   }
 }
 

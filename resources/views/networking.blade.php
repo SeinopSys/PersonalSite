@@ -120,7 +120,7 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <div id="vlsm-output-simple" class="card bg-light simple-only mt-3"></div>
+            <div id="vlsm-output-simple" class="card bg-body-secondary simple-only mt-3"></div>
         </div>
     </div>
     <div id="cidr" class="tab-panel d-none">
@@ -168,7 +168,7 @@
             </p>
         </form>
 
-        <div id="cidr-output" class="card bg-light mt-3"></div>
+        <div id="cidr-output" class="card bg-body-secondary mt-3"></div>
     </div>
     <div id="summary" class="tab-panel d-none">
         <form id="summary-form">
@@ -196,7 +196,7 @@
             </p>
         </form>
 
-        <div id="summary-output" class="card bg-light mt-3"></div>
+        <div id="summary-output" class="card bg-body-secondary mt-3"></div>
     </div>
     <div id="prefix-list" class="tab-panel d-none">
         <form id="prefix-list-form">

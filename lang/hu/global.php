@@ -2,6 +2,10 @@
 
 return [
     'greeting' => 'Üdvözöllek!',
+    'theme-toggle' => 'Színséma váltása',
+    'theme-system' => 'Rendszer színséma',
+    'theme-light' => 'Világos színséma',
+    'theme-dark' => 'Sötét színséma',
     'role' => 'Szerepkör',
     'language' => 'Nyelv',
     'language-forced' => 'kényszerített',

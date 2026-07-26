@@ -2,6 +2,10 @@
 
 return [
     'greeting' => 'Welcome!',
+    'theme-toggle' => 'Toggle color theme',
+    'theme-system' => 'System theme',
+    'theme-light' => 'Light theme',
+    'theme-dark' => 'Dark theme',
     'language' => 'Language',
     'language-forced' => 'forced',
     'role' => 'Role',

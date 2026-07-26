@@ -1,7 +1,18 @@
 <!DOCTYPE html>
-<html lang="{{ $currLang = Lang::getLocale() }}">
+<html lang="{{ $currLang = Lang::getLocale() }}"
+      @if(($themeCookie = request()->cookie('theme')) === 'light' || $themeCookie === 'dark') data-bs-theme="{{ $themeCookie }}" @endif
+>
 <head>
   <meta charset="utf-8">
+  <script>
+    (function () {
+      var pref = (document.cookie.match(/(?:^|; )theme=([^;]*)/) || [])[1] || 'system';
+      var resolved = pref === 'system'
+        ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+      document.documentElement.setAttribute('data-bs-theme', resolved);
+    })();
+  </script>
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta property="og:title" content="{{ $title = (isset($title) ? "$title - " : '') . config('app.name') }}">
@@ -53,6 +64,11 @@
             404 => __('global.ajax-404'),
             500 => __('global.ajax-500'),
             503 => __('global.ajax-503'),
+        ],
+        'theme' => [
+            'system' => __('global.theme-system'),
+            'light' => __('global.theme-light'),
+            'dark' => __('global.theme-dark'),
         ],
         'dialog' => [
             'close' => __('global.close'),

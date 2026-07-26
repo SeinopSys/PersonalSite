@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg fixed-top navbar-light bg-light shadow">
+<nav class="navbar navbar-expand-lg fixed-top bg-body-tertiary shadow">
   <div class="container">
         @if(Request::path() !== '/')
             <a class="navbar-brand" href="{{ url('/') }}" title="{{ __('global.home') }}"></a>
@@ -45,6 +45,11 @@
             </ul>
 
             <ul class="navbar-nav">
+                <li class="nav-item">
+                    <button type="button" id="theme-toggle" class="nav-link btn btn-link" title="{{ __('global.theme-system') }}" aria-label="{{ __('global.theme-system') }}">
+                        <span class="fa fa-circle-half-stroke"></span>
+                    </button>
+                </li>
                 <li class="nav-item dropdown">
                     @if(isset($lang_forced)){
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">

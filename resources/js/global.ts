@@ -1,5 +1,6 @@
 import { Dialog } from './dialog';
 import { Key } from './utils/Key';
+import { Theme } from './utils/Theme';
 
 declare global {
   interface Window {
@@ -8,6 +9,7 @@ declare global {
       csrfToken: string;
       jsLocales: Record<string, string>;
       dialog: Record<string, string>;
+      theme: Record<'system' | 'light' | 'dark', string>;
       ajaxErrors: Record<number, string>;
       git: {
         commit_id: string;
@@ -76,6 +78,8 @@ $('#logout-link')
       },
     });
   });
+
+Theme.init();
 
 $(document.body).on('keydown', e => {
   if (!Dialog.isOpen() || e.keyCode !== Key.Tab) return;
