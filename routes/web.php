@@ -103,7 +103,6 @@ Route::group(['middleware' => ['auth']], function () {
     Route::delete('/connections/attributes/{id}', [ConnectionsController::class, 'destroyAttributeDefinition']);
     Route::get('/connections/export', [ConnectionsController::class, 'exportConnections']);
     Route::post('/connections/import', [ConnectionsController::class, 'importConnections']);
-    Route::post('/connections/import-connman', [ConnectionsController::class, 'importConnman']);
     Route::get('/connections/graph', [ConnectionsController::class, 'graph']);
     Route::post('/connections/{id}/edges', [ConnectionsController::class, 'storeEdge']);
     Route::put('/connections/{id}/edges/{edgeId}', [ConnectionsController::class, 'updateEdge']);

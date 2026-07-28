@@ -236,23 +236,6 @@
         both are managed per-connection below and show up in the graph on your <a href="/dashboard">dashboard</a>.
     </p>
 
-    <form method="POST" action="/connections/import-connman" enctype="multipart/form-data" class="d-flex gap-2 align-items-center mb-4">
-        @csrf
-        <input type="file" name="file" class="form-control form-control-sm" accept=".json" style="max-width:220px" required>
-        <button type="submit" class="btn btn-sm btn-outline-danger"
-                onclick="return confirm('This replaces ALL of your existing connections and links with the contents of this ConnMan file. Custom attribute values and manually-added connections will be deleted. Continue?')">
-            Import ConnMan file (replaces all connections)
-        </button>
-    </form>
-    <p class="text-muted small mt-n3 mb-4">
-        Bulk import from a <a href="https://github.com/WentTheFox/ConnMan" target="_blank">ConnMan</a> network export —
-        a distinct file format from the JSON export/import below. Unlike that one, this <strong>replaces</strong> your
-        entire connections list each time (meant to be re-run against fresh exports of the same network): "person"
-        entries become connections (matched by name), "group" entries become sources (a person linked to a group
-        gets a "met via" edge to that source), one-way links become "introduced/met through" edges, bi-directional
-        links become "know each other" edges.
-    </p>
-
     <h3 id="highlight-links" class="mt-4">Calendar highlight links</h3>
     <p class="text-muted small">
         Connections show a badge below when linked to one of your calendar highlight tokens. Auto-linking matches

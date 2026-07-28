@@ -528,20 +528,12 @@ class ConnectionsController extends Controller
      * containing the other). Ambiguous matches (more than one token) are left alone for manual linking.
      * Connections that already have a highlight token are never touched or reconsidered here.
      *
-     * @param  bool  $renameToLabel     When a match is found, also rename the connection to the token's
-     *                                  label (if it has one) - used by the ConnMan import, where the
-     *                                  token's label is often the person's "real" preferred name, whereas
-     *                                  ConnMan's own name field may just be a handle/nickname. The manual
-     *                                  "Auto-link" button leaves names untouched (default false).
      * @param  bool  $createIfUnmatched When a connection has no matching token at all (not even an
      *                                  ambiguous one), create a brand new token/word pair for it (named
      *                                  after the connection) and link that instead of leaving it unlinked.
-     *                                  Only the manual "Auto-link" button opts into this - ConnMan import
-     *                                  leaves genuinely unmatched connections alone, since importing e.g.
-     *                                  150 people would otherwise spam 150 new tokens as a side effect.
      * @return array{0: int, 1: int, 2: int} [linked count, created count, ambiguous count]
      */
-    private function autoLinkHighlightTokensForUser(string $userId, bool $renameToLabel = false, bool $createIfUnmatched = false): array
+    private function autoLinkHighlightTokensForUser(string $userId, bool $createIfUnmatched = false): array
     {
         $tokens = CalendarHighlightToken::where('user_id', $userId)->with('words')->get();
 
@@ -549,7 +541,7 @@ class ConnectionsController extends Controller
         $created = 0;
         $ambiguous = 0;
 
-        Connection::where('user_id', $userId)->whereNull('highlight_token_id')->get()->each(function (Connection $connection) use ($tokens, $renameToLabel, $createIfUnmatched, $userId, &$linked, &$created, &$ambiguous) {
+        Connection::where('user_id', $userId)->whereNull('highlight_token_id')->get()->each(function (Connection $connection) use ($tokens, $createIfUnmatched, $userId, &$linked, &$created, &$ambiguous) {
             $name = mb_strtolower($connection->name);
             $matches = $tokens->filter(function (CalendarHighlightToken $token) use ($name) {
                 return $token->words->contains(function ($word) use ($name) {
@@ -561,9 +553,6 @@ class ConnectionsController extends Controller
             if ($matches->count() === 1) {
                 $token = $matches->first();
                 $connection->highlight_token_id = $token->id;
-                if ($renameToLabel && !empty($token->label)) {
-                    $connection->name = $token->label;
-                }
                 $connection->save();
                 $linked++;
             } elseif ($matches->count() > 1) {
@@ -973,162 +962,4 @@ class ConnectionsController extends Controller
         return redirect('/connections')->with('success', "Import complete: $imported connections imported, $skipped items skipped.");
     }
 
-    /**
-     * Import a ConnMan (github.com/WentTheFox/ConnMan) network export: {"people": [...], "connections": [...]}.
-     * This is additive to the main JSON import/export above (a distinct file format/button), but it fully
-     * replaces the connections list itself: it's meant to be re-run against fresh exports of the same
-     * ConnMan network, so existing connections and edges (not sources/attributes) are wiped first.
-     *   - people with type "person" become Connection rows (matched/created by name, like the main import).
-     *   - people with type "group" become ConnectionSource rows (category "group").
-     *   - a connection between two people becomes a connection_edges row: "one-way" maps to a one_way edge
-     *     (met/introduced through, directional), "bi-directional" maps to a bi_directional edge (know each
-     *     other, no particular direction). There's no limit on how many of either a person can have.
-     *   - a connection touching a group (either direction) becomes a one_way edge from the person to that
-     *     group's ConnectionSource - a source doesn't "know" the person back, so it's always one-way
-     *     regardless of the edge's own type in the file.
-     *   - a connection between two groups has no equivalent here and is skipped.
-     */
-    public function importConnman(Request $request)
-    {
-        $request->validate(['file' => 'required|file|mimes:json,txt|max:10240']);
-
-        $contents = file_get_contents($request->file('file')->getRealPath());
-        $data = JSON::Decode($contents);
-
-        if (!is_array($data) || !isset($data['people']) || !is_array($data['people']) || !isset($data['connections']) || !is_array($data['connections'])) {
-            return back()->withErrors(['file' => 'Invalid JSON: expected a ConnMan export with "people" and "connections" arrays.']);
-        }
-
-        $userId = Auth::id();
-        $importedPeople = 0;
-        $importedGroups = 0;
-        $importedEdges = 0;
-        $skippedEdges = 0;
-
-        DB::transaction(function () use (
-            $data, $userId, &$importedPeople, &$importedGroups, &$importedEdges, &$skippedEdges
-        ) {
-            // ConnMan import replaces the connections list wholesale: it's meant to be re-run against
-            // fresh exports of the same network, so stale connections/edges from a previous ConnMan
-            // import (or manual entries) are cleared first rather than merged. Deleting connections
-            // cascades to their attribute values and connection_edges rows.
-            Connection::where('user_id', $userId)->delete();
-
-            $connectionsByName = [];
-            $sourcesByName = [];
-            foreach (ConnectionSource::where('user_id', $userId)->get() as $s) {
-                $sourcesByName[$s->name] = $s;
-            }
-
-            // person id (from the ConnMan file) => ['kind' => 'connection'|'source', 'model' => Connection|ConnectionSource]
-            $byConnmanId = [];
-
-            foreach ($data['people'] as $person) {
-                if (!is_array($person) || empty($person['id']) || empty($person['name'])) {
-                    continue;
-                }
-
-                if (($person['type'] ?? null) === 'person') {
-                    if (isset($connectionsByName[$person['name']])) {
-                        $connection = $connectionsByName[$person['name']];
-                    } else {
-                        $connection = Connection::create(['user_id' => $userId, 'name' => $person['name']]);
-                        $connectionsByName[$connection->name] = $connection;
-                        $importedPeople++;
-                    }
-                    $byConnmanId[$person['id']] = ['kind' => 'connection', 'model' => $connection];
-                } else {
-                    if (isset($sourcesByName[$person['name']])) {
-                        $source = $sourcesByName[$person['name']];
-                    } else {
-                        $source = ConnectionSource::create(['user_id' => $userId, 'name' => $person['name'], 'category' => 'group']);
-                        $sourcesByName[$source->name] = $source;
-                        $importedGroups++;
-                    }
-                    $byConnmanId[$person['id']] = ['kind' => 'source', 'model' => $source];
-                }
-            }
-
-            // Groups default to the "group" source category - give it a visible default color (unless
-            // the user already picked one) so group-linked nodes aren't indistinguishable from ungrouped
-            // ones in the dashboard graph.
-            if (ConnectionSource::where('user_id', $userId)->where('category', 'group')->exists()) {
-                ConnectionSourceCategory::firstOrCreate(['user_id' => $userId, 'name' => 'group'], ['color' => ConnectionSourceCategory::DEFAULT_COLOR]);
-            }
-
-            foreach ($data['connections'] as $edge) {
-                if (!is_array($edge) || empty($edge['from']) || empty($edge['to'])) {
-                    $skippedEdges++;
-                    continue;
-                }
-
-                $from = $byConnmanId[$edge['from']] ?? null;
-                $to = $byConnmanId[$edge['to']] ?? null;
-                if (!$from || !$to || $from['model']->id === $to['model']->id) {
-                    $skippedEdges++;
-                    continue;
-                }
-
-                // A group on either end: the person "met via" that group.
-                if ($from['kind'] === 'source' || $to['kind'] === 'source') {
-                    if ($from['kind'] === $to['kind']) {
-                        // Both groups - nothing to attach the source to.
-                        $skippedEdges++;
-                        continue;
-                    }
-                    /** @var Connection $person */
-                    $person = $from['kind'] === 'connection' ? $from['model'] : $to['model'];
-                    /** @var ConnectionSource $source */
-                    $source = $from['kind'] === 'source' ? $from['model'] : $to['model'];
-
-                    ConnectionEdge::create([
-                        'user_id'            => $userId,
-                        'from_connection_id' => $person->id,
-                        'to_source_id'       => $source->id,
-                        'type'               => ConnectionEdge::TYPE_ONE_WAY,
-                    ]);
-                    $importedEdges++;
-                    continue;
-                }
-
-                $fromConn = $from['model'];
-                $toConn = $to['model'];
-                $type = ($edge['type'] ?? null) === 'one-way' ? ConnectionEdge::TYPE_ONE_WAY : ConnectionEdge::TYPE_BI_DIRECTIONAL;
-
-                $exists = ConnectionEdge::where('user_id', $userId)
-                    ->where('type', $type)
-                    ->where(function ($q) use ($fromConn, $toConn, $type) {
-                        if ($type === ConnectionEdge::TYPE_BI_DIRECTIONAL) {
-                            // Passing an array to orWhere() ORs the individual keys together instead of
-                            // ANDing them like where(array) does - nested closures are required to get
-                            // (from=X AND to=Y) OR (from=Y AND to=X).
-                            $q->where(fn($q2) => $q2->where('from_connection_id', $fromConn->id)->where('to_connection_id', $toConn->id))
-                                ->orWhere(fn($q2) => $q2->where('from_connection_id', $toConn->id)->where('to_connection_id', $fromConn->id));
-                        } else {
-                            $q->where('from_connection_id', $fromConn->id)->where('to_connection_id', $toConn->id);
-                        }
-                    })
-                    ->exists();
-                if ($exists) {
-                    $skippedEdges++;
-                    continue;
-                }
-
-                ConnectionEdge::create([
-                    'user_id'            => $userId,
-                    'from_connection_id' => $fromConn->id,
-                    'to_connection_id'   => $toConn->id,
-                    'type'               => $type,
-                ]);
-                $importedEdges++;
-            }
-        });
-
-        [$autoLinked, , $autoLinkAmbiguous] = $this->autoLinkHighlightTokensForUser($userId, renameToLabel: true);
-
-        return redirect('/connections#graph')->with('success',
-            "ConnMan import complete: $importedPeople people, $importedGroups sources, $importedEdges edges imported; "
-            . "$skippedEdges edges skipped. Auto-linked $autoLinked connection(s) to highlight tokens ($autoLinkAmbiguous ambiguous)."
-        );
-    }
 }
