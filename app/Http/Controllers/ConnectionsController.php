@@ -82,7 +82,7 @@ class ConnectionsController extends Controller
         }
 
         $attributeDefinitions = $user->connectionAttributeDefinitions()->orderBy('sort_order')->orderBy('label')->get();
-        $highlightTokens = $user->highlightTokens()->orderBy('label')->get();
+        $highlightTokens = $user->highlightTokens()->whereDoesntHave('connections')->orderBy('label')->get();
 
         $categoryColors = ConnectionSourceCategory::where('user_id', $user->id)->get()->keyBy('name');
 
