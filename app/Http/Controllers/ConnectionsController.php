@@ -35,7 +35,11 @@ class ConnectionsController extends Controller
         // Lightweight alphabetical picker list. `name` is encrypted, so it can't be ORDER BY'd in SQL -
         // sort in PHP after decryption instead. Only the selected connection below gets its relations
         // eager-loaded, so rendering the list itself stays cheap regardless of how many connections exist.
-        $connectionList = $user->connections()->get(['id', 'name', 'archived', 'highlight_token_id'])
+        // one_way_edges_count is a single extra COUNT subquery (not full eager-loading), just enough to
+        // flag connections with no "introduced/met through" or "met via" edge recorded.
+        $connectionList = $user->connections()
+            ->withCount(['edgesFrom as one_way_edges_count' => fn($q) => $q->where('type', ConnectionEdge::TYPE_ONE_WAY)])
+            ->get(['id', 'name', 'archived', 'highlight_token_id'])
             ->sortBy(fn(Connection $c) => mb_strtolower($c->name))
             ->values();
 

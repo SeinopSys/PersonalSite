@@ -32,6 +32,15 @@
 
     @case('radio')
         <div class="d-flex flex-wrap gap-2">
+            {{-- Native radios can't be unchecked by clicking them again, so unlike every other
+                 field type here, a radio group with a value set has no way to clear it without
+                 this explicit option. --}}
+            <div class="form-check form-check-inline m-0">
+                <input type="radio" class="form-check-input" name="attributes[{{ $definition->id }}]"
+                       id="attr-{{ $definition->id }}-unset"
+                       value="" {{ $currentValue === null ? 'checked' : '' }}>
+                <label class="form-check-label small fw-bold text-danger" for="attr-{{ $definition->id }}-unset">Unset</label>
+            </div>
             @foreach($definition->options['choices'] ?? [] as $choice)
                 <div class="form-check form-check-inline m-0">
                     <input type="radio" class="form-check-input" name="attributes[{{ $definition->id }}]"

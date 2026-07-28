@@ -284,6 +284,7 @@
                    class="list-group-item list-group-item-action d-flex align-items-center gap-2 {{ optional($selected)->id === $item->id ? 'active' : '' }}">
                     @if($item->archived)<span class="fa fa-archive small" title="Archived"></span>@endif
                     <span class="flex-grow-1 text-truncate connection-name">{{ $item->name }}</span>
+                    @if($item->one_way_edges_count === 0)<span class="fa fa-circle-question small text-warning" title="No introduced/met through or met via relation recorded"></span>@endif
                     @if($item->highlight_token_id)<span class="fa fa-calendar-check small" title="Linked to calendar highlight"></span>@endif
                 </a>
                 @endforeach
