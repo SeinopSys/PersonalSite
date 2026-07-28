@@ -66,7 +66,7 @@ function renderConnectionsGraph(canvas: HTMLCanvasElement, data: GraphResponse):
         let dx = a.x - b.x; let dy = a.y - b.y;
         let distSq = dx * dx + dy * dy;
         if (distSq < 1) { dx = rng() - 0.5; dy = rng() - 0.5; distSq = 1; }
-        const force = 1200 / distSq;
+        const force = 4000 / distSq;
         const dist = Math.sqrt(distSq);
         const fx = (dx / dist) * force; const fy = (dy / dist) * force;
         a.vx += fx; a.vy += fy;
