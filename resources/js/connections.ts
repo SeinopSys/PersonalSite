@@ -34,6 +34,27 @@ document.querySelectorAll<HTMLSelectElement>('.attribute-type-select').forEach(t
   sync();
 });
 
+// The category color inputs are only ever populated (server-side) with the *currently selected*
+// source's category's color. If the user retypes the category field to assign the source to a
+// different existing category, that stale color would otherwise get submitted as-is and overwrite
+// the real color already saved for the newly-typed category. Keep the color inputs in sync with
+// whatever category name is currently typed so the submitted color always matches its category.
+(() => {
+  const categoryInput = document.getElementById('source-category-input') as HTMLInputElement | null;
+  const colorPicker = document.getElementById('source-category-color-picker') as HTMLInputElement | null;
+  const colorText = document.getElementById('source-category-color-text') as HTMLInputElement | null;
+  if (!categoryInput || !colorPicker || !colorText) return;
+
+  const categoryColors = JSON.parse(categoryInput.dataset.categoryColors ?? '{}') as Record<string, string>;
+  const defaultColor = categoryInput.dataset.defaultColor ?? '#993366';
+
+  categoryInput.addEventListener('input', () => {
+    const color = categoryColors[categoryInput.value] ?? defaultColor;
+    colorPicker.value = color;
+    colorText.value = color;
+  });
+})();
+
 // Both the sources list and the connections list mark their selected item with `.active` server-side -
 // scroll it into view within its own scrollable list container, since the selected item can be well
 // below the fold in a long alphabetical list.
