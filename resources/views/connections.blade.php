@@ -61,16 +61,18 @@
                     </div>
                     <div>
                         <label class="form-label small mb-1">Category</label>
-                        <input type="text" name="category" class="form-control form-control-sm" style="max-width:160px"
-                               maxlength="100" value="{{ $selectedSource->category }}">
+                        <input type="text" name="category" id="source-category-input" class="form-control form-control-sm" style="max-width:160px"
+                               maxlength="100" value="{{ $selectedSource->category }}"
+                               data-category-colors="{{ $categoryColors->map(fn($c) => $c->color)->toJson() }}"
+                               data-default-color="{{ \App\Models\ConnectionSourceCategory::DEFAULT_COLOR }}">
                     </div>
                     <div>
                         <label class="form-label small mb-1">Category color</label>
                         <div class="d-flex gap-2">
-                            <input type="color" name="color" class="form-control form-control-color form-control-sm"
+                            <input type="color" name="color" id="source-category-color-picker" class="form-control form-control-color form-control-sm"
                                    value="{{ $categoryColorValue }}"
                                    oninput="this.nextElementSibling.value=this.value">
-                            <input type="text" class="form-control form-control-sm" style="max-width:90px"
+                            <input type="text" id="source-category-color-text" class="form-control form-control-sm" style="max-width:90px"
                                    pattern="#[0-9a-fA-F]{6}" maxlength="7" value="{{ $categoryColorValue }}"
                                    oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)) this.previousElementSibling.value=this.value">
                         </div>
