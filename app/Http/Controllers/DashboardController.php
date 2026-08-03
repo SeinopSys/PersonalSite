@@ -272,9 +272,10 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $data = [
-            'title' => __('global.availability'),
-            'js'    => ['availability'],
-            'days'  => self::DAYS,
+            'title'              => __('global.availability'),
+            'js'                 => ['availability'],
+            'days'               => self::DAYS,
+            'availabilityTokens' => $user->highlightTokens()->orderBy('label')->get(['id', 'label', 'token']),
         ];
 
         if (Permission::Sufficient('developer')) {

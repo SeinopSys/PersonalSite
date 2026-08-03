@@ -12,7 +12,7 @@ interface AvailabilityResponse {
   timezone: string;
   range: { start: string; end: string };
   free: TimeSlot[];
-  highlighted?: HighlightedEvent[];
+  highlighted: HighlightedEvent[];
   error?: string;
 }
 
@@ -292,7 +292,7 @@ document.querySelectorAll<HTMLInputElement>('.day-available-check').forEach(chec
 
 const startInput = document.getElementById('avail-start') as HTMLInputElement | null;
 const endInput = document.getElementById('avail-end') as HTMLInputElement | null;
-const tokenInput = document.getElementById('avail-token') as HTMLInputElement | null;
+const tokenInput = document.getElementById('avail-token') as HTMLSelectElement | null;
 const btn = document.getElementById('avail-fetch') as HTMLButtonElement | null;
 const calDiv = document.getElementById('avail-calendar') as HTMLElement | null;
 const debugToggle = document.getElementById('debug-event-names') as HTMLInputElement | null;
@@ -315,13 +315,17 @@ if (startInput && endInput && btn && calDiv) {
     const e = endInput.value;
     if (!s) return;
 
+    const token = tokenInput?.value.trim() ?? '';
+    if (!token) {
+      calDiv.innerHTML = '<div class="p-3 text-danger">Select a highlight token first.</div>';
+      return;
+    }
+
     btn.disabled = true;
     calDiv.innerHTML = '<div class="p-3 text-muted">Loading…</div>';
 
-    const token = tokenInput?.value.trim() ?? '';
-    let url = `/api/availability/${encodeURIComponent(username)}?start=${encodeURIComponent(s)}`;
+    let url = `/api/availability/${encodeURIComponent(username)}?start=${encodeURIComponent(s)}&token=${encodeURIComponent(token)}`;
     if (e) url += `&end=${encodeURIComponent(e)}`;
-    if (token) url += `&token=${encodeURIComponent(token)}`;
 
     const showDebug = debugToggle?.checked ?? false;
     let debugUrl = '';

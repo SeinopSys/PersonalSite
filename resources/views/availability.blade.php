@@ -58,7 +58,7 @@
             @error('calendar_url')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror
-            <div class="form-text">A public ICS feed URL. Free slots will be queried via <code>GET /api/availability/{{ $user->name }}?start=YYYY-MM-DD&amp;end=YYYY-MM-DD</code>. Both parameters are optional and default to the current week.</div>
+            <div class="form-text">A public ICS feed URL. Free slots will be queried via <code>GET /api/availability/{{ $user->name }}?start=YYYY-MM-DD&amp;end=YYYY-MM-DD&amp;token=&lt;token&gt;</code>. A highlight token is required; <code>start</code>/<code>end</code> are optional and default to the current week.</div>
         </div>
 
         <div class="mb-3">
@@ -128,7 +128,18 @@
         </div>
         <div>
             <label for="avail-token" class="form-label mb-1">Token</label>
-            <input type="text" class="form-control" id="avail-token" placeholder="highlight token">
+            @if($availabilityTokens->isEmpty())
+                <select class="form-select" id="avail-token" disabled>
+                    <option value="">No highlight tokens yet</option>
+                </select>
+            @else
+                <select class="form-select" id="avail-token">
+                    <option value="" disabled selected>Select a highlight token…</option>
+                    @foreach($availabilityTokens as $t)
+                        <option value="{{ $t->token_base64 }}">{{ $t->label }}</option>
+                    @endforeach
+                </select>
+            @endif
         </div>
         <div class="d-flex align-items-center gap-3">
             <button type="button" class="btn btn-secondary" id="avail-fetch">Fetch</button>

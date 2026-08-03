@@ -45,7 +45,8 @@
                     {
                         "name": "token",
                         "in": "query",
-                        "description": "Base64url-encoded highlight token. When supplied and valid, matching events are returned under a `highlighted` key.",
+                        "required": true,
+                        "description": "Base64url-encoded highlight token. Matching events are returned under a `highlighted` key.",
                         "schema": {
                             "type": "string"
                         }
@@ -117,7 +118,8 @@
                                     "required": [
                                         "timezone",
                                         "range",
-                                        "free"
+                                        "free",
+                                        "highlighted"
                                     ]
                                 }
                             }
@@ -156,6 +158,26 @@
                                     },
                                     "required": [
                                         "error"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": ""
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
