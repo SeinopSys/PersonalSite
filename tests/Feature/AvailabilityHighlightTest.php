@@ -65,10 +65,10 @@ class AvailabilityHighlightTest extends TestCase
         Cache::put('ics_' . md5($url), $icsContent, now()->addMinutes(30));
     }
 
-    public function test_availability_response_has_no_highlighted_key_without_token(): void
+    public function test_availability_without_token_is_unauthorized(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
-        $user = $this->makeUser($calUrl);
+        $this->makeUser($calUrl);
         $ics = $this->makeIcs([
             ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Meeting'],
         ]);
@@ -76,8 +76,7 @@ class AvailabilityHighlightTest extends TestCase
 
         $response = $this->getJson('/api/availability/testuser?start=2030-06-03&end=2030-06-03');
 
-        $response->assertOk();
-        $response->assertJsonMissing(['highlighted']);
+        $response->assertUnauthorized();
     }
 
     public function test_availability_response_includes_highlighted_key_with_valid_token(): void
@@ -193,7 +192,7 @@ class AvailabilityHighlightTest extends TestCase
         }
     }
 
-    public function test_availability_invalid_token_is_silently_ignored(): void
+    public function test_availability_invalid_token_is_unauthorized(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
         $this->makeUser($calUrl);
@@ -204,11 +203,10 @@ class AvailabilityHighlightTest extends TestCase
 
         $response = $this->getJson('/api/availability/testuser?start=2030-06-03&end=2030-06-03&token=' . str_repeat('A', 43));
 
-        $response->assertOk();
-        $response->assertJsonMissing(['highlighted']);
+        $response->assertUnauthorized();
     }
 
-    public function test_availability_token_from_different_user_is_ignored(): void
+    public function test_availability_token_from_different_user_is_unauthorized(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
         $this->makeUser($calUrl);
@@ -235,8 +233,7 @@ class AvailabilityHighlightTest extends TestCase
 
         $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
 
-        $response->assertOk();
-        $response->assertJsonMissing(['highlighted']);
+        $response->assertUnauthorized();
     }
 
     public function test_availability_highlighted_events_in_the_past_are_excluded(): void
