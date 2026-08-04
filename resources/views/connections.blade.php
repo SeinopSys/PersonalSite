@@ -351,7 +351,8 @@
                     @else
                         @php $ht = $selected->highlightToken; @endphp
                         <p class="text-muted small">
-                            @if($ht->archived)<span class="fa fa-archive me-1"></span>@endif
+                            @if($ht->archived)<span class="fa fa-archive me-1" title="Archived"></span>@endif
+                            @if($ht->bypass_dnd)<span class="fa fa-bolt text-warning me-1" title="Bypasses do not disturb"></span>@endif
                             Label is kept in sync with this connection's name — no separate rename needed here.
                         </p>
 
