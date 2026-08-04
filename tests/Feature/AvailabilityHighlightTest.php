@@ -287,4 +287,201 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertContains('2030-06-03T10:00:00+00:00', $starts);
         $this->assertContains('2030-06-03T14:00:00+00:00', $starts);
     }
+
+    public function test_dnd_event_blocks_free_slots_by_default(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Do not disturb'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $free = $response->json('free');
+        foreach ($free as $slot) {
+            $slotStart = strtotime($slot['start']);
+            $slotEnd = strtotime($slot['end']);
+            $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+            $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
+
+            $this->assertFalse(
+                $slotStart < $eventEnd && $slotEnd > $eventStart,
+                "Free slot {$slot['start']}–{$slot['end']} overlaps with DND event despite no bypass"
+            );
+        }
+    }
+
+    public function test_dnd_event_is_shown_as_free_for_bypassing_token(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Friend',
+            'bypass_dnd' => true,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Do not disturb'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $free = $response->json('free');
+        $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+        $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
+
+        $coversEvent = false;
+        foreach ($free as $slot) {
+            if (strtotime($slot['start']) <= $eventStart && strtotime($slot['end']) >= $eventEnd) {
+                $coversEvent = true;
+            }
+        }
+        $this->assertTrue($coversEvent, 'DND event should be reported as free for a bypassing token');
+    }
+
+    public function test_dnd_event_name_is_matched_exactly(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Friend',
+            'bypass_dnd' => true,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        // Not an exact match to the default "Do not disturb" name — should stay busy even with bypass.
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Do not disturb please'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $free = $response->json('free');
+        $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+        $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
+
+        foreach ($free as $slot) {
+            $this->assertFalse(
+                strtotime($slot['start']) < $eventEnd && strtotime($slot['end']) > $eventStart,
+                'Non-exact-match event should still block free slots even with bypass enabled'
+            );
+        }
+    }
+
+    public function test_dnd_event_name_is_configurable_per_user(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $user->dnd_event_name = 'Focus time';
+        $user->save();
+
+        $token = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Friend',
+            'bypass_dnd' => true,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Focus time'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $free = $response->json('free');
+        $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+        $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
+
+        $coversEvent = false;
+        foreach ($free as $slot) {
+            if (strtotime($slot['start']) <= $eventStart && strtotime($slot['end']) >= $eventEnd) {
+                $coversEvent = true;
+            }
+        }
+        $this->assertTrue($coversEvent, 'Custom DND event name should be bypassable too');
+    }
+
+    /**
+     * The raw ICS feed is cached (Cache::remember, keyed only by calendar URL), but the DND
+     * bypass filter must be applied fresh per request from the token used — never baked into
+     * a shared cache entry — or one token's bypass setting would leak into another's response.
+     */
+    public function test_shared_ics_cache_does_not_leak_bypass_between_tokens(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+
+        $bypassToken = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Bypasses DND',
+            'bypass_dnd' => true,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $bypassToken->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $normalToken = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Does not bypass DND',
+            'bypass_dnd' => false,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $normalToken->id, 'user_id' => $user->id, 'word' => 'Bob']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Do not disturb'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $eventStart = strtotime('2030-06-03T10:00:00+00:00');
+        $eventEnd = strtotime('2030-06-03T11:00:00+00:00');
+        $overlaps = fn(array $slot) => strtotime($slot['start']) < $eventEnd && strtotime($slot['end']) > $eventStart;
+        $covers = fn(array $slot) => strtotime($slot['start']) <= $eventStart && strtotime($slot['end']) >= $eventEnd;
+
+        // Fire the non-bypassing token first so the ICS cache entry is populated before the
+        // bypassing token's request — if bypass leaked via that shared cache, this would fail.
+        $normalResponse = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$normalToken->token_base64}");
+        $normalResponse->assertOk();
+        $normalFree = $normalResponse->json('free');
+        foreach ($normalFree as $slot) {
+            $this->assertFalse($overlaps($slot), 'Non-bypassing token must still see the DND event as busy');
+        }
+
+        $bypassResponse = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$bypassToken->token_base64}");
+        $bypassResponse->assertOk();
+        $bypassFree = $bypassResponse->json('free');
+        $this->assertTrue(
+            collect($bypassFree)->contains($covers),
+            'Bypassing token must see the DND event as free despite the shared ICS cache'
+        );
+
+        // Re-request with the non-bypassing token again, after the bypassing one has run, to
+        // rule out the reverse leak direction.
+        $normalResponseAgain = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$normalToken->token_base64}");
+        $normalResponseAgain->assertOk();
+        foreach ($normalResponseAgain->json('free') as $slot) {
+            $this->assertFalse($overlaps($slot), 'Non-bypassing token must not inherit the other token\'s bypass from cache');
+        }
+    }
 }

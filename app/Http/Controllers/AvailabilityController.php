@@ -49,8 +49,16 @@ class AvailabilityController extends Controller
 
         $busyEvents = $service->parseIcsEvents($icsContent, $rangeStart, $rangeEnd, $tz);
         $settings = $user->availability_settings ?? [];
+
+        // DND filtering is applied fresh per request (never cached), since whether a DND-named
+        // event counts as busy depends on the token's bypass_dnd flag, which varies per request.
+        $dndName = $user->dndEventName();
+        $freeSlotEvents = $highlightToken->bypass_dnd
+            ? array_values(array_filter($busyEvents, fn($e) => $e['name'] !== $dndName))
+            : $busyEvents;
+
         $freeSlots = $service->computeRangeFreeSlots(
-            $busyEvents,
+            $freeSlotEvents,
             $settings,
             $rangeStart->copy()->subDay(),
             $rangeEnd->copy()->addDay(),

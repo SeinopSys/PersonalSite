@@ -50,6 +50,9 @@ class User extends Authenticatable
 {
     use Notifiable, Uuids;
 
+    /** Default calendar event name treated as "do not disturb" until the user customizes it. */
+    public const DEFAULT_DND_EVENT_NAME = 'Do not disturb';
+
     /**
      * Indicates if the IDs are auto-incrementing.
      *
@@ -66,6 +69,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name', 'email', 'password', 'lang', 'role', 'calendar_url', 'availability_settings', 'timezone',
+        'dnd_event_name',
     ];
 
     protected $casts = [
@@ -83,6 +87,12 @@ class User extends Authenticatable
     protected $hidden = [
         'password', 'remember_token', 'two_factor_secret',
     ];
+
+    /** The configured "do not disturb" event name, falling back to the default when unset. */
+    public function dndEventName(): string
+    {
+        return $this->dnd_event_name ?? self::DEFAULT_DND_EVENT_NAME;
+    }
 
     public function getGravatar($size = 50)
     {

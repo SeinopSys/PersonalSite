@@ -276,6 +276,7 @@ class DashboardController extends Controller
             'js'                 => ['availability'],
             'days'               => self::DAYS,
             'availabilityTokens' => $user->highlightTokens()->orderBy('label')->get(['id', 'label', 'token']),
+            'dndEventName'       => $user->dndEventName(),
         ];
 
         if (Permission::Sufficient('developer')) {
@@ -322,9 +323,10 @@ class DashboardController extends Controller
     public function saveSettings(Request $request)
     {
         $validated = $request->validate([
-            'calendar_url' => 'nullable|url|max:2048',
-            'timezone'     => 'nullable|timezone:all',
-            'settings'     => 'nullable|array',
+            'calendar_url'   => 'nullable|url|max:2048',
+            'timezone'       => 'nullable|timezone:all',
+            'settings'       => 'nullable|array',
+            'dnd_event_name' => 'nullable|string|max:255',
         ]);
 
         $availabilitySettings = [];
@@ -342,6 +344,7 @@ class DashboardController extends Controller
         $user->calendar_url = $validated['calendar_url'] ?? null;
         $user->timezone = $validated['timezone'] ?? null;
         $user->availability_settings = $availabilitySettings;
+        $user->dnd_event_name = ($validated['dnd_event_name'] ?? '') !== '' ? $validated['dnd_event_name'] : null;
         $user->save();
 
         return redirect('/availability')->with('success', 'Settings saved.');
@@ -397,9 +400,10 @@ class DashboardController extends Controller
         $label  = $validated['label'];
 
         $token = CalendarHighlightToken::create([
-            'user_id' => $userId,
-            'token'   => CalendarHighlightToken::generateToken(),
-            'label'   => $label,
+            'user_id'    => $userId,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => $label,
+            'bypass_dnd' => $request->boolean('bypass_dnd'),
         ]);
 
         if ($label && !CalendarHighlightWord::where('user_id', $userId)->where('word', $label)->exists()) {
@@ -447,6 +451,7 @@ class DashboardController extends Controller
             ->firstOrFail();
 
         $token->label = $validated['label'] ?? null;
+        $token->bypass_dnd = $request->boolean('bypass_dnd');
         $token->save();
 
         return redirect('/availability#highlights')->with('success', 'Label updated.')->with('open_highlight', $id);
@@ -535,6 +540,7 @@ class DashboardController extends Controller
             'token'      => $ht->token_base64,
             'created_at' => $ht->created_at->toIso8601String(),
             'archived'   => $ht->archived,
+            'bypass_dnd' => $ht->bypass_dnd,
             'words'      => $ht->words->pluck('word')->values()->toArray(),
         ])->toArray();
 
@@ -618,6 +624,7 @@ class DashboardController extends Controller
                     'token'      => $item['_bytes'],
                     'label'      => $label,
                     'archived'   => !empty($item['archived']),
+                    'bypass_dnd' => !empty($item['bypass_dnd']),
                     'created_at' => $createdAt ?? now(),
                 ]);
 

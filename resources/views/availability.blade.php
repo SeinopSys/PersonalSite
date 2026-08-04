@@ -62,6 +62,23 @@
         </div>
 
         <div class="mb-3">
+            <label for="dnd-event-name" class="form-label fw-semibold">Do not disturb event name</label>
+            <input type="text"
+                   class="form-control @error('dnd_event_name') is-invalid @enderror"
+                   id="dnd-event-name"
+                   name="dnd_event_name"
+                   value="{{ old('dnd_event_name', $dndEventName) }}"
+                   maxlength="255">
+            @error('dnd_event_name')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+            <div class="form-text">
+                Calendar events whose name matches this exactly are treated as busy time, like any other event.
+                Highlight tokens with "Bypass do not disturb" enabled will see this time as free instead.
+            </div>
+        </div>
+
+        <div class="mb-3">
             <label class="form-label fw-semibold">Sleep schedule</label>
             <div class="form-text mb-2">
                 Set when you wake up and go to sleep each day. Free slots are shown between wake and sleep times.
@@ -199,12 +216,17 @@
             <div class="accordion-body">
                 <div class="d-flex align-items-start gap-3 flex-wrap mb-3">
                     <div class="flex-grow-1">
-                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center">
+                        <form method="POST" action="/dashboard/highlights/{{ $ht->id }}" class="d-flex gap-2 align-items-center flex-wrap">
                             @csrf
                             @method('PUT')
                             <input type="text" name="label" class="form-control form-control-sm" style="max-width:220px"
                                    placeholder="Label (optional)" value="{{ $ht->label }}">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Rename</button>
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" id="bypass-dnd-{{ $ht->id }}"
+                                       name="bypass_dnd" value="1" {{ $ht->bypass_dnd ? 'checked' : '' }}>
+                                <label for="bypass-dnd-{{ $ht->id }}" class="form-check-label small">Bypass do not disturb</label>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
                         </form>
                     </div>
                     <div class="d-flex gap-2">
@@ -306,6 +328,10 @@
         @csrf
         <input type="text" name="label" class="form-control" style="max-width:240px"
                placeholder="New token label" maxlength="255" required>
+        <div class="form-check mb-0">
+            <input type="checkbox" class="form-check-input" id="new-bypass-dnd" name="bypass_dnd" value="1">
+            <label for="new-bypass-dnd" class="form-check-label small">Bypass do not disturb</label>
+        </div>
         <button type="submit" class="btn btn-primary">Create token</button>
     </form>
 
