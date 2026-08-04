@@ -201,7 +201,8 @@
             <button class="accordion-button p-2 {{ $isOpen ? '' : 'collapsed' }}" type="button"
                     data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
                     aria-expanded="{{ $isOpen ? 'true' : 'false' }}" aria-controls="{{ $collapseId }}">
-                @if($ht->archived)<span class="fa fa-archive me-2 text-muted" title="Archived"></span>@endif@if($ht->bypass_dnd)<span class="fa fa-bolt me-2 text-warning" title="Bypasses do not disturb"></span>@endif{{ $ht->label ?? '(unlabelled)' }}
+                @if($ht->archived)<span class="fa fa-archive me-2 text-muted" title="Archived"></span>@endif
+                @if($ht->bypass_dnd)<span class="fa fa-bolt me-2 text-warning" title="Bypasses do not disturb"></span>@endif{{ $ht->label ?? '(unlabelled)' }}
                 <span class="badge bg-secondary fw-normal ms-2">{{ $ht->words->count() }}</span>
                 @if($ht->connections->isNotEmpty())
                     <span class="badge bg-info text-dark fw-normal ms-2" title="Linked to a connection">
