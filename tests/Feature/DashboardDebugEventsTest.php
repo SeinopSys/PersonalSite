@@ -83,4 +83,25 @@ class DashboardDebugEventsTest extends TestCase
         $this->assertNotContains('Old meeting', $names);
         $this->assertContains('Upcoming meeting', $names);
     }
+
+    public function test_debug_events_includes_tentative_flag(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+
+        $start = Carbon::now('UTC')->addDays(3)->format('Ymd\THis\Z');
+        $end = Carbon::now('UTC')->addDays(3)->addHour()->format('Ymd\THis\Z');
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => $start, 'end' => $end, 'summary' => 'Maybe drinks (?)'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->actingAs($user)->getJson('/dashboard/debug/events?start=' . Carbon::now('UTC')->format('Y-m-d'));
+
+        $response->assertOk();
+        $events = $response->json();
+        $this->assertCount(1, $events);
+        $this->assertTrue($events[0]['tentative']);
+    }
 }

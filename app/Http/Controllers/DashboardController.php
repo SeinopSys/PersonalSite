@@ -390,9 +390,10 @@ class DashboardController extends Controller
         $events = array_filter($events, fn($e) => $e['end']->gt($cutoff));
 
         return response()->json(array_values(array_map(fn($e) => [
-            'start' => $e['start']->toAtomString(),
-            'end'   => $e['end']->toAtomString(),
-            'name'  => $e['name'],
+            'start'     => $e['start']->toAtomString(),
+            'end'       => $e['end']->toAtomString(),
+            'name'      => $e['name'],
+            'tentative' => $e['tentative'],
         ], $events)));
     }
 

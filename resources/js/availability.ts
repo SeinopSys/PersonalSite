@@ -6,6 +6,7 @@ interface TimeSlot {
 interface HighlightedEvent {
   start: string;
   end: string;
+  tentative?: boolean;
 }
 
 interface AvailabilityResponse {
@@ -21,6 +22,7 @@ interface DebugEvent {
   start: string;
   end: string;
   name: string;
+  tentative?: boolean;
 }
 
 interface DaySlot {
@@ -34,6 +36,7 @@ interface DayEvent {
   startMin: number;
   endMin: number;
   name: string;
+  tentative?: boolean;
 }
 
 function localDate(str: string): Date {
@@ -88,7 +91,7 @@ function splitAtMidnightToDaySlots(slot: TimeSlot): DaySlot[] {
 
 function splitEventToDayEvents(event: DebugEvent): DayEvent[] {
   const slots = splitAtMidnightToDaySlots(event);
-  return slots.map(s => ({ ...s, name: event.name }));
+  return slots.map(s => ({ ...s, name: event.name, tentative: event.tentative }));
 }
 
 function formatDayLabel(dateStr: string): string {
@@ -283,28 +286,47 @@ function buildCalendar(
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+
+      // A highlighted event is also present in dayEvents (debug shows every raw event), so
+      // fold its styling in here instead of drawing a second block on top of this one.
+      const isHighlighted = dayHighlighted.some(h => h.startMin === event.startMin && h.endMin === event.endMin);
+      const isTentative = !!event.tentative;
+      const bg = isHighlighted ? 'rgba(253,126,20,0.25)' : 'rgba(220,53,69,0.18)';
+      const border = isHighlighted ? '#fd7e14' : '#dc3545';
+      const color = isHighlighted ? '#7d3f00' : '#842029';
+      const borderStyle = isTentative ? 'dashed' : 'solid';
+      const labels = [
+        ...(isHighlighted ? ['Highlighted'] : []),
+        ...(isTentative ? ['Tentative'] : []),
+      ];
+      const labelHtml = labels.length
+        ? `<div style="font-size:0.6rem;opacity:.75">${labels.join(', ')}</div>`
+        : '';
+
       html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
-        + `height:${height}px;background:rgba(220,53,69,0.18);border-radius:3px;`
-        + 'border-left:3px solid #dc3545;overflow:hidden;font-size:0.7rem;padding:0 2px;'
-        + `color:#842029;line-height:1.2">${escapedName}</div>`;
+        + `height:${height}px;background:${bg};border-radius:3px;`
+        + `border-left:3px ${borderStyle} ${border};overflow:hidden;font-size:0.7rem;padding:0 2px;`
+        + `color:${color};line-height:1.2">${escapedName}${labelHtml}</div>`;
     });
 
-    dayHighlighted.forEach(event => {
-      const sm = Math.max(event.startMin, viewMin);
-      const em = Math.min(event.endMin, viewMax);
-      if (sm >= em) return;
-      const top = (sm - viewMin) * PX_PER_MIN;
-      const height = Math.max(2, (em - sm) * PX_PER_MIN);
-      const escapedName = event.name
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-      html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
-        + `height:${height}px;background:rgba(253,126,20,0.25);border-radius:3px;`
-        + 'border-left:3px solid #fd7e14;overflow:hidden;font-size:0.7rem;padding:0 2px;'
-        + `color:#7d3f00;line-height:1.2">${escapedName}</div>`;
-    });
+    if (!debugEvents) {
+      dayHighlighted.forEach(event => {
+        const sm = Math.max(event.startMin, viewMin);
+        const em = Math.min(event.endMin, viewMax);
+        if (sm >= em) return;
+        const top = (sm - viewMin) * PX_PER_MIN;
+        const height = Math.max(2, (em - sm) * PX_PER_MIN);
+        const escapedName = event.name
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
+          + `height:${height}px;background:rgba(253,126,20,0.25);border-radius:3px;`
+          + 'border-left:3px solid #fd7e14;overflow:hidden;font-size:0.7rem;padding:0 2px;'
+          + `color:#7d3f00;line-height:1.2">${escapedName}</div>`;
+      });
+    }
 
     html += '</div></div>';
   });
