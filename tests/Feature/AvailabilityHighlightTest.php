@@ -157,6 +157,61 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertArrayNotHasKey('tentative', $confirmedSlot);
     }
 
+    public function test_availability_unavailable_lists_all_busy_events_with_tentative_flag(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice (?)'],
+            ['uid' => 'e2', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Team standup'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'unavailable');
+
+        $unavailable = $response->json('unavailable');
+        $tentativeSlot = collect($unavailable)->firstWhere('start', '2030-06-03T10:00:00+00:00');
+        $confirmedSlot = collect($unavailable)->firstWhere('start', '2030-06-03T14:00:00+00:00');
+
+        $this->assertTrue($tentativeSlot['tentative']);
+        $this->assertArrayNotHasKey('tentative', $confirmedSlot);
+    }
+
+    public function test_availability_unavailable_excludes_dnd_event_when_bypassed(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id'    => $user->id,
+            'token'      => CalendarHighlightToken::generateToken(),
+            'label'      => 'Friend',
+            'bypass_dnd' => true,
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Do not disturb'],
+            ['uid' => 'e2', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Team standup'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'unavailable');
+        $this->assertSame('2030-06-03T14:00:00+00:00', $response->json('unavailable.0.start'));
+    }
+
     public function test_availability_highlighted_events_match_is_case_sensitive(): void
     {
         $calUrl = 'https://example.com/calendar.ics';

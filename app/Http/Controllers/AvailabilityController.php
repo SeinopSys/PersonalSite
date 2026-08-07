@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>}')]
+    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>, unavailable: list<array{start: string, end: string, tentative?: bool}>}')]
     #[QueryParameter('start', 'Start of the date range in YYYY-MM-DD format. Defaults to the current week\'s Monday.', required: false, type: 'string')]
     #[QueryParameter('end', 'End of the date range in YYYY-MM-DD format. Defaults to start date plus six days.', required: false, type: 'string')]
     #[QueryParameter('token', 'Base64url-encoded highlight token. Matching events are returned under a `highlighted` key.', required: true, type: 'string')]
@@ -69,25 +69,27 @@ class AvailabilityController extends Controller
         $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
 
         $toSlot = fn($s) => new TimeSlot($s['start']->toAtomString(), $s['end']->toAtomString());
+        $toEventSlot = fn($e) => new TimeSlot(
+            $e['start']->toAtomString(),
+            $e['end']->toAtomString(),
+            $e['tentative'] ? true : null,
+        );
 
         $matchedEvents = array_filter(
             $this->filterHighlightedEvents($busyEvents, $highlightWords),
             fn($e) => $e['end']->gt($cutoff)
         );
-        $highlighted = array_values(array_map(
-            fn($e) => new TimeSlot(
-                $e['start']->toAtomString(),
-                $e['end']->toAtomString(),
-                $e['tentative'] ? true : null,
-            ),
-            $matchedEvents
-        ));
+        $highlighted = array_values(array_map($toEventSlot, $matchedEvents));
+
+        $unavailableEvents = array_filter($freeSlotEvents, fn($e) => $e['end']->gt($cutoff));
+        $unavailable = array_values(array_map($toEventSlot, $unavailableEvents));
 
         return response()->json(new AvailabilityResult(
             timezone: $tz,
             range: new TimeSlot($rangeStart->toAtomString(), $rangeEnd->toAtomString()),
             free: array_values(array_map($toSlot, $freeSlots)),
             highlighted: $highlighted,
+            unavailable: $unavailable,
         ));
     }
 

@@ -116,13 +116,35 @@
                                                     "end"
                                                 ]
                                             }
+                                        },
+                                        "unavailable": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "start": {
+                                                        "type": "string"
+                                                    },
+                                                    "end": {
+                                                        "type": "string"
+                                                    },
+                                                    "tentative": {
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "start",
+                                                    "end"
+                                                ]
+                                            }
                                         }
                                     },
                                     "required": [
                                         "timezone",
                                         "range",
                                         "free",
-                                        "highlighted"
+                                        "highlighted",
+                                        "unavailable"
                                     ]
                                 }
                             }
