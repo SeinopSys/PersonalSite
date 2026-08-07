@@ -253,6 +253,58 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertSame('2030-06-03T22:00:00+00:00', $response->json('unavailable.0.end'));
     }
 
+    public function test_availability_unavailable_merges_back_to_back_events(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        // "Work from home" ends exactly when "Me time" starts — two separate calendar events
+        // that should be reported as a single continuous busy block.
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T090000Z', 'end' => '20300603T170000Z', 'summary' => 'Work from home'],
+            ['uid' => 'e2', 'start' => '20300603T170000Z', 'end' => '20300603T210000Z', 'summary' => 'Me time'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'unavailable');
+        $this->assertSame('2030-06-03T09:00:00+00:00', $response->json('unavailable.0.start'));
+        $this->assertSame('2030-06-03T21:00:00+00:00', $response->json('unavailable.0.end'));
+    }
+
+    public function test_availability_unavailable_does_not_merge_tentative_with_confirmed(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T090000Z', 'end' => '20300603T170000Z', 'summary' => 'Work from home'],
+            ['uid' => 'e2', 'start' => '20300603T170000Z', 'end' => '20300603T210000Z', 'summary' => 'Maybe drinks (?)'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'unavailable');
+        $this->assertArrayNotHasKey('tentative', $response->json('unavailable.0'));
+        $this->assertTrue($response->json('unavailable.1.tentative'));
+    }
+
     public function test_availability_default_nap_event_is_treated_as_sleep(): void
     {
         $calUrl = 'https://example.com/calendar.ics';

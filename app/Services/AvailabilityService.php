@@ -267,6 +267,35 @@ class AvailabilityService
     }
 
     /**
+     * Merges directly adjacent or overlapping event segments into one, e.g. two back-to-back
+     * calendar events reported as separate busy blocks. Segments only merge when their
+     * 'tentative' flag matches, so a tentative event never absorbs a confirmed one or vice versa.
+     */
+    public function mergeEventSegments(array $segments): array
+    {
+        usort($segments, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
+
+        $merged = [];
+        foreach ($segments as $segment) {
+            $lastIndex = count($merged) - 1;
+            $last = $lastIndex >= 0 ? $merged[$lastIndex] : null;
+
+            if ($last !== null
+                && $segment['start']->lte($last['end'])
+                && ($segment['tentative'] ?? false) === ($last['tentative'] ?? false)
+            ) {
+                if ($segment['end']->gt($last['end'])) {
+                    $merged[$lastIndex]['end'] = $segment['end'];
+                }
+            } else {
+                $merged[] = $segment;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
      * Returns the total available window in minutes for a given day name, based on availability settings.
      * Returns 0 for days marked as unavailable.
      */

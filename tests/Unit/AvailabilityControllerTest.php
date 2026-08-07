@@ -235,6 +235,38 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('2026-04-20T15:00:00+00:00', $merged[1]['end']->toAtomString());
     }
 
+    public function test_merge_event_segments_combines_back_to_back_events(): void
+    {
+        $service = new AvailabilityService();
+
+        $segments = [
+            ['start' => Carbon::parse('2026-04-20 09:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 17:00:00', 'UTC'), 'tentative' => false],
+            ['start' => Carbon::parse('2026-04-20 17:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-21 02:00:00', 'UTC'), 'tentative' => false],
+        ];
+
+        $merged = $service->mergeEventSegments($segments);
+
+        $this->assertCount(1, $merged);
+        $this->assertSame('2026-04-20T09:00:00+00:00', $merged[0]['start']->toAtomString());
+        $this->assertSame('2026-04-21T02:00:00+00:00', $merged[0]['end']->toAtomString());
+    }
+
+    public function test_merge_event_segments_does_not_merge_across_differing_tentative_status(): void
+    {
+        $service = new AvailabilityService();
+
+        $segments = [
+            ['start' => Carbon::parse('2026-04-20 09:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 17:00:00', 'UTC'), 'tentative' => false],
+            ['start' => Carbon::parse('2026-04-20 17:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 18:00:00', 'UTC'), 'tentative' => true],
+        ];
+
+        $merged = $service->mergeEventSegments($segments);
+
+        $this->assertCount(2, $merged);
+        $this->assertSame('2026-04-20T17:00:00+00:00', $merged[0]['end']->toAtomString());
+        $this->assertSame('2026-04-20T17:00:00+00:00', $merged[1]['start']->toAtomString());
+    }
+
     public function test_subtract_sleep_from_events_drops_event_fully_within_sleep_block(): void
     {
         $service = new AvailabilityService();

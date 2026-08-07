@@ -107,6 +107,9 @@ class AvailabilityController extends Controller
             $service->subtractSleepFromEvents($unavailableEvents, $sleepBlocks),
             fn($s) => $s['end']->gt($cutoff)
         );
+        // Back-to-back calendar events (e.g. one ending exactly when the next starts) are
+        // reported as a single continuous busy block instead of separate adjacent entries.
+        $unavailableSegments = $service->mergeEventSegments($unavailableSegments);
         $unavailable = array_values(array_map($toEventSlot, $unavailableSegments));
 
         return response()->json(new AvailabilityResult(
