@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>, unavailable: list<array{start: string, end: string, tentative?: bool}>, sleep: list<array{start: string, end: string}>}')]
+    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool, activity?: string}>, unavailable: list<array{start: string, end: string, tentative?: bool}>, sleep: list<array{start: string, end: string}>}')]
     #[QueryParameter('start', 'Start of the date range in YYYY-MM-DD format. Defaults to the current week\'s Monday.', required: false, type: 'string')]
     #[QueryParameter('end', 'End of the date range in YYYY-MM-DD format. Defaults to start date plus six days.', required: false, type: 'string')]
     #[QueryParameter('token', 'Base64url-encoded highlight token. Matching events are returned under a `highlighted` key.', required: true, type: 'string')]
@@ -65,11 +65,17 @@ class AvailabilityController extends Controller
             $tz
         );
 
+        $sleepExceptions = $user->sleepExceptions()
+            ->get(['start_date', 'end_date'])
+            ->map(fn($e) => ['start' => $e->start_date->format('Y-m-d'), 'end' => $e->end_date->format('Y-m-d')])
+            ->toArray();
+
         $sleepBlocks = $service->computeRangeSleepBlocks(
             $settings,
             $rangeStart->copy()->subDay(),
             $rangeEnd->copy()->addDay(),
-            $tz
+            $tz,
+            $sleepExceptions
         );
 
         // Events named after the configured nap event count as sleep too, merged in with the
@@ -98,7 +104,13 @@ class AvailabilityController extends Controller
             $this->filterHighlightedEvents($busyEvents, $highlightWords),
             fn($e) => $e['end']->gt($cutoff)
         );
-        $highlighted = array_values(array_map($toEventSlot, $matchedEvents));
+        $toHighlightedSlot = fn($e) => new TimeSlot(
+            $e['start']->toAtomString(),
+            $e['end']->toAtomString(),
+            $e['tentative'] ? true : null,
+            $e['activity'],
+        );
+        $highlighted = array_values(array_map($toHighlightedSlot, $matchedEvents));
 
         // Sleep takes precedence over busy time: an event's portion that falls within a sleep
         // block is not reported as unavailable, since it's already covered by the 'sleep' key.
@@ -139,6 +151,6 @@ class AvailabilityController extends Controller
 
     private function filterHighlightedEvents(array $events, array $words): array
     {
-        return (new AvailabilityService())->matchEventsByWords($events, $words);
+        return (new AvailabilityService())->matchEventsByActivityClause($events, $words);
     }
 }

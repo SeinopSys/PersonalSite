@@ -127,6 +127,51 @@ class AvailabilityHighlightTest extends TestCase
         $response->assertJsonMissing(['name' => 'Lunch with Alice']);
     }
 
+    public function test_availability_highlighted_events_include_activity_field(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Alice',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice, Bob'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'highlighted');
+        $this->assertSame('Lunch', $response->json('highlighted.0.activity'));
+    }
+
+    public function test_availability_bare_token_without_with_is_not_highlighted(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Alice',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Alice sync'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(0, 'highlighted');
+    }
+
     public function test_availability_tentative_highlighted_event_includes_tentative_flag(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
@@ -175,6 +220,85 @@ class AvailabilityHighlightTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['sleep']);
+    }
+
+    public function test_availability_sleep_exception_suppresses_sleep_block_for_covered_date(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+        $user->sleepExceptions()->create(['start_date' => '2030-06-03', 'end_date' => '2030-06-03']);
+
+        $ics = $this->makeIcs([]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $sleep = $response->json('sleep');
+
+        $overlapsException = collect($sleep)->contains(
+            fn($s) => strtotime($s['start']) < strtotime('2030-06-04T00:00:00+00:00')
+                && strtotime($s['end']) > strtotime('2030-06-03T00:00:00+00:00')
+        );
+        $this->assertFalse($overlapsException, 'No sleep block should overlap the excepted date');
+    }
+
+    public function test_availability_sleep_exception_does_not_affect_other_dates(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+        $user->sleepExceptions()->create(['start_date' => '2030-06-03', 'end_date' => '2030-06-03']);
+
+        $ics = $this->makeIcs([]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-04&end=2030-06-04&token={$token->token_base64}");
+
+        $response->assertOk();
+        $sleep = $response->json('sleep');
+
+        $hasSleep = collect($sleep)->contains(
+            fn($s) => strtotime($s['start']) < strtotime('2030-06-05T00:00:00+00:00')
+                && strtotime($s['end']) > strtotime('2030-06-04T00:00:00+00:00')
+        );
+        $this->assertTrue($hasSleep, 'Sleep block should still be generated for dates outside the exception');
+    }
+
+    public function test_availability_sleep_exception_still_surfaces_nap_events_as_sleep(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+        $user->sleepExceptions()->create(['start_date' => '2030-06-03', 'end_date' => '2030-06-03']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T130000Z', 'end' => '20300603T150000Z', 'summary' => 'Taking a nap'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $sleep = $response->json('sleep');
+        $napBlock = collect($sleep)->first(fn($s) => $s['start'] === '2030-06-03T13:00:00+00:00' && $s['end'] === '2030-06-03T15:00:00+00:00');
+        $this->assertNotNull($napBlock, 'Nap event should still surface as sleep even on an excepted date');
     }
 
     public function test_availability_sleep_merges_weekend_with_adjacent_wake_sleep_gaps(): void

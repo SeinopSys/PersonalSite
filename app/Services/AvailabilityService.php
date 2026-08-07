@@ -118,13 +118,32 @@ class AvailabilityService
      * Returns sleep blocks (time outside the configured wake/sleep window, and all of any day
      * marked unavailable) within [rangeStart, rangeEnd]. Directly adjacent or overlapping blocks
      * — e.g. a day marked unavailable next to another day's pre-wake gap — are merged into one.
+     * Dates covered by $exceptions (list of ['start' => 'Y-m-d', 'end' => 'Y-m-d'], inclusive)
+     * are treated as fully awake for the whole day instead, regardless of the weekly settings —
+     * no automatic sleep block is generated for them. Calendar events named after the user's nap
+     * event are merged in separately by the caller and are unaffected by this.
      */
-    public function computeRangeSleepBlocks(array $settings, Carbon $rangeStart, Carbon $rangeEnd, string $tz): array
+    public function computeRangeSleepBlocks(array $settings, Carbon $rangeStart, Carbon $rangeEnd, string $tz, array $exceptions = []): array
     {
         $awakeWindows = [];
         $day = $rangeStart->copy()->setTimezone($tz)->startOfDay();
 
         while ($day->lte($rangeEnd)) {
+            if ($this->dateInExceptions($day->format('Y-m-d'), $exceptions)) {
+                $windowStart = $day->copy()->startOfDay();
+                $windowEnd = $day->copy()->addDay()->startOfDay();
+
+                if ($windowStart->lt($rangeStart)) $windowStart = $rangeStart->copy();
+                if ($windowEnd->gt($rangeEnd)) $windowEnd = $rangeEnd->copy();
+
+                if ($windowStart->lt($windowEnd)) {
+                    $awakeWindows[] = ['start' => $windowStart, 'end' => $windowEnd];
+                }
+
+                $day->addDay();
+                continue;
+            }
+
             $dayName = self::DAY_NAMES[$day->dayOfWeek];
             $daySetting = $settings[$dayName] ?? null;
 
@@ -177,6 +196,20 @@ class AvailabilityService
         }
 
         return $sleepBlocks;
+    }
+
+    /** Whether $dateStr ('Y-m-d') falls within any of the given inclusive ['start', 'end'] date ranges. */
+    private function dateInExceptions(string $dateStr, array $exceptions): bool
+    {
+        foreach ($exceptions as $exception) {
+            $start = $exception['start'] ?? null;
+            $end = $exception['end'] ?? null;
+            if ($start && $end && $dateStr >= $start && $dateStr <= $end) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Sorts intervals by start and merges any that overlap or directly touch into one. */
@@ -433,6 +466,47 @@ class AvailabilityService
             foreach ($words as $word) {
                 if (str_contains($event['name'], $word)) {
                     $matched[] = $event;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    /**
+     * Events whose name contains a "with <token>" or "w/ <token>" clause where at least one
+     * comma-separated token (substring) matches one of the given words. Events without such a
+     * clause are never matched, regardless of the words list. Matched events are returned with
+     * an added 'activity' key: the freetext preceding "with"/"w/", trimmed of trailing whitespace.
+     */
+    public function matchEventsByActivityClause(array $events, array $words): array
+    {
+        if (empty($words)) {
+            return [];
+        }
+
+        $matched = [];
+        foreach ($events as $event) {
+            if (!preg_match('/^(.*?)\b(?:with|w\/)\s+(.+)$/i', $event['name'], $m)) {
+                continue;
+            }
+
+            $tokens = array_filter(array_map('trim', explode(',', $m[2])), fn($t) => $t !== '');
+            if (empty($tokens)) {
+                continue;
+            }
+
+            foreach ($words as $word) {
+                $isMatch = false;
+                foreach ($tokens as $token) {
+                    if (str_contains($token, $word)) {
+                        $isMatch = true;
+                        break;
+                    }
+                }
+                if ($isMatch) {
+                    $matched[] = $event + ['activity' => rtrim($m[1])];
                     break;
                 }
             }

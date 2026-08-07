@@ -71,6 +71,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/dashboard/2fa/confirm', [TwoFactorAuthController::class, 'confirm']);
     Route::post('/dashboard/2fa/disable', [TwoFactorAuthController::class, 'disable']);
     Route::get('/dashboard/debug/events', [DashboardController::class, 'debugEvents']);
+    Route::post('/dashboard/sleep-exceptions', [DashboardController::class, 'storeSleepException']);
+    Route::delete('/dashboard/sleep-exceptions/{id}', [DashboardController::class, 'destroySleepException']);
     Route::post('/dashboard/highlights', [DashboardController::class, 'storeHighlight']);
     Route::put('/dashboard/highlights/{tokenId}', [DashboardController::class, 'updateHighlight']);
     Route::post('/dashboard/highlights/{tokenId}/regenerate', [DashboardController::class, 'regenerateHighlight']);

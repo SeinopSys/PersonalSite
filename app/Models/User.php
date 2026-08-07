@@ -149,6 +149,11 @@ class User extends Authenticatable
         return $this->hasMany(CalendarHighlightToken::class);
     }
 
+    public function sleepExceptions(): HasMany
+    {
+        return $this->hasMany(SleepException::class);
+    }
+
     public function connections(): HasMany
     {
         return $this->hasMany(Connection::class);

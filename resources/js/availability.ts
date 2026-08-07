@@ -7,6 +7,7 @@ interface HighlightedEvent {
   start: string;
   end: string;
   tentative?: boolean;
+  activity?: string;
 }
 
 interface AvailabilityResponse {
@@ -37,6 +38,7 @@ interface DayEvent {
   endMin: number;
   name: string;
   tentative?: boolean;
+  activity?: string;
 }
 
 function localDate(str: string): Date {
@@ -172,7 +174,12 @@ function buildCalendar(
     highlighted.forEach(event => {
       splitAtMidnightToDaySlots(event).forEach(part => {
         if (highlightedByDate[part.date]) {
-          highlightedByDate[part.date].push({ ...part, name: 'Highlighted' });
+          highlightedByDate[part.date].push({
+            ...part,
+            name: 'Highlighted',
+            tentative: event.tentative,
+            activity: event.activity,
+          });
         }
       });
     });
@@ -316,15 +323,20 @@ function buildCalendar(
         if (sm >= em) return;
         const top = (sm - viewMin) * PX_PER_MIN;
         const height = Math.max(2, (em - sm) * PX_PER_MIN);
-        const escapedName = event.name
+        const isTentative = !!event.tentative;
+        const displayName = event.activity ?? event.name;
+        const escapedName = displayName
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;');
+        const labelHtml = isTentative
+          ? '<div style="font-size:0.6rem;opacity:.75">Tentative</div>'
+          : '';
         html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
           + `height:${height}px;background:rgba(253,126,20,0.25);border-radius:3px;`
-          + 'border-left:3px solid #fd7e14;overflow:hidden;font-size:0.7rem;padding:0 2px;'
-          + `color:#7d3f00;line-height:1.2">${escapedName}</div>`;
+          + `border-left:3px ${isTentative ? 'dashed' : 'solid'} #fd7e14;overflow:hidden;font-size:0.7rem;padding:0 2px;`
+          + `color:#7d3f00;line-height:1.2">${escapedName}${labelHtml}</div>`;
       });
     }
 

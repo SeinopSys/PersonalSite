@@ -215,6 +215,76 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('2026-04-20T09:00:00+00:00', $sleepBlocks[1]['end']->toAtomString());
     }
 
+    public function test_compute_range_sleep_blocks_skips_days_covered_by_an_exception(): void
+    {
+        $service = new AvailabilityService();
+
+        $settings = [
+            'monday'  => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+            'tuesday' => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+        ];
+        $exceptions = [
+            ['start' => '2026-04-20', 'end' => '2026-04-20'],
+        ];
+
+        $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'UTC'); // Monday
+        $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');   // Tuesday
+
+        $sleepBlocks = $service->computeRangeSleepBlocks($settings, $rangeStart, $rangeEnd, 'UTC', $exceptions);
+
+        // Monday is fully within the exception, so only Tuesday's before-wake/after-sleep gaps remain.
+        $this->assertCount(2, $sleepBlocks);
+        $this->assertSame('2026-04-21T00:00:00+00:00', $sleepBlocks[0]['start']->toAtomString());
+        $this->assertSame('2026-04-21T08:00:00+00:00', $sleepBlocks[0]['end']->toAtomString());
+        $this->assertSame('2026-04-21T22:00:00+00:00', $sleepBlocks[1]['start']->toAtomString());
+        $this->assertSame('2026-04-21T23:59:59+00:00', $sleepBlocks[1]['end']->toAtomString());
+    }
+
+    public function test_compute_range_sleep_blocks_exception_overrides_unavailable_day(): void
+    {
+        $service = new AvailabilityService();
+
+        $settings = [
+            'monday' => ['available' => false, 'wake' => '', 'sleep' => ''],
+        ];
+        $exceptions = [
+            ['start' => '2026-04-20', 'end' => '2026-04-20'],
+        ];
+
+        $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'UTC'); // Monday
+        $rangeEnd = Carbon::parse('2026-04-20 23:59:59', 'UTC');
+
+        $sleepBlocks = $service->computeRangeSleepBlocks($settings, $rangeStart, $rangeEnd, 'UTC', $exceptions);
+
+        $this->assertCount(0, $sleepBlocks);
+    }
+
+    public function test_compute_range_sleep_blocks_exception_range_spans_multiple_days(): void
+    {
+        $service = new AvailabilityService();
+
+        $settings = [
+            'monday'    => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+            'tuesday'   => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+            'wednesday' => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+        ];
+        $exceptions = [
+            ['start' => '2026-04-20', 'end' => '2026-04-21'],
+        ];
+
+        $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'UTC'); // Monday
+        $rangeEnd = Carbon::parse('2026-04-22 23:59:59', 'UTC');   // Wednesday
+
+        $sleepBlocks = $service->computeRangeSleepBlocks($settings, $rangeStart, $rangeEnd, 'UTC', $exceptions);
+
+        // Monday and Tuesday are covered by the exception; only Wednesday's gaps remain.
+        $this->assertCount(2, $sleepBlocks);
+        $this->assertSame('2026-04-22T00:00:00+00:00', $sleepBlocks[0]['start']->toAtomString());
+        $this->assertSame('2026-04-22T08:00:00+00:00', $sleepBlocks[0]['end']->toAtomString());
+        $this->assertSame('2026-04-22T22:00:00+00:00', $sleepBlocks[1]['start']->toAtomString());
+        $this->assertSame('2026-04-22T23:59:59+00:00', $sleepBlocks[1]['end']->toAtomString());
+    }
+
     public function test_merge_intervals_combines_overlapping_and_touching_but_not_disjoint(): void
     {
         $service = new AvailabilityService();
@@ -467,11 +537,54 @@ class AvailabilityControllerTest extends TestCase
     public function test_filter_highlighted_events_partial_match_returns_event(): void
     {
         $controller = new AvailabilityController();
-        $events = $this->makeEvents(['SeinopSys: code review']);
+        $events = $this->makeEvents(['Code review with SeinopSys team']);
 
         $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['SeinopSys']);
 
         $this->assertCount(1, $result);
+    }
+
+    public function test_filter_highlighted_events_ignores_bare_token_without_with(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['SeinopSys: code review']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['SeinopSys']);
+
+        $this->assertCount(0, $result);
+    }
+
+    public function test_filter_highlighted_events_matches_w_slash_clause(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Coding w/ Bob']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Bob']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Coding', $result[0]['activity']);
+    }
+
+    public function test_filter_highlighted_events_matches_comma_separated_tokens(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Dinner with Alice, Bob']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Bob']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Dinner', $result[0]['activity']);
+    }
+
+    public function test_filter_highlighted_events_returns_trimmed_activity(): void
+    {
+        $controller = new AvailabilityController();
+        $events = $this->makeEvents(['Lunch with Bob']);
+
+        $result = $this->invokePrivate($controller, 'filterHighlightedEvents', $events, ['Bob']);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Lunch', $result[0]['activity']);
     }
 
     public function test_filter_highlighted_events_returns_empty_when_no_words(): void

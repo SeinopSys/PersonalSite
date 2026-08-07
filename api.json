@@ -109,6 +109,9 @@
                                                     },
                                                     "tentative": {
                                                         "type": "boolean"
+                                                    },
+                                                    "activity": {
+                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
