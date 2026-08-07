@@ -384,11 +384,16 @@ class DashboardController extends Controller
 
         $events = $service->parseIcsEvents($icsContent, $rangeStart, $rangeEnd, $tz);
 
-        return response()->json(array_map(fn($e) => [
+        // Matches the past-event cutoff applied by the availability API, so this debug view
+        // stays in sync with what that endpoint's free/highlighted/unavailable/sleep keys cover.
+        $cutoff = Carbon::now($tz)->subDay()->startOfDay();
+        $events = array_filter($events, fn($e) => $e['end']->gt($cutoff));
+
+        return response()->json(array_values(array_map(fn($e) => [
             'start' => $e['start']->toAtomString(),
             'end'   => $e['end']->toAtomString(),
             'name'  => $e['name'],
-        ], $events));
+        ], $events)));
     }
 
     public function storeHighlight(Request $request)
