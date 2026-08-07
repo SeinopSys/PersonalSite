@@ -305,6 +305,43 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertTrue($response->json('unavailable.1.tentative'));
     }
 
+    public function test_availability_unavailable_carves_tentative_out_of_wrapping_confirmed_event(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        // A broad "Me time" placeholder wraps a tentative plan, followed by a confirmed event
+        // that's a strict subset of "Me time" — mirrors a real overlapping calendar layout.
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T140000Z', 'end' => '20300604T020000Z', 'summary' => 'Me time'],
+            ['uid' => 'e2', 'start' => '20300603T170000Z', 'end' => '20300603T210000Z', 'summary' => 'Maybe drinks (?)'],
+            ['uid' => 'e3', 'start' => '20300603T210000Z', 'end' => '20300604T020000Z', 'summary' => 'Stream'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(3, 'unavailable');
+        $this->assertSame('2030-06-03T14:00:00+00:00', $response->json('unavailable.0.start'));
+        $this->assertSame('2030-06-03T17:00:00+00:00', $response->json('unavailable.0.end'));
+        $this->assertArrayNotHasKey('tentative', $response->json('unavailable.0'));
+        $this->assertSame('2030-06-03T17:00:00+00:00', $response->json('unavailable.1.start'));
+        $this->assertSame('2030-06-03T21:00:00+00:00', $response->json('unavailable.1.end'));
+        $this->assertTrue($response->json('unavailable.1.tentative'));
+        $this->assertSame('2030-06-03T21:00:00+00:00', $response->json('unavailable.2.start'));
+        // Clipped to 22:00, not 02:00 the next day, since the default settings' sleep window
+        // (22:00-09:00) already takes precedence over busy time regardless of this merge.
+        $this->assertSame('2030-06-03T22:00:00+00:00', $response->json('unavailable.2.end'));
+        $this->assertArrayNotHasKey('tentative', $response->json('unavailable.2'));
+    }
+
     public function test_availability_default_nap_event_is_treated_as_sleep(): void
     {
         $calUrl = 'https://example.com/calendar.ics';

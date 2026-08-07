@@ -268,29 +268,32 @@ class AvailabilityService
 
     /**
      * Merges directly adjacent or overlapping event segments into one, e.g. two back-to-back
-     * calendar events reported as separate busy blocks. Segments only merge when their
-     * 'tentative' flag matches, so a tentative event never absorbs a confirmed one or vice versa.
+     * calendar events reported as separate busy blocks. Tentative time takes precedence over
+     * confirmed time for its own exact span — a tentative event is carved out of any confirmed
+     * event it overlaps, rather than the two being reported as redundant overlapping ranges — so
+     * a tentative segment never merges into a confirmed one or vice versa.
      */
     public function mergeEventSegments(array $segments): array
     {
-        usort($segments, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
+        $tentative = array_values(array_filter($segments, fn($s) => $s['tentative'] ?? false));
+        $confirmed = array_values(array_filter($segments, fn($s) => !($s['tentative'] ?? false)));
 
-        $merged = [];
-        foreach ($segments as $segment) {
-            $lastIndex = count($merged) - 1;
-            $last = $lastIndex >= 0 ? $merged[$lastIndex] : null;
+        $mergedTentative = $this->mergeIntervals($tentative);
 
-            if ($last !== null
-                && $segment['start']->lte($last['end'])
-                && ($segment['tentative'] ?? false) === ($last['tentative'] ?? false)
-            ) {
-                if ($segment['end']->gt($last['end'])) {
-                    $merged[$lastIndex]['end'] = $segment['end'];
-                }
-            } else {
-                $merged[] = $segment;
+        $carvedConfirmed = [];
+        foreach ($confirmed as $event) {
+            $remaining = $this->subtractIntervals(
+                [['start' => $event['start'], 'end' => $event['end']]],
+                $mergedTentative
+            );
+            foreach ($remaining as $slot) {
+                $carvedConfirmed[] = $slot + ['tentative' => false];
             }
         }
+        $mergedConfirmed = $this->mergeIntervals($carvedConfirmed);
+
+        $merged = array_merge($mergedTentative, $mergedConfirmed);
+        usort($merged, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
 
         return $merged;
     }

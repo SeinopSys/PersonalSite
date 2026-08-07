@@ -251,6 +251,34 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('2026-04-21T02:00:00+00:00', $merged[0]['end']->toAtomString());
     }
 
+    public function test_merge_event_segments_carves_tentative_out_of_a_wrapping_confirmed_event(): void
+    {
+        $service = new AvailabilityService();
+
+        // A broad confirmed event (e.g. "Me time" 14:00-02:00) wraps a tentative event
+        // (17:00-21:00), followed by another confirmed event (21:00-02:00) that's a strict
+        // subset of the first. Naively merging in start order would fail to combine the first
+        // and third since the tentative one interrupts the sequence.
+        $segments = [
+            ['start' => Carbon::parse('2026-04-20 14:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-21 02:00:00', 'UTC'), 'tentative' => false],
+            ['start' => Carbon::parse('2026-04-20 17:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 21:00:00', 'UTC'), 'tentative' => true],
+            ['start' => Carbon::parse('2026-04-20 21:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-21 02:00:00', 'UTC'), 'tentative' => false],
+        ];
+
+        $merged = $service->mergeEventSegments($segments);
+
+        $this->assertCount(3, $merged);
+        $this->assertSame('2026-04-20T14:00:00+00:00', $merged[0]['start']->toAtomString());
+        $this->assertSame('2026-04-20T17:00:00+00:00', $merged[0]['end']->toAtomString());
+        $this->assertFalse($merged[0]['tentative']);
+        $this->assertSame('2026-04-20T17:00:00+00:00', $merged[1]['start']->toAtomString());
+        $this->assertSame('2026-04-20T21:00:00+00:00', $merged[1]['end']->toAtomString());
+        $this->assertTrue($merged[1]['tentative']);
+        $this->assertSame('2026-04-20T21:00:00+00:00', $merged[2]['start']->toAtomString());
+        $this->assertSame('2026-04-21T02:00:00+00:00', $merged[2]['end']->toAtomString());
+        $this->assertFalse($merged[2]['tentative']);
+    }
+
     public function test_merge_event_segments_does_not_merge_across_differing_tentative_status(): void
     {
         $service = new AvailabilityService();
