@@ -19,6 +19,8 @@ echo "$ $CMD_FETCH"
 eval ${CMD_FETCH}
 echo "$ $CMD_COMPOSER"
 eval ${CMD_COMPOSER}
+echo "$ $CMD_MIGRATE"
+eval ${CMD_MIGRATE}
 if $GIT diff --name-only "$oldrev" "$newrev" | grep -qE '^(resources/(js|sass|icons)/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|webpack\.mix\.js|tsconfig\.json|\.babelrc\.js)'; then
   echo "Frontend files changed, running install + build"
   echo "$ $CMD_NPM"
@@ -30,8 +32,6 @@ else
 fi
 echo "$ $CMD_LARAVEL_OPTIMIZE"
 eval ${CMD_LARAVEL_OPTIMIZE}
-echo "$ $CMD_MIGRATE"
-eval ${CMD_MIGRATE}
 echo "$ $CMD_REDIS"
 eval ${CMD_REDIS}
 
