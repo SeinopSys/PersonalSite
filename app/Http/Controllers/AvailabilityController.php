@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string}>}')]
+    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>}')]
     #[QueryParameter('start', 'Start of the date range in YYYY-MM-DD format. Defaults to the current week\'s Monday.', required: false, type: 'string')]
     #[QueryParameter('end', 'End of the date range in YYYY-MM-DD format. Defaults to start date plus six days.', required: false, type: 'string')]
     #[QueryParameter('token', 'Base64url-encoded highlight token. Matching events are returned under a `highlighted` key.', required: true, type: 'string')]
@@ -74,7 +74,14 @@ class AvailabilityController extends Controller
             $this->filterHighlightedEvents($busyEvents, $highlightWords),
             fn($e) => $e['end']->gt($cutoff)
         );
-        $highlighted = array_values(array_map($toSlot, $matchedEvents));
+        $highlighted = array_values(array_map(
+            fn($e) => new TimeSlot(
+                $e['start']->toAtomString(),
+                $e['end']->toAtomString(),
+                $e['tentative'] ? true : null,
+            ),
+            $matchedEvents
+        ));
 
         return response()->json(new AvailabilityResult(
             timezone: $tz,

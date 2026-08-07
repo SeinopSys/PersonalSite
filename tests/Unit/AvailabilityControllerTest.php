@@ -221,6 +221,39 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('', $events[0]['name']);
     }
 
+    public function test_parse_ics_events_marks_tentative_suffix(): void
+    {
+        $service = new AvailabilityService();
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Test//EN',
+            'BEGIN:VEVENT',
+            'UID:test-tentative',
+            'DTSTART:20260421T100000Z',
+            'DTEND:20260421T110000Z',
+            'SUMMARY:Team Meeting with Alice (?)',
+            'END:VEVENT',
+            'BEGIN:VEVENT',
+            'UID:test-not-tentative',
+            'DTSTART:20260421T120000Z',
+            'DTEND:20260421T130000Z',
+            'SUMMARY:Standup',
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $rangeStart = Carbon::parse('2026-04-21 00:00:00', 'UTC');
+        $rangeEnd = Carbon::parse('2026-04-21 23:59:59', 'UTC');
+
+        $events = $service->parseIcsEvents($ics, $rangeStart, $rangeEnd, 'UTC');
+
+        $this->assertCount(2, $events);
+        $this->assertTrue($events[0]['tentative']);
+        $this->assertFalse($events[1]['tentative']);
+    }
+
     // --- Highlight: filterHighlightedEvents ---
 
     private function makeEvents(array $names): array

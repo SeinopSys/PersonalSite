@@ -41,10 +41,13 @@ class AvailabilityService
                 ? $this->parseEventDateTime($event->DTEND, $tz)
                 : $start->copy()->addHour();
 
+            $name = isset($event->SUMMARY) ? (string)$event->SUMMARY : '';
+
             $events[] = [
-                'start' => $start,
-                'end'   => $end,
-                'name'  => isset($event->SUMMARY) ? (string)$event->SUMMARY : '',
+                'start'     => $start,
+                'end'       => $end,
+                'name'      => $name,
+                'tentative' => str_ends_with(rtrim($name), '(?)'),
             ];
         }
 

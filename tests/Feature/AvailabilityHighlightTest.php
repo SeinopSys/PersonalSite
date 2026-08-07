@@ -127,6 +127,36 @@ class AvailabilityHighlightTest extends TestCase
         $response->assertJsonMissing(['name' => 'Lunch with Alice']);
     }
 
+    public function test_availability_tentative_highlighted_event_includes_tentative_flag(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Alice',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T100000Z', 'end' => '20300603T110000Z', 'summary' => 'Lunch with Alice (?)'],
+            ['uid' => 'e2', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Meeting with Alice'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'highlighted');
+
+        $highlighted = $response->json('highlighted');
+        $tentativeSlot = collect($highlighted)->firstWhere('start', '2030-06-03T10:00:00+00:00');
+        $confirmedSlot = collect($highlighted)->firstWhere('start', '2030-06-03T14:00:00+00:00');
+
+        $this->assertTrue($tentativeSlot['tentative']);
+        $this->assertArrayNotHasKey('tentative', $confirmedSlot);
+    }
+
     public function test_availability_highlighted_events_match_is_case_sensitive(): void
     {
         $calUrl = 'https://example.com/calendar.ics';

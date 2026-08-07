@@ -106,6 +106,9 @@
                                                     },
                                                     "end": {
                                                         "type": "string"
+                                                    },
+                                                    "tentative": {
+                                                        "type": "boolean"
                                                     }
                                                 },
                                                 "required": [
