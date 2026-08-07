@@ -160,20 +160,7 @@ class AvailabilityService
             $day->addDay();
         }
 
-        usort($awakeWindows, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
-
-        $mergedAwake = [];
-        foreach ($awakeWindows as $window) {
-            if (!empty($mergedAwake) && $window['start']->lte($mergedAwake[count($mergedAwake) - 1]['end'])) {
-                $last = &$mergedAwake[count($mergedAwake) - 1];
-                if ($window['end']->gt($last['end'])) {
-                    $last['end'] = $window['end'];
-                }
-                unset($last);
-            } else {
-                $mergedAwake[] = $window;
-            }
-        }
+        $mergedAwake = $this->mergeIntervals($awakeWindows);
 
         $sleepBlocks = [];
         $cursor = $rangeStart->copy();
@@ -190,6 +177,27 @@ class AvailabilityService
         }
 
         return $sleepBlocks;
+    }
+
+    /** Sorts intervals by start and merges any that overlap or directly touch into one. */
+    public function mergeIntervals(array $intervals): array
+    {
+        usort($intervals, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
+
+        $merged = [];
+        foreach ($intervals as $interval) {
+            if (!empty($merged) && $interval['start']->lte($merged[count($merged) - 1]['end'])) {
+                $last = &$merged[count($merged) - 1];
+                if ($interval['end']->gt($last['end'])) {
+                    $last['end'] = $interval['end'];
+                }
+                unset($last);
+            } else {
+                $merged[] = $interval;
+            }
+        }
+
+        return $merged;
     }
 
     private function subtractBusy(array $busyEvents, Carbon $windowStart, Carbon $windowEnd): array

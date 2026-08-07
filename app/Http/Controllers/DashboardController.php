@@ -277,6 +277,7 @@ class DashboardController extends Controller
             'days'               => self::DAYS,
             'availabilityTokens' => $user->highlightTokens()->orderBy('label')->get(['id', 'label', 'token']),
             'dndEventName'       => $user->dndEventName(),
+            'napEventName'       => $user->napEventName(),
         ];
 
         if (Permission::Sufficient('developer')) {
@@ -327,6 +328,7 @@ class DashboardController extends Controller
             'timezone'       => 'nullable|timezone:all',
             'settings'       => 'nullable|array',
             'dnd_event_name' => 'nullable|string|max:255',
+            'nap_event_name' => 'nullable|string|max:255',
         ]);
 
         $availabilitySettings = [];
@@ -345,6 +347,7 @@ class DashboardController extends Controller
         $user->timezone = $validated['timezone'] ?? null;
         $user->availability_settings = $availabilitySettings;
         $user->dnd_event_name = ($validated['dnd_event_name'] ?? '') !== '' ? $validated['dnd_event_name'] : null;
+        $user->nap_event_name = ($validated['nap_event_name'] ?? '') !== '' ? $validated['nap_event_name'] : null;
         $user->save();
 
         return redirect('/availability')->with('success', 'Settings saved.');

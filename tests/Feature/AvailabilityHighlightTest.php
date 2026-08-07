@@ -253,6 +253,70 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertSame('2030-06-03T22:00:00+00:00', $response->json('unavailable.0.end'));
     }
 
+    public function test_availability_default_nap_event_is_treated_as_sleep(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        // 14:00-15:00 is well within the default 09:00-22:00 wake window, so this only becomes
+        // a sleep block because its name matches the default nap event name.
+        $ics = $this->makeIcs([
+            ['uid' => 'e1', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Taking a nap'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(0, 'unavailable');
+        $sleep = $response->json('sleep');
+        $napBlock = collect($sleep)->first(fn($s) =>
+            $s['start'] === '2030-06-03T14:00:00+00:00' && $s['end'] === '2030-06-03T15:00:00+00:00'
+        );
+        $this->assertNotNull($napBlock, 'Expected the nap event to appear as a sleep block');
+    }
+
+    public function test_availability_custom_nap_event_name_is_configurable_per_user(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $user->nap_event_name = 'Power nap';
+        $user->save();
+
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([
+            // Matches the default name, but this user configured a custom one, so it should NOT count as sleep.
+            ['uid' => 'e1', 'start' => '20300603T140000Z', 'end' => '20300603T150000Z', 'summary' => 'Taking a nap'],
+            // Matches the custom name, so it should count as sleep.
+            ['uid' => 'e2', 'start' => '20300603T160000Z', 'end' => '20300603T170000Z', 'summary' => 'Power nap'],
+        ]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'unavailable');
+        $this->assertSame('2030-06-03T14:00:00+00:00', $response->json('unavailable.0.start'));
+
+        $sleep = $response->json('sleep');
+        $napBlock = collect($sleep)->first(fn($s) =>
+            $s['start'] === '2030-06-03T16:00:00+00:00' && $s['end'] === '2030-06-03T17:00:00+00:00'
+        );
+        $this->assertNotNull($napBlock, 'Expected the custom-named nap event to appear as a sleep block');
+    }
+
     public function test_availability_unavailable_lists_all_busy_events_with_tentative_flag(): void
     {
         $calUrl = 'https://example.com/calendar.ics';

@@ -215,6 +215,26 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('2026-04-20T09:00:00+00:00', $sleepBlocks[1]['end']->toAtomString());
     }
 
+    public function test_merge_intervals_combines_overlapping_and_touching_but_not_disjoint(): void
+    {
+        $service = new AvailabilityService();
+
+        $intervals = [
+            ['start' => Carbon::parse('2026-04-20 09:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 10:00:00', 'UTC')],
+            ['start' => Carbon::parse('2026-04-20 10:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 11:00:00', 'UTC')],
+            ['start' => Carbon::parse('2026-04-20 10:30:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 12:00:00', 'UTC')],
+            ['start' => Carbon::parse('2026-04-20 14:00:00', 'UTC'), 'end' => Carbon::parse('2026-04-20 15:00:00', 'UTC')],
+        ];
+
+        $merged = $service->mergeIntervals($intervals);
+
+        $this->assertCount(2, $merged);
+        $this->assertSame('2026-04-20T09:00:00+00:00', $merged[0]['start']->toAtomString());
+        $this->assertSame('2026-04-20T12:00:00+00:00', $merged[0]['end']->toAtomString());
+        $this->assertSame('2026-04-20T14:00:00+00:00', $merged[1]['start']->toAtomString());
+        $this->assertSame('2026-04-20T15:00:00+00:00', $merged[1]['end']->toAtomString());
+    }
+
     public function test_subtract_sleep_from_events_drops_event_fully_within_sleep_block(): void
     {
         $service = new AvailabilityService();

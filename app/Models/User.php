@@ -53,6 +53,9 @@ class User extends Authenticatable
     /** Default calendar event name treated as "do not disturb" until the user customizes it. */
     public const DEFAULT_DND_EVENT_NAME = 'Do not disturb';
 
+    /** Default calendar event name treated as sleep time until the user customizes it. */
+    public const DEFAULT_NAP_EVENT_NAME = 'Taking a nap';
+
     /**
      * Indicates if the IDs are auto-incrementing.
      *
@@ -69,7 +72,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name', 'email', 'password', 'lang', 'role', 'calendar_url', 'availability_settings', 'timezone',
-        'dnd_event_name',
+        'dnd_event_name', 'nap_event_name',
     ];
 
     protected $casts = [
@@ -92,6 +95,12 @@ class User extends Authenticatable
     public function dndEventName(): string
     {
         return $this->dnd_event_name ?? self::DEFAULT_DND_EVENT_NAME;
+    }
+
+    /** The configured "nap" event name treated as sleep time, falling back to the default when unset. */
+    public function napEventName(): string
+    {
+        return $this->nap_event_name ?? self::DEFAULT_NAP_EVENT_NAME;
     }
 
     public function getGravatar($size = 50)

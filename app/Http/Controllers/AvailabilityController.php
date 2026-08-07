@@ -72,6 +72,17 @@ class AvailabilityController extends Controller
             $tz
         );
 
+        // Events named after the configured nap event count as sleep too, merged in with the
+        // wake/sleep-window blocks above.
+        $napEventName = $user->napEventName();
+        $napBlocks = array_values(array_map(
+            fn($e) => ['start' => $e['start'], 'end' => $e['end']],
+            array_filter($freeSlotEvents, fn($e) => $e['name'] === $napEventName)
+        ));
+        if (!empty($napBlocks)) {
+            $sleepBlocks = $service->mergeIntervals(array_merge($sleepBlocks, $napBlocks));
+        }
+
         $cutoff = Carbon::now($tz)->subDay()->startOfDay();
         $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
         $sleepSlots = array_filter($sleepBlocks, fn($s) => $s['end']->gt($cutoff));

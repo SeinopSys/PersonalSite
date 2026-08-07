@@ -79,6 +79,23 @@
         </div>
 
         <div class="mb-3">
+            <label for="nap-event-name" class="form-label fw-semibold">Nap event name</label>
+            <input type="text"
+                   class="form-control @error('nap_event_name') is-invalid @enderror"
+                   id="nap-event-name"
+                   name="nap_event_name"
+                   value="{{ old('nap_event_name', $napEventName) }}"
+                   maxlength="255">
+            @error('nap_event_name')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+            <div class="form-text">
+                Calendar events whose name matches this exactly are treated as sleep time in the API response,
+                the same as your configured wake/sleep window.
+            </div>
+        </div>
+
+        <div class="mb-3">
             <label class="form-label fw-semibold">Sleep schedule</label>
             <div class="form-text mb-2">
                 Set when you wake up and go to sleep each day. Free slots are shown between wake and sleep times.
