@@ -268,6 +268,11 @@ function buildCalendar(
     });
 
     dayEvents.forEach(event => {
+      // Events the API folded into a sleep block (e.g. a nap event) are already shown by the
+      // purple sleep layer above, so don't also draw them as busy time here.
+      const isSleep = daySleep.some(s => event.startMin >= s.startMin && event.endMin <= s.endMin);
+      if (isSleep) return;
+
       const sm = Math.max(event.startMin, viewMin);
       const em = Math.min(event.endMin, viewMax);
       if (sm >= em) return;
@@ -278,16 +283,10 @@ function buildCalendar(
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
-      // Events the API folded into a sleep block (e.g. a nap event) are rendered like sleep
-      // instead of like busy time, so the debug overlay matches what the API actually reports.
-      const isSleep = daySleep.some(s => event.startMin >= s.startMin && event.endMin <= s.endMin);
-      const [bg, border, color] = isSleep
-        ? ['rgba(111,66,193,0.25)', '#6f42c1', '#3d2465']
-        : ['rgba(220,53,69,0.18)', '#dc3545', '#842029'];
       html += `<div title="${escapedName}" style="position:absolute;left:2px;right:2px;top:${top}px;`
-        + `height:${height}px;background:${bg};border-radius:3px;`
-        + `border-left:3px solid ${border};overflow:hidden;font-size:0.7rem;padding:0 2px;`
-        + `color:${color};line-height:1.2">${escapedName}</div>`;
+        + `height:${height}px;background:rgba(220,53,69,0.18);border-radius:3px;`
+        + 'border-left:3px solid #dc3545;overflow:hidden;font-size:0.7rem;padding:0 2px;'
+        + `color:#842029;line-height:1.2">${escapedName}</div>`;
     });
 
     dayHighlighted.forEach(event => {
