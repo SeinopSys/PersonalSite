@@ -74,7 +74,7 @@ class AvailabilityController extends Controller
 
         $cutoff = Carbon::now($tz)->subDay()->startOfDay();
         $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
-        $sleepBlocks = array_filter($sleepBlocks, fn($s) => $s['end']->gt($cutoff));
+        $sleepSlots = array_filter($sleepBlocks, fn($s) => $s['end']->gt($cutoff));
 
         $toSlot = fn($s) => new TimeSlot($s['start']->toAtomString(), $s['end']->toAtomString());
         $toEventSlot = fn($e) => new TimeSlot(
@@ -89,8 +89,14 @@ class AvailabilityController extends Controller
         );
         $highlighted = array_values(array_map($toEventSlot, $matchedEvents));
 
+        // Sleep takes precedence over busy time: an event's portion that falls within a sleep
+        // block is not reported as unavailable, since it's already covered by the 'sleep' key.
         $unavailableEvents = array_filter($freeSlotEvents, fn($e) => $e['end']->gt($cutoff));
-        $unavailable = array_values(array_map($toEventSlot, $unavailableEvents));
+        $unavailableSegments = array_filter(
+            $service->subtractSleepFromEvents($unavailableEvents, $sleepBlocks),
+            fn($s) => $s['end']->gt($cutoff)
+        );
+        $unavailable = array_values(array_map($toEventSlot, $unavailableSegments));
 
         return response()->json(new AvailabilityResult(
             timezone: $tz,
@@ -98,7 +104,7 @@ class AvailabilityController extends Controller
             free: array_values(array_map($toSlot, $freeSlots)),
             highlighted: $highlighted,
             unavailable: $unavailable,
-            sleep: array_values(array_map($toSlot, $sleepBlocks)),
+            sleep: array_values(array_map($toSlot, $sleepSlots)),
         ));
     }
 

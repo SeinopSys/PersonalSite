@@ -194,18 +194,25 @@ class AvailabilityService
 
     private function subtractBusy(array $busyEvents, Carbon $windowStart, Carbon $windowEnd): array
     {
-        $slots = [['start' => $windowStart->copy(), 'end' => $windowEnd->copy()]];
+        return $this->subtractIntervals(
+            [['start' => $windowStart->copy(), 'end' => $windowEnd->copy()]],
+            $busyEvents
+        );
+    }
 
-        foreach ($busyEvents as $event) {
-            $es = $event['start'];
-            $ee = $event['end'];
+    /** Removes the portions of $slots that overlap any interval in $subtract. */
+    private function subtractIntervals(array $slots, array $subtract): array
+    {
+        foreach ($subtract as $interval) {
+            $es = $interval['start'];
+            $ee = $interval['end'];
             $newSlots = [];
 
             foreach ($slots as $slot) {
                 if ($ee->lte($slot['start']) || $es->gte($slot['end'])) {
                     $newSlots[] = $slot;
                 } elseif ($es->lte($slot['start']) && $ee->gte($slot['end'])) {
-                    // event fully covers slot — removed
+                    // interval fully covers slot — removed
                 } elseif ($es->lte($slot['start'])) {
                     $newSlots[] = ['start' => $ee->copy(), 'end' => $slot['end']];
                 } elseif ($ee->gte($slot['end'])) {
@@ -220,6 +227,35 @@ class AvailabilityService
         }
 
         return $slots;
+    }
+
+    /**
+     * Clips each event against $sleepBlocks so sleep takes precedence over busy time: events
+     * fully within a sleep block are dropped, and events straddling one are split around it.
+     * Each resulting segment keeps its originating event's 'tentative' flag.
+     */
+    public function subtractSleepFromEvents(array $events, array $sleepBlocks): array
+    {
+        $segments = [];
+
+        foreach ($events as $event) {
+            $remaining = $this->subtractIntervals(
+                [['start' => $event['start'], 'end' => $event['end']]],
+                $sleepBlocks
+            );
+
+            foreach ($remaining as $slot) {
+                $segments[] = [
+                    'start'     => $slot['start'],
+                    'end'       => $slot['end'],
+                    'tentative' => $event['tentative'] ?? false,
+                ];
+            }
+        }
+
+        usort($segments, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
+
+        return $segments;
     }
 
     /**

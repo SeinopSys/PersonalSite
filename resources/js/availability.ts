@@ -13,6 +13,7 @@ interface AvailabilityResponse {
   range: { start: string; end: string };
   free: TimeSlot[];
   highlighted: HighlightedEvent[];
+  sleep: TimeSlot[];
   error?: string;
 }
 
@@ -142,6 +143,16 @@ function buildCalendar(
     });
   });
 
+  const sleepByDate: Record<string, DaySlot[]> = {};
+  days.forEach(d => {
+    sleepByDate[d] = [];
+  });
+  (data.sleep ?? []).forEach(slot => {
+    splitAtMidnightToDaySlots(slot).forEach(part => {
+      if (sleepByDate[part.date]) sleepByDate[part.date].push(part);
+    });
+  });
+
   const eventsByDate: Record<string, DayEvent[]> = {};
   if (debugEvents) {
     days.forEach(d => { eventsByDate[d] = []; });
@@ -167,6 +178,12 @@ function buildCalendar(
   let viewMin = 1440; let
     viewMax = 0;
   data.free.forEach(slot => {
+    splitAtMidnightToDaySlots(slot).forEach(part => {
+      viewMin = Math.min(viewMin, part.startMin);
+      viewMax = Math.max(viewMax, part.endMin);
+    });
+  });
+  (data.sleep ?? []).forEach(slot => {
     splitAtMidnightToDaySlots(slot).forEach(part => {
       viewMin = Math.min(viewMin, part.startMin);
       viewMax = Math.max(viewMax, part.endMin);
@@ -214,6 +231,7 @@ function buildCalendar(
   // Day columns
   days.forEach(day => {
     const slots = byDate[day];
+    const daySleep = sleepByDate[day] ?? [];
     const dayEvents = debugEvents ? (eventsByDate[day] ?? []) : [];
     const dayHighlighted = highlighted ? (highlightedByDate[day] ?? []) : [];
     html += '<div style="flex:1;min-width:80px;border-left:1px solid #dee2e6">';
@@ -226,6 +244,17 @@ function buildCalendar(
       const y = (m - viewMin) * PX_PER_MIN;
       html += `<div style="position:absolute;top:${y}px;left:0;right:0;border-top:1px solid #dee2e6"></div>`;
     }
+
+    daySleep.forEach(slot => {
+      const sm = Math.max(slot.startMin, viewMin);
+      const em = Math.min(slot.endMin, viewMax);
+      if (sm >= em) return;
+      const top = (sm - viewMin) * PX_PER_MIN;
+      const height = Math.max(2, (em - sm) * PX_PER_MIN);
+      html += `<div style="position:absolute;left:2px;right:2px;top:${top}px;`
+        + `height:${height}px;background:rgba(111,66,193,0.25);border-radius:3px;`
+        + 'border-left:3px solid #6f42c1"></div>';
+    });
 
     slots.forEach(slot => {
       const sm = Math.max(slot.startMin, viewMin);

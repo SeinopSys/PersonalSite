@@ -215,6 +215,52 @@ class AvailabilityControllerTest extends TestCase
         $this->assertSame('2026-04-20T09:00:00+00:00', $sleepBlocks[1]['end']->toAtomString());
     }
 
+    public function test_subtract_sleep_from_events_drops_event_fully_within_sleep_block(): void
+    {
+        $service = new AvailabilityService();
+
+        $events = [[
+            'start'     => Carbon::parse('2026-04-20 02:00:00', 'UTC'),
+            'end'       => Carbon::parse('2026-04-20 03:00:00', 'UTC'),
+            'name'      => 'Late night reminder',
+            'tentative' => false,
+        ]];
+        $sleepBlocks = [[
+            'start' => Carbon::parse('2026-04-20 01:00:00', 'UTC'),
+            'end'   => Carbon::parse('2026-04-20 09:00:00', 'UTC'),
+        ]];
+
+        $segments = $service->subtractSleepFromEvents($events, $sleepBlocks);
+
+        $this->assertCount(0, $segments);
+    }
+
+    public function test_subtract_sleep_from_events_splits_event_straddling_sleep_block(): void
+    {
+        $service = new AvailabilityService();
+
+        $events = [[
+            'start'     => Carbon::parse('2026-04-20 22:00:00', 'UTC'),
+            'end'       => Carbon::parse('2026-04-21 10:00:00', 'UTC'),
+            'name'      => 'Overnight trip (?)',
+            'tentative' => true,
+        ]];
+        $sleepBlocks = [[
+            'start' => Carbon::parse('2026-04-21 01:00:00', 'UTC'),
+            'end'   => Carbon::parse('2026-04-21 09:00:00', 'UTC'),
+        ]];
+
+        $segments = $service->subtractSleepFromEvents($events, $sleepBlocks);
+
+        $this->assertCount(2, $segments);
+        $this->assertSame('2026-04-20T22:00:00+00:00', $segments[0]['start']->toAtomString());
+        $this->assertSame('2026-04-21T01:00:00+00:00', $segments[0]['end']->toAtomString());
+        $this->assertTrue($segments[0]['tentative']);
+        $this->assertSame('2026-04-21T09:00:00+00:00', $segments[1]['start']->toAtomString());
+        $this->assertSame('2026-04-21T10:00:00+00:00', $segments[1]['end']->toAtomString());
+        $this->assertTrue($segments[1]['tentative']);
+    }
+
     // --- Highlight: parseIcsEvents name extraction ---
 
     public function test_parse_ics_events_includes_summary_as_name(): void
