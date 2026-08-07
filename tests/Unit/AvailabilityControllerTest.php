@@ -168,6 +168,53 @@ class AvailabilityControllerTest extends TestCase
         $this->assertTrue($slotFound);
     }
 
+    // --- Sleep blocks ---
+
+    public function test_compute_range_sleep_blocks_covers_before_wake_and_after_sleep(): void
+    {
+        $service = new AvailabilityService();
+
+        $settings = [
+            'monday' => ['available' => true, 'wake' => '08:00', 'sleep' => '22:00'],
+        ];
+
+        $rangeStart = Carbon::parse('2026-04-20 00:00:00', 'UTC'); // Monday
+        $rangeEnd = Carbon::parse('2026-04-20 23:59:59', 'UTC');
+
+        $sleepBlocks = $service->computeRangeSleepBlocks($settings, $rangeStart, $rangeEnd, 'UTC');
+
+        $this->assertCount(2, $sleepBlocks);
+        $this->assertSame('2026-04-20T00:00:00+00:00', $sleepBlocks[0]['start']->toAtomString());
+        $this->assertSame('2026-04-20T08:00:00+00:00', $sleepBlocks[0]['end']->toAtomString());
+        $this->assertSame('2026-04-20T22:00:00+00:00', $sleepBlocks[1]['start']->toAtomString());
+        $this->assertSame('2026-04-20T23:59:59+00:00', $sleepBlocks[1]['end']->toAtomString());
+    }
+
+    public function test_compute_range_sleep_blocks_merges_unavailable_days_with_adjacent_gaps(): void
+    {
+        $service = new AvailabilityService();
+
+        $settings = [
+            'friday'   => ['available' => true, 'wake' => '09:00', 'sleep' => '01:00'],
+            'saturday' => ['available' => false, 'wake' => '', 'sleep' => ''],
+            'sunday'   => ['available' => false, 'wake' => '', 'sleep' => ''],
+            'monday'   => ['available' => true, 'wake' => '09:00', 'sleep' => '01:00'],
+        ];
+
+        $rangeStart = Carbon::parse('2026-04-17 00:00:00', 'UTC'); // Friday
+        $rangeEnd = Carbon::parse('2026-04-20 23:59:59', 'UTC');   // Monday
+
+        $sleepBlocks = $service->computeRangeSleepBlocks($settings, $rangeStart, $rangeEnd, 'UTC');
+
+        // Saturday's leading gap, both fully-unavailable days, and Monday's pre-wake gap
+        // are all directly adjacent, so they must combine into a single block.
+        $this->assertCount(2, $sleepBlocks);
+        $this->assertSame('2026-04-17T00:00:00+00:00', $sleepBlocks[0]['start']->toAtomString());
+        $this->assertSame('2026-04-17T09:00:00+00:00', $sleepBlocks[0]['end']->toAtomString());
+        $this->assertSame('2026-04-18T01:00:00+00:00', $sleepBlocks[1]['start']->toAtomString());
+        $this->assertSame('2026-04-20T09:00:00+00:00', $sleepBlocks[1]['end']->toAtomString());
+    }
+
     // --- Highlight: parseIcsEvents name extraction ---
 
     public function test_parse_ics_events_includes_summary_as_name(): void

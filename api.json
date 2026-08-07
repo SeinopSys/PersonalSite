@@ -137,6 +137,24 @@
                                                     "end"
                                                 ]
                                             }
+                                        },
+                                        "sleep": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "start": {
+                                                        "type": "string"
+                                                    },
+                                                    "end": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "start",
+                                                    "end"
+                                                ]
+                                            }
                                         }
                                     },
                                     "required": [
@@ -144,7 +162,8 @@
                                         "range",
                                         "free",
                                         "highlighted",
-                                        "unavailable"
+                                        "unavailable",
+                                        "sleep"
                                     ]
                                 }
                             }

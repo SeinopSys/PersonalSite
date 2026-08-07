@@ -114,6 +114,84 @@ class AvailabilityService
         return $freeSlots;
     }
 
+    /**
+     * Returns sleep blocks (time outside the configured wake/sleep window, and all of any day
+     * marked unavailable) within [rangeStart, rangeEnd]. Directly adjacent or overlapping blocks
+     * — e.g. a day marked unavailable next to another day's pre-wake gap — are merged into one.
+     */
+    public function computeRangeSleepBlocks(array $settings, Carbon $rangeStart, Carbon $rangeEnd, string $tz): array
+    {
+        $awakeWindows = [];
+        $day = $rangeStart->copy()->setTimezone($tz)->startOfDay();
+
+        while ($day->lte($rangeEnd)) {
+            $dayName = self::DAY_NAMES[$day->dayOfWeek];
+            $daySetting = $settings[$dayName] ?? null;
+
+            if ($daySetting !== null && !($daySetting['available'] ?? true)) {
+                $day->addDay();
+                continue;
+            }
+
+            if (!empty($daySetting['wake'])) {
+                [$wh, $wm] = array_map('intval', explode(':', $daySetting['wake']));
+                $windowStart = $day->copy()->setTime($wh, $wm);
+            } else {
+                $windowStart = $day->copy()->startOfDay();
+            }
+
+            if (!empty($daySetting['sleep'])) {
+                [$sh, $sm] = array_map('intval', explode(':', $daySetting['sleep']));
+                $windowEnd = $day->copy()->setTime($sh, $sm);
+                if ($windowEnd->lte($windowStart)) {
+                    $windowEnd->addDay();
+                }
+            } else {
+                $windowEnd = $day->copy()->endOfDay();
+            }
+
+            if ($windowStart->lt($rangeStart)) $windowStart = $rangeStart->copy();
+            if ($windowEnd->gt($rangeEnd)) $windowEnd = $rangeEnd->copy();
+
+            if ($windowStart->lt($windowEnd)) {
+                $awakeWindows[] = ['start' => $windowStart, 'end' => $windowEnd];
+            }
+
+            $day->addDay();
+        }
+
+        usort($awakeWindows, fn($a, $b) => $a['start']->timestamp <=> $b['start']->timestamp);
+
+        $mergedAwake = [];
+        foreach ($awakeWindows as $window) {
+            if (!empty($mergedAwake) && $window['start']->lte($mergedAwake[count($mergedAwake) - 1]['end'])) {
+                $last = &$mergedAwake[count($mergedAwake) - 1];
+                if ($window['end']->gt($last['end'])) {
+                    $last['end'] = $window['end'];
+                }
+                unset($last);
+            } else {
+                $mergedAwake[] = $window;
+            }
+        }
+
+        $sleepBlocks = [];
+        $cursor = $rangeStart->copy();
+        foreach ($mergedAwake as $window) {
+            if ($window['start']->gt($cursor)) {
+                $sleepBlocks[] = ['start' => $cursor->copy(), 'end' => $window['start']->copy()];
+            }
+            if ($window['end']->gt($cursor)) {
+                $cursor = $window['end']->copy();
+            }
+        }
+        if ($cursor->lt($rangeEnd)) {
+            $sleepBlocks[] = ['start' => $cursor->copy(), 'end' => $rangeEnd->copy()];
+        }
+
+        return $sleepBlocks;
+    }
+
     private function subtractBusy(array $busyEvents, Carbon $windowStart, Carbon $windowEnd): array
     {
         $slots = [['start' => $windowStart->copy(), 'end' => $windowEnd->copy()]];

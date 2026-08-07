@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>, unavailable: list<array{start: string, end: string, tentative?: bool}>}')]
+    #[Response(type: 'array{timezone: string, range: array{start: string, end: string}, free: list<array{start: string, end: string}>, highlighted: list<array{start: string, end: string, tentative?: bool}>, unavailable: list<array{start: string, end: string, tentative?: bool}>, sleep: list<array{start: string, end: string}>}')]
     #[QueryParameter('start', 'Start of the date range in YYYY-MM-DD format. Defaults to the current week\'s Monday.', required: false, type: 'string')]
     #[QueryParameter('end', 'End of the date range in YYYY-MM-DD format. Defaults to start date plus six days.', required: false, type: 'string')]
     #[QueryParameter('token', 'Base64url-encoded highlight token. Matching events are returned under a `highlighted` key.', required: true, type: 'string')]
@@ -65,8 +65,16 @@ class AvailabilityController extends Controller
             $tz
         );
 
+        $sleepBlocks = $service->computeRangeSleepBlocks(
+            $settings,
+            $rangeStart->copy()->subDay(),
+            $rangeEnd->copy()->addDay(),
+            $tz
+        );
+
         $cutoff = Carbon::now($tz)->subDay()->startOfDay();
         $freeSlots = array_filter($freeSlots, fn($s) => $s['end']->gt($cutoff));
+        $sleepBlocks = array_filter($sleepBlocks, fn($s) => $s['end']->gt($cutoff));
 
         $toSlot = fn($s) => new TimeSlot($s['start']->toAtomString(), $s['end']->toAtomString());
         $toEventSlot = fn($e) => new TimeSlot(
@@ -90,6 +98,7 @@ class AvailabilityController extends Controller
             free: array_values(array_map($toSlot, $freeSlots)),
             highlighted: $highlighted,
             unavailable: $unavailable,
+            sleep: array_values(array_map($toSlot, $sleepBlocks)),
         ));
     }
 

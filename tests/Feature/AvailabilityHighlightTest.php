@@ -157,6 +157,54 @@ class AvailabilityHighlightTest extends TestCase
         $this->assertArrayNotHasKey('tentative', $confirmedSlot);
     }
 
+    public function test_availability_response_includes_sleep_key(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([]);
+        $this->seedCache($calUrl, $ics);
+
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-03&end=2030-06-03&token={$token->token_base64}");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['sleep']);
+    }
+
+    public function test_availability_sleep_merges_weekend_with_adjacent_wake_sleep_gaps(): void
+    {
+        $calUrl = 'https://example.com/calendar.ics';
+        $user = $this->makeUser($calUrl);
+        $token = CalendarHighlightToken::create([
+            'user_id' => $user->id,
+            'token'   => CalendarHighlightToken::generateToken(),
+            'label'   => 'Friend',
+        ]);
+        CalendarHighlightWord::create(['token_id' => $token->id, 'user_id' => $user->id, 'word' => 'Alice']);
+
+        $ics = $this->makeIcs([]);
+        $this->seedCache($calUrl, $ics);
+
+        // 2030-06-07 is a Friday, 2030-06-10 is the following Monday.
+        $response = $this->getJson("/api/availability/testuser?start=2030-06-07&end=2030-06-10&token={$token->token_base64}");
+
+        $response->assertOk();
+        $sleep = $response->json('sleep');
+
+        // Friday's post-sleep gap, both weekend days (marked fully unavailable), and Monday's
+        // pre-wake gap are all directly adjacent, so they must combine into a single block.
+        $mergedBlock = collect($sleep)->first(fn($s) =>
+            $s['start'] === '2030-06-07T22:00:00+00:00' && $s['end'] === '2030-06-10T09:00:00+00:00'
+        );
+        $this->assertNotNull($mergedBlock, 'Expected a merged sleep block spanning Friday 22:00 through Monday 09:00');
+    }
+
     public function test_availability_unavailable_lists_all_busy_events_with_tentative_flag(): void
     {
         $calUrl = 'https://example.com/calendar.ics';
