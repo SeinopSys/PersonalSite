@@ -132,6 +132,7 @@
     </form>
 
     <h3 class="mt-4">Test availability</h3>
+    <p><a href="/docs/api#/operations/availability.show" target="_blank"><x-fa icon="book" first></x-fa>&nbsp;API documentation</a></p>
     <div class="d-flex flex-column gap-2 mb-3" style="max-width:420px">
         <div class="d-flex gap-2">
             <div class="flex-fill">
