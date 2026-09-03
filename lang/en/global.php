@@ -12,8 +12,6 @@ return [
     'home' => 'Home',
     'about' => 'About Me',
     'dashboard' => 'Dashboard',
-    'availability' => 'Availability',
-    'connections' => 'Connections',
     'account' => 'Account',
     'uploads' => 'Uploads',
     'tools' => 'Tools',

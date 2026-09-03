@@ -23,79 +23,8 @@
 
     <div class="row g-4 mt-0">
 
-        {{-- Availability --}}
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ __('global.availability') }}</h5>
-                    <a href="/availability" class="btn btn-sm btn-outline-secondary">Manage</a>
-                </div>
-                <div class="card-body">
-                    @if(!$hasCalendar)
-                        <p class="text-muted mb-0">
-                            No calendar URL configured.
-                            <a href="/availability">Set it up on the Availability page</a> to see your free/busy stats
-                            here.
-                        </p>
-                    @else
-                        <div id="avail-stats">
-                            {{-- Skeleton rows --}}
-                            @foreach(['Today', 'This week', 'Past ' . $pastDays . ' days'] as $i => $rowTitle)
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between small mb-1">
-                                        <span class="fw-semibold">{{ $rowTitle }}</span>
-                                        <span class="placeholder-glow"><span class="placeholder" style="width:{{ 11 + ($i * 2) }}rem"></span></span>
-                                    </div>
-                                    <div class="progress" style="height:8px">
-                                        <div class="progress-bar bg-secondary progress-bar-striped progress-bar-animated" style="width:100%"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        {{-- Highlight events modal --}}
-                        <div class="modal fade" id="highlightEventsModal" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="highlightEventsModalLabel"></h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <table class="table table-sm mb-0 small">
-                                            <thead><tr><th>Event</th><th>Start</th><th>End</th></tr></thead>
-                                            <tbody id="highlightEventsModalBody"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Friends section: headings are static, lists are updated by JS --}}
-                        @if(!empty($highlightLabels))
-                            <div class="small fw-semibold mb-1 mt-3">Top highlights (past {{ $pastDays }} days)</div>
-                            <ol id="highlight-list" class="list-unstyled mb-0 small">
-                                @foreach(range(1, 10) as $i)
-                                    <li class="d-flex justify-content-between">
-                                        <span class="placeholder-glow"><span class="placeholder" style="width:{{ 4 + ($i % 5) }}rem"></span></span>
-                                        <span class="ms-2 placeholder-glow"><span class="placeholder" style="width:3rem"></span></span>
-                                    </li>
-                                @endforeach
-                            </ol>
-                            <div id="highlight-no-time-section" class="d-none">
-                                <div class="small fw-semibold mb-1 mt-3 text-muted">No time logged</div>
-                                <p id="highlight-no-time-list" class="mb-0 small text-muted"></p>
-                            </div>
-                        @endif
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        {{-- Uploads & Connections (wrapper) --}}
-        <div class="col-md-6">
         {{-- Uploads --}}
-        <div class="d-flex flex-column gap-4 h-100 align-content-between">
+        <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{{ __('global.uploads') }}</h5>
@@ -151,25 +80,6 @@
                     @endif
                 </div>
             </div>
-
-            {{-- Connections graph --}}
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ __('global.connections') }}</h5>
-                    <a href="/connections" class="btn btn-sm btn-outline-secondary">Manage</a>
-                </div>
-                <div class="card-body">
-                    @if(!$hasConnections)
-                        <p class="text-muted mb-0">
-                            No connections tracked yet.
-                            Add some on the <a href="/connections">Connections page</a> to see your network graph here.
-                        </p>
-                    @else
-                        <canvas id="connections-graph" width="400" height="260" style="width:100%;height:260px"></canvas>
-                    @endif
-                </div>
-            </div>
-        </div>
         </div>
 
     </div>

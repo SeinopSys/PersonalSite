@@ -5,7 +5,6 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
@@ -50,12 +49,6 @@ class User extends Authenticatable
 {
     use Notifiable, Uuids;
 
-    /** Default calendar event name treated as "do not disturb" until the user customizes it. */
-    public const DEFAULT_DND_EVENT_NAME = 'Do not disturb';
-
-    /** Default calendar event name treated as sleep time until the user customizes it. */
-    public const DEFAULT_NAP_EVENT_NAME = 'Taking a nap';
-
     /**
      * Indicates if the IDs are auto-incrementing.
      *
@@ -71,13 +64,10 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password', 'lang', 'role', 'calendar_url', 'availability_settings', 'timezone',
-        'dnd_event_name', 'nap_event_name',
+        'name', 'email', 'password', 'lang', 'role',
     ];
 
     protected $casts = [
-        'availability_settings' => 'array',
-        'calendar_url' => 'encrypted',
         'two_factor_secret' => 'encrypted',
         'two_factor_confirmed_at' => 'datetime',
     ];
@@ -90,18 +80,6 @@ class User extends Authenticatable
     protected $hidden = [
         'password', 'remember_token', 'two_factor_secret',
     ];
-
-    /** The configured "do not disturb" event name, falling back to the default when unset. */
-    public function dndEventName(): string
-    {
-        return $this->dnd_event_name ?? self::DEFAULT_DND_EVENT_NAME;
-    }
-
-    /** The configured "nap" event name treated as sleep time, falling back to the default when unset. */
-    public function napEventName(): string
-    {
-        return $this->nap_event_name ?? self::DEFAULT_NAP_EVENT_NAME;
-    }
 
     public function getGravatar($size = 50)
     {
@@ -142,31 +120,6 @@ class User extends Authenticatable
     public function uploads()
     {
         return $this->hasMany(Upload::class, 'uploaded_by', 'id');
-    }
-
-    public function highlightTokens(): HasMany
-    {
-        return $this->hasMany(CalendarHighlightToken::class);
-    }
-
-    public function sleepExceptions(): HasMany
-    {
-        return $this->hasMany(SleepException::class);
-    }
-
-    public function connections(): HasMany
-    {
-        return $this->hasMany(Connection::class);
-    }
-
-    public function connectionSources(): HasMany
-    {
-        return $this->hasMany(ConnectionSource::class);
-    }
-
-    public function connectionAttributeDefinitions(): HasMany
-    {
-        return $this->hasMany(ConnectionAttributeDefinition::class);
     }
 
     public function hasTwoFactorEnabled(): bool
