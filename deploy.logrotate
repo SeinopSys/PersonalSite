@@ -1,0 +1,21 @@
+# Log rotation for git-deploy-toolkit: installed as /etc/logrotate.d/git-deploy-personalsite on each deploy and
+# run by the nightly logrotate timer. See deploy.conf for the rest of the deploy setup.
+#
+# Retention: 14 days. This site has no privacy policy that sets a log retention period, so this is the
+# default used for every app on the server. `daily` with `rotate 13` is what makes that "up to 14 days": the
+# current file holds at most one day and the 13 rotated ones the 13 days before it. Change it here if a
+# policy is ever written.
+#
+# `su` is required because storage/logs is group-writable, or logrotate skips the files as insecure. nginx and
+# PHP keep the files open, so copy and truncate instead of moving them.
+@WORKTREE@/storage/logs/nginx-error.log
+@WORKTREE@/storage/logs/laravel.log {
+    su www-data www-data
+    daily
+    rotate 13
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}
