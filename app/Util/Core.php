@@ -158,6 +158,24 @@ class Core
     }
 
     /**
+     * The deployed commit as "<short sha>;<date>". git-deploy-toolkit leaves it in .git-deploy-commit (sha, then the
+     * commit date) on every deploy, since the deployed tree has no .git of its own that would know which commit is
+     * running; falls back to asking git for local development.
+     */
+    private static function getDeployedCommitInfo(): string
+    {
+        $file = base_path('.git-deploy-commit');
+        if (is_readable($file)) {
+            [$sha, $date] = array_pad(explode("\n", trim(file_get_contents($file))), 2, '');
+            if (preg_match('/^[0-9a-f]{40}$/', $sha) === 1 && strtotime($date) !== false) {
+                return substr($sha, 0, 7).';'.(new \DateTime($date))->format('Y-m-d H:i:s O');
+            }
+        }
+
+        return rtrim((string) shell_exec('git log -1 --date=short  --pretty="format:%h;%ci"'));
+    }
+
+    /**
      * Returns the HTML of the GIT information in the website's footer
      *
      * @return array
@@ -167,7 +185,7 @@ class Core
         $key = self::COMMIT_INFO_REDIS_KEY;
         $commit_info = Redis::get($key);
         if ($commit_info === null) {
-            $commit_info = rtrim(shell_exec('git log -1 --date=short  --pretty="format:%h;%ci"'));
+            $commit_info = self::getDeployedCommitInfo();
             Redis::set($key, $commit_info, 'EX', 3600);
         }
         $data = [];
