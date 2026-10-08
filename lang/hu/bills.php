@@ -120,7 +120,7 @@ return [
     'tx-not-found' => 'Nincs tranzakció ezzel a dátummal és összeggel.',
     'create-and-link' => 'Rögzítés és összekötés',
     'already-linked-here' => 'Már összekötve',
-    'paid-times' => 'Kifizetve :count alkalommal',
+    'paid-times' => ':count alkalommal',
     'advance-invoice' => 'Részszámla (előleg)',
     'advance-invoice-label' => 'Részszámla (előleg)',
     'settlement-covers' => 'Elszámoló: :count részszámlát foglal magában',
@@ -153,6 +153,6 @@ return [
     'credit-source-none' => '(nem szereplő számlából származó jóváírás)',
     'credit-line-from' => 'Jóváírás: :amount (a(z) :invoice számla túlfizetéséből)',
     'overpayment-credited' => 'Túlfizetés jóváírva: :amount (:invoices)',
-    'paid-times-settled' => ':count alkalommal kifizetve, jóváírással rendezve',
+    'paid-times-settled' => ':count alkalommal, jóváírással rendezve',
     'days' => 'nap',
 ];

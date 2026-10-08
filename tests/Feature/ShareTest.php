@@ -134,11 +134,11 @@ class ShareTest extends TestCase
         $this->pay($owner, $bill, '2024-07-26', 33338);
         $link = $this->link($owner);
 
-        $hu = $this->get('/share/'.$link->token)->assertOk()->assertSee('többször lett kifizetve')->assertSee('3 alkalommal kifizetve');
+        $hu = $this->get('/share/'.$link->token)->assertOk()->assertSee('többször lett kifizetve')->assertSee('3 alkalommal');
         $this->assertStringContainsString($this->money(14644 * 2), $hu->getContent());
         $this->assertStringContainsString('2024. 07. 05.', $hu->getContent());
 
-        $this->get('/share/'.$link->token.'?lang=en')->assertOk()->assertSee('paid more than once')->assertSee('Paid 3 times');
+        $this->get('/share/'.$link->token.'?lang=en')->assertOk()->assertSee('paid more than once')->assertSee('3 times');
     }
 
     public function test_missing_invoices_between_periods_are_marked(): void
@@ -311,7 +311,7 @@ class ShareTest extends TestCase
         $this->assertStringNotContainsString('class="text-end text-nowrap">'.$this->money(14644), $table);
 
         // The amount leads the cell, then the Bootstrap badges, then the payments
-        $this->assertMatchesRegularExpression('#<span class="fw-semibold me-1">'.preg_quote($this->money(14644), '#').'</span>\s*<span class="badge text-bg-success">Kifizetve</span>\s*<span class="badge text-bg-danger ms-1">2 alkalommal kifizetve</span>\s*<div>2025\. 02\. 05\.#u', $table);
+        $this->assertMatchesRegularExpression('#<span class="fw-semibold me-1">'.preg_quote($this->money(14644), '#').'</span>\s*<span class="badge text-bg-success">Kifizetve</span>\s*<span class="badge text-bg-danger ms-1">2 alkalommal</span>\s*<div>2025\. 02\. 05\.#u', $table);
         $this->assertMatchesRegularExpression('#'.preg_quote($this->money(5000), '#').'</span>\s*<span class="badge text-bg-warning">Kifizetetlen</span>#u', $table);
         $this->assertMatchesRegularExpression('#'.preg_quote($this->money(6000), '#').'</span>\s*<span class="badge text-bg-danger">Lejárt</span>#u', $table);
     }
@@ -487,8 +487,8 @@ class ShareTest extends TestCase
         $this->assertStringContainsString('Túlfizetés jóváírva: '.$this->money(23567).' (NEXT/1)', $page);
         $this->assertStringContainsString('Jóváírás: '.$this->money(23567).' (a(z) TWICE/1 számla túlfizetéséből)', $page);
         // The badge stays, but muted and saying why, instead of the red "paid twice" warning
-        $this->assertStringContainsString('<span class="badge text-bg-secondary ms-1">2 alkalommal kifizetve, jóváírással rendezve</span>', $page);
-        $this->assertStringNotContainsString('<span class="badge text-bg-danger ms-1">2 alkalommal kifizetve</span>', $page);
+        $this->assertStringContainsString('<span class="badge text-bg-secondary ms-1">2 alkalommal, jóváírással rendezve</span>', $page);
+        $this->assertStringNotContainsString('<span class="badge text-bg-danger ms-1">2 alkalommal</span>', $page);
     }
 
     public function test_a_partly_credited_overpayment_stays_listed_with_what_is_left(): void
@@ -507,7 +507,7 @@ class ShareTest extends TestCase
         $page = $this->get('/share/'.$this->link($owner)->token)->assertOk()->getContent();
         $this->assertStringContainsString('ebből már jóváírva: '.$this->money(10000), $page);
         // Still something outstanding, so the red badge stays
-        $this->assertStringContainsString('<span class="badge text-bg-danger ms-1">3 alkalommal kifizetve</span>', $page);
+        $this->assertStringContainsString('<span class="badge text-bg-danger ms-1">3 alkalommal</span>', $page);
         $this->assertStringNotContainsString('jóváírással rendezve', $page);
     }
 

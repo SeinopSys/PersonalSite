@@ -22,7 +22,7 @@ return [
     'paid' => 'Kifizetve',
     'unpaid' => 'Kifizetetlen',
     'overdue' => 'Lejárt',
-    'paid-times' => ':count alkalommal kifizetve',
+    'paid-times' => ':count alkalommal',
     'missing-invoice' => 'Hiányzó számla: :from – :to',
     'advance' => 'Részszámla (előleg)',
     'settlement' => 'Elszámoló: :count részszámlát foglal magában',
@@ -51,5 +51,5 @@ return [
     'already-credited' => 'ebből már jóváírva: :amount',
     'credit-from' => 'Jóváírás: :amount (a(z) :invoice számla túlfizetéséből)',
     'overpayment-credited' => 'Túlfizetés jóváírva: :amount (:invoices)',
-    'paid-times-settled' => ':count alkalommal kifizetve, jóváírással rendezve',
+    'paid-times-settled' => ':count alkalommal, jóváírással rendezve',
 ];

@@ -120,7 +120,7 @@ return [
     'tx-not-found' => 'No transaction with this date and amount.',
     'create-and-link' => 'Record it and link',
     'already-linked-here' => 'Already linked',
-    'paid-times' => 'Paid :count times',
+    'paid-times' => ':count times',
     'advance-invoice' => 'Advance invoice (részszámla)',
     'advance-invoice-label' => 'Advance invoice (részszámla)',
     'settlement-covers' => 'Settlement: covers :count advance invoice(s)',
@@ -153,6 +153,6 @@ return [
     'credit-source-none' => '(credit from an invoice not listed)',
     'credit-line-from' => 'Credit: :amount (from the overpayment of :invoice)',
     'overpayment-credited' => 'Overpayment credited: :amount (:invoices)',
-    'paid-times-settled' => 'Paid :count times, settled by credit',
+    'paid-times-settled' => ':count times, settled by credit',
     'days' => 'days',
 ];

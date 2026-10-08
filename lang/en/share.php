@@ -22,7 +22,7 @@ return [
     'paid' => 'Paid',
     'unpaid' => 'Unpaid',
     'overdue' => 'Overdue',
-    'paid-times' => 'Paid :count times',
+    'paid-times' => ':count times',
     'missing-invoice' => 'Missing invoice: :from – :to',
     'advance' => 'Advance invoice (részszámla)',
     'settlement' => 'Settlement: covers :count advance invoice(s)',
@@ -51,5 +51,5 @@ return [
     'already-credited' => 'of which already credited: :amount',
     'credit-from' => 'Credit: :amount (from the overpayment of :invoice)',
     'overpayment-credited' => 'Overpayment credited: :amount (:invoices)',
-    'paid-times-settled' => 'Paid :count times, settled by credit',
+    'paid-times-settled' => ':count times, settled by credit',
 ];
