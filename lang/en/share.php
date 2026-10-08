@@ -21,7 +21,6 @@ return [
     'status' => 'Status',
     'paid' => 'Paid',
     'unpaid' => 'Unpaid',
-    'overdue' => 'Overdue',
     'paid-times' => ':count times',
     'missing-invoice' => 'Missing invoice: :from – :to',
     'advance' => 'Advance invoice (részszámla)',

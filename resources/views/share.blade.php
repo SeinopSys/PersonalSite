@@ -81,11 +81,11 @@
     @foreach($report['types'] as $type => $rows)
         <h3 class="h5 mt-3">{{ __('share.type-'.$type) }}</h3>
         <div class="table-responsive"><table class="table table-bordered table-sm align-top">
-            <thead><tr><th>{{ __('share.invoice') }}</th><th>{{ __('share.period') }}</th><th>{{ __('share.due') }}</th><th>{{ __('share.amount-and-payment') }}</th></tr></thead>
+            <thead><tr><th>{{ __('share.invoice') }}</th><th>{{ __('share.period') }}</th><th>{{ __('share.amount-and-payment') }}</th></tr></thead>
             <tbody>
             @foreach($rows as $row)
                 @if($row['gap_before'])
-                    <tr><td colspan="4" class="text-danger-emphasis fw-semibold">{{ __('share.missing-invoice', ['from' => $date($row['gap_before']['from']), 'to' => $date($row['gap_before']['to'])]) }}</td></tr>
+                    <tr><td colspan="3" class="text-danger-emphasis fw-semibold">{{ __('share.missing-invoice', ['from' => $date($row['gap_before']['from']), 'to' => $date($row['gap_before']['to'])]) }}</td></tr>
                 @endif
                 <tr>
                     <td>
@@ -94,12 +94,10 @@
                         @if($row['settlement_covers'] > 0)<div class="text-body-secondary small">{{ __('share.settlement', ['count' => $row['settlement_covers']]) }}</div>@endif
                     </td>
                     <td>{{ $period($row) }}@if($row['overlaps'])<div class="text-warning-emphasis fw-semibold small">{{ __('share.overlap') }}</div>@endif</td>
-                    <td>{{ $date($row['due_date']) }}</td>
                     <td>
                         <span class="fw-semibold me-1">{{ $money($row['amount']) }}</span>
                         @if($row['status'] === 'paid')<span class="badge text-bg-success">{{ __('share.paid') }}</span>
-                        @elseif($row['status'] === 'overdue')<span class="badge text-bg-danger">{{ __('share.overdue') }}</span>
-                        @else<span class="badge text-bg-warning">{{ __('share.unpaid') }}</span>@endif
+                        @else<span class="badge text-bg-danger">{{ __('share.unpaid') }}</span>@endif
                         @if($row['times_paid'] > 1)
                             @if($row['net_extra'] > 0)<span class="badge text-bg-danger ms-1">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</span>
                             @else<span class="badge text-bg-secondary ms-1">{{ __('share.paid-times-settled', ['count' => $row['times_paid']]) }}</span>@endif

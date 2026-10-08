@@ -21,7 +21,6 @@ return [
     'status' => 'Állapot',
     'paid' => 'Kifizetve',
     'unpaid' => 'Kifizetetlen',
-    'overdue' => 'Lejárt',
     'paid-times' => ':count alkalommal',
     'missing-invoice' => 'Hiányzó számla: :from – :to',
     'advance' => 'Részszámla (előleg)',

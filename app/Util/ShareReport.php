@@ -96,7 +96,7 @@ class ShareReport
                 })->sortBy('date')->values()->all();
                 $times = count($payments);
                 $due = $bill->due_date?->toDateString();
-                $status = $times > 0 ? 'paid' : ($due !== null && $due < $today ? 'overdue' : 'unpaid');
+                $status = $times > 0 ? 'paid' : 'unpaid';
 
                 $row = [
                     'invoice_number' => $bill->invoice_number,

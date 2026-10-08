@@ -307,13 +307,14 @@ class ShareTest extends TestCase
         $this->assertStringContainsString('<th>Összeg és kifizetés</th>', $table);
         $this->assertStringNotContainsString('<th>Állapot', $table);
         $header = substr($table, 0, strpos($table, '</thead>'));
-        $this->assertSame(4, preg_match_all('/<th[ >]/', $header), 'invoice, period, due date, amount and payment');
+        $this->assertSame(3, preg_match_all('/<th[ >]/', $header), 'invoice, period, amount and payment');
         $this->assertStringNotContainsString('class="text-end text-nowrap">'.$this->money(14644), $table);
 
         // The amount leads the cell, then the Bootstrap badges, then the payments
         $this->assertMatchesRegularExpression('#<span class="fw-semibold me-1">'.preg_quote($this->money(14644), '#').'</span>\s*<span class="badge text-bg-success">Kifizetve</span>\s*<span class="badge text-bg-danger ms-1">2 alkalommal</span>\s*<div>2025\. 02\. 05\.#u', $table);
-        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(5000), '#').'</span>\s*<span class="badge text-bg-warning">Kifizetetlen</span>#u', $table);
-        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(6000), '#').'</span>\s*<span class="badge text-bg-danger">Lejárt</span>#u', $table);
+        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(5000), '#').'</span>\s*<span class="badge text-bg-danger">Kifizetetlen</span>#u', $table);
+        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(6000), '#').'</span>\s*<span class="badge text-bg-danger">Kifizetetlen</span>#u', $table);
+        $this->assertStringNotContainsString('Lejárt', $table);
     }
 
     public function test_the_theme_toggle_is_a_plain_link_style_button(): void
