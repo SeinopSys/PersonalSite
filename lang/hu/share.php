@@ -40,7 +40,6 @@ return [
     'theme-toggle' => 'Világos/sötét mód váltása',
     'amount-and-payment' => 'Összeg és kifizetés',
     'transfers-heading' => 'Átutalások részletezése',
-    'transfers-note' => 'Csak azok az átutalások szerepelnek, amelyeket a hozzájuk kötött számlák teljes egészében fedeznek. Az átutalás összege kissé magasabb lehet a számlák összegénél az utalás költsége miatt.',
     'invoices-paid' => 'Kifizetett számlák',
     'invoices-total' => 'Számlák összesen',
     'split-transfer' => ':count átutalásra bontva (összesen :total)',

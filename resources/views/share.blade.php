@@ -116,7 +116,6 @@
 
     @if($report['transfers'])
         <h2 class="h4 mt-4 mb-1">{{ __('share.transfers-heading') }}</h2>
-        <p class="small text-body-secondary">{{ __('share.transfers-note') }}</p>
         <div class="table-responsive"><table class="table table-bordered table-sm align-top">
             <thead><tr><th>{{ __('share.transfer-date-amount') }}</th><th>{{ __('share.invoices-paid') }}</th></tr></thead>
             <tbody>

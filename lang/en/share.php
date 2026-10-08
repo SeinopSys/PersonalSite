@@ -40,7 +40,6 @@ return [
     'theme-toggle' => 'Switch between light and dark mode',
     'amount-and-payment' => 'Amount and payment',
     'transfers-heading' => 'Breakdown by transfer',
-    'transfers-note' => 'Only transfers that the invoices linked to them cover in full are listed. A transfer can be slightly higher than the invoices it paid because of the sender\'s bank fee.',
     'invoices-paid' => 'Paid invoices',
     'invoices-total' => 'Invoices total',
     'split-transfer' => 'Split across :count transfers (:total in total)',

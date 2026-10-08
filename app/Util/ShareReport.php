@@ -154,9 +154,21 @@ class ShareReport
                 continue;
             }
 
+            // The landlord's statement shows what arrived, not what left the account: take the bank fee off, spread over
+            // the instalments in proportion (the last one absorbs rounding)
+            $fee = max(0, $amount - $payable);
+            $feeLeft = $fee;
+            $lastIndex = $members->count() - 1;
+            $payments = $members->values()->map(function ($t, int $i) use ($amount, $fee, &$feeLeft, $lastIndex) {
+                $share = $i === $lastIndex ? $feeLeft : (int) round($fee * $t->amount / max(1, $amount));
+                $feeLeft -= $share;
+
+                return ['date' => $t->date->toDateString(), 'amount' => $t->amount - $share];
+            })->all();
+
             $transfers[] = [
-                'payments' => $members->map(fn ($t) => ['date' => $t->date->toDateString(), 'amount' => $t->amount])->all(),
-                'amount' => $amount,
+                'payments' => $payments,
+                'amount' => $amount - $fee,
                 'invoices' => $bills->map(fn (Bill $b) => [
                     'invoice_number' => $b->invoice_number,
                     'type' => $b->type,

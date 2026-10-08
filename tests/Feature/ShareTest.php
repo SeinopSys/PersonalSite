@@ -346,7 +346,8 @@ class ShareTest extends TestCase
         $this->assertStringContainsString('Átutalások részletezése', $section);
         // The date, then the bold amount on its own line under it, in a single column
         $this->assertStringContainsString('<th>Átutalás dátuma és összege</th>', $section);
-        $this->assertMatchesRegularExpression('#<div>2024\. 07\. 05\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(14673), '#').'</div>#u', $section);
+        $this->assertMatchesRegularExpression('#<div>2024\. 07\. 05\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(14644), '#').'</div>#u', $section);
+        $this->assertStringNotContainsString($this->money(14673), $section);
         $this->assertStringNotContainsString('<th>Átutalás</th>', $section);
         $this->assertMatchesRegularExpression('#COVERED/1 <span class="text-body-secondary">· Fűtés \+ melegvíz, 2024\. 04\. 01\. – 2024\. 04\. 30\.</span> · '.preg_quote($this->money(14644), '#').'#u', $section);
         // The invoices' sum closes the invoices cell: plain, left-aligned, with no rule above it
@@ -394,9 +395,9 @@ class ShareTest extends TestCase
         $this->assertSame(1, substr_count($section, 'SPLIT/1'));
         // Two transfers on the same day: the date once, then both amounts in bold under it
         $this->assertSame(1, substr_count($section, '2024. 09. 08.'));
-        $this->assertMatchesRegularExpression('#<div>2024\. 09\. 08\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(8972), '#').'</div>\s*<div class="fw-bold">'.preg_quote($this->money(41759), '#').'</div>#u', $section);
+        $this->assertMatchesRegularExpression('#<div>2024\. 09\. 08\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(8954), '#').'</div>\s*<div class="fw-bold">'.preg_quote($this->money(41676), '#').'</div>#u', $section);
         $this->assertSame(1, substr_count($section, 'Számlák összesen'));
-        $this->assertStringContainsString('2 átutalásra bontva (összesen '.$this->money(50731).')', $section);
+        $this->assertStringContainsString('2 átutalásra bontva (összesen '.$this->money(50630).')', $section);
     }
 
     public function test_a_bill_paid_twice_appears_under_each_transfer_in_date_order(): void
@@ -444,8 +445,8 @@ class ShareTest extends TestCase
 
         $this->assertSame(1, substr_count($section, '2025. 04. 29.'));
         $this->assertSame(1, substr_count($section, '2025. 05. 13.'));
-        $this->assertMatchesRegularExpression('#<div>2025\. 04\. 29\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(44277), '#').'</div>\s*<div class="mt-1">2025\. 05\. 13\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(100), '#').'</div>\s*<div class="fw-bold">'.preg_quote($this->money(8649), '#').'</div>#u', $section);
-        $this->assertStringContainsString('3 átutalásra bontva (összesen '.$this->money(53026).')', $section);
+        $this->assertMatchesRegularExpression('#<div>2025\. 04\. 29\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(44040), '#').'</div>\s*<div class="mt-1">2025\. 05\. 13\.</div>\s*<div class="fw-bold">'.preg_quote($this->money(99), '#').'</div>\s*<div class="fw-bold">'.preg_quote($this->money(8603), '#').'</div>#u', $section);
+        $this->assertStringContainsString('3 átutalásra bontva (összesen '.$this->money(52742).')', $section);
     }
 
     public function test_a_credit_makes_a_smaller_transfer_wholly_cover_its_bill(): void
