@@ -15,7 +15,10 @@ trait Uuids
         parent::boot();
 
         static::creating(function ($model) {
-            $model->{$model->getKeyName()} = Uuid::generate(4)->string;
+            // An id set beforehand is kept, which is what lets an export be imported with its ids (and so its links) intact
+            if (empty($model->{$model->getKeyName()})) {
+                $model->{$model->getKeyName()} = Uuid::generate(4)->string;
+            }
         });
     }
 }

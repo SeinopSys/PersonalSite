@@ -117,6 +117,21 @@ class User extends Authenticatable
         return $this->hasMany(UploadFolder::class);
     }
 
+    public function bills()
+    {
+        return $this->hasMany(Bill::class);
+    }
+
+    public function shareLinks()
+    {
+        return $this->hasMany(ShareLink::class);
+    }
+
+    public function bankTransactions()
+    {
+        return $this->hasMany(BankTransaction::class);
+    }
+
     public function uploads()
     {
         return $this->hasMany(Upload::class, 'uploaded_by', 'id');

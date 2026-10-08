@@ -22,6 +22,9 @@ scssFiles.forEach(filename => {
   mix.sass(`resources/sass/${filename}`, 'css');
 });
 
+// pdf.js worker for the bills page, loaded from /js/pdf.worker.min.js
+mix.copy('node_modules/pdfjs-dist/legacy/build/pdf.worker.min.js', 'public/js/pdf.worker.min.js');
+
 mix.autoload({ 'jquery': ['window.$', 'window.jQuery'] });
 
 mix.preact();

@@ -14,6 +14,7 @@ return [
     'dashboard' => 'Kezelőpult',
     'account' => 'Fiók',
     'uploads' => 'Feltöltések',
+    'bills' => 'Számlák',
     'tools' => 'Eszközök',
     'networking' => 'Hálózatszámoló Űrlapok',
     'selfsigned' => 'Ön-aláírt SSL Tanúsítvány',

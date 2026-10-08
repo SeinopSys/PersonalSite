@@ -1,0 +1,60 @@
+.bills-dropzone {
+    display: block;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    border: 2px dashed var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    color: var(--bs-secondary-color);
+    transition: background-color .15s, border-color .15s;
+
+    &:hover, &.over {
+        background-color: var(--bs-tertiary-bg);
+        border-color: var(--bs-primary);
+        color: var(--bs-body-color);
+    }
+}
+
+.bills-review {
+    .bills-filename {
+        word-break: break-word;
+        min-width: 10rem;
+    }
+
+    input[type=date] {
+        min-width: 9.5rem;
+    }
+
+    // Four stacked columns instead of seven side by side, so the table fits without scrolling
+    td:nth-child(1) {
+        min-width: 12rem;
+        width: 30%;
+    }
+}
+
+.bills-list td:nth-child(2) {
+    white-space: nowrap;
+}
+
+// Shown at its natural size (shrunk only if wider than the page) so the figures can be read while typing them in
+.bills-fullimage {
+    text-align: center;
+    background-color: var(--bs-tertiary-bg);
+
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+}
+
+.bills-queue {
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+// Members of a grouped transaction are stacked in one row; every line gets the same height so the columns stay aligned
+.bills-stack > div {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+}

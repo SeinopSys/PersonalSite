@@ -3,12 +3,16 @@
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\BankTransactionsController;
+use App\Http\Controllers\BillsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InlinerController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\LRCController;
 use App\Http\Controllers\NetSalaryController;
 use App\Http\Controllers\SelfsignedController;
+use App\Http\Controllers\ShareController;
+use App\Http\Controllers\ShareLinksController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\UploadFoldersController;
@@ -56,6 +60,12 @@ Route::post('register', [RegisterController::class, 'register']);
 Route::get('/login/2fa', [TwoFactorChallengeController::class, 'show'])->name('2fa.challenge');
 Route::post('/login/2fa', [TwoFactorChallengeController::class, 'verify'])->name('2fa.verify');
 
+// Public, read-only overview for whoever holds the secret link; throttled, and unknown links are all just a 404
+Route::get('/share/{token}', [ShareController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware('throttle:60,1')
+    ->name('share.show');
+
 // These require login
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
@@ -74,4 +84,21 @@ Route::group(['middleware' => ['auth']], function () {
     Route::put('/uploads/folders/{id}', [UploadFoldersController::class, 'update']);
     Route::delete('/uploads/folders/{id}', [UploadFoldersController::class, 'destroy']);
     Route::post('/uploads/folders/{id}/regen', [UploadFoldersController::class, 'regenKey']);
+});
+
+// Bills and bank transactions are personal data; every user only ever sees their own
+Route::group(['middleware' => ['auth', 'user']], function () {
+    Route::get('/bills', [BillsController::class, 'index']);
+    Route::get('/bills/data', [BillsController::class, 'data']);
+    Route::get('/bills/shares', [ShareLinksController::class, 'index']);
+    Route::post('/bills/shares', [ShareLinksController::class, 'store']);
+    Route::delete('/bills/shares/{id}', [ShareLinksController::class, 'destroy']);
+    Route::post('/bills', [BillsController::class, 'store']);
+    Route::put('/bills/{id}', [BillsController::class, 'update']);
+    Route::delete('/bills/{id}', [BillsController::class, 'destroy']);
+    Route::post('/bank-transactions', [BankTransactionsController::class, 'store']);
+    Route::post('/bank-transactions/group', [BankTransactionsController::class, 'group']);
+    Route::post('/bank-transactions/ungroup', [BankTransactionsController::class, 'ungroup']);
+    Route::put('/bank-transactions/{id}', [BankTransactionsController::class, 'update']);
+    Route::delete('/bank-transactions/{id}', [BankTransactionsController::class, 'destroy']);
 });

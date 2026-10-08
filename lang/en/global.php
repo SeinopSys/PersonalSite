@@ -14,6 +14,7 @@ return [
     'dashboard' => 'Dashboard',
     'account' => 'Account',
     'uploads' => 'Uploads',
+    'bills' => 'Bills',
     'tools' => 'Tools',
     'networking' => 'Networking Calculators',
     'selfsigned' => 'Self-Signed SSL Certificate',
