@@ -34,7 +34,8 @@ return [
     'type-water' => 'Víz',
     'footnote' => 'Ez az áttekintés csak a számlákat és a hozzájuk kötött kifizetések dátumát és összegét mutatja.',
     'valid-until' => 'Link érvényes eddig: :date',
-    'expired-title' => 'Ez a link lejárt',
-    'expired-body' => 'Ez a megosztási link :date napon lejárt, ezért az áttekintés már nem érhető el.',
-    'expired-help' => 'Kérj új linket attól, aki ezt küldte neked.',
+    'gone-title' => 'Ez a link már nem érhető el',
+    'gone-body' => 'Lehet, hogy lejárt, visszavonták, vagy elgépelődött a cím.',
+    'gone-help' => 'Kérj új linket attól, aki ezt küldte neked.',
+    'theme-toggle' => 'Világos/sötét mód váltása',
 ];

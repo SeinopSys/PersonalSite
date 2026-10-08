@@ -34,7 +34,8 @@ return [
     'type-water' => 'Water',
     'footnote' => 'This overview only shows the invoices and the dates and amounts of the payments linked to them.',
     'valid-until' => 'Link valid until :date',
-    'expired-title' => 'This link has expired',
-    'expired-body' => 'This share link expired on :date, so the overview is no longer available.',
-    'expired-help' => 'Please ask the person who sent it to you for a new link.',
+    'gone-title' => 'This link is no longer available',
+    'gone-body' => 'It may have expired, been withdrawn, or the address may have been mistyped.',
+    'gone-help' => 'Please ask the person who sent it to you for a new link.',
+    'theme-toggle' => 'Switch between light and dark mode',
 ];

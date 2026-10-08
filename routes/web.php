@@ -61,8 +61,8 @@ Route::get('/login/2fa', [TwoFactorChallengeController::class, 'show'])->name('2
 Route::post('/login/2fa', [TwoFactorChallengeController::class, 'verify'])->name('2fa.verify');
 
 // Public, read-only overview for whoever holds the secret link; throttled, and unknown links are all just a 404
-Route::get('/share/{token}', [ShareController::class, 'show'])
-    ->where('token', '[A-Za-z0-9]{48}')
+Route::get('/share/{token?}', [ShareController::class, 'show'])
+    ->where('token', '.*')
     ->middleware('throttle:60,1')
     ->name('share.show');
 

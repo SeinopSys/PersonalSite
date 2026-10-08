@@ -89,16 +89,39 @@ class ShareTest extends TestCase
         $this->assertNotNull($link->last_viewed_at);
     }
 
-    public function test_the_page_is_not_indexable_cacheable_or_able_to_load_anything_else(): void
+    /** The one script allowed on the page, found through the nonce the policy announces. */
+    private function assertOnlyTheThemeScript($response): void
+    {
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertSame(1, preg_match("/script-src 'nonce-([^']+)'/", $csp, $m), 'the policy must name a script nonce');
+        $content = $response->getContent();
+        $this->assertSame(1, substr_count($content, '<script'), 'exactly one script is allowed');
+        $this->assertStringContainsString('<script nonce="'.$m[1].'">', $content);
+        $this->assertStringNotContainsString("script-src 'unsafe-inline'", $csp);
+        $this->assertStringContainsString("default-src 'none'", $csp);
+        $this->assertStringContainsString("style-src 'self'", $csp);
+    }
+
+    public function test_the_page_is_not_indexable_cacheable_and_only_loads_its_own_stylesheet_and_one_script(): void
     {
         $owner = $this->makeUser();
-        $response = $this->get('/share/'.$this->link($owner)->token)->assertOk();
+        $link = $this->link($owner);
+        $response = $this->get('/share/'.$link->token)->assertOk();
 
         $this->assertStringContainsString('noindex', $response->headers->get('X-Robots-Tag'));
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $this->assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
-        $this->assertStringContainsString("default-src 'none'", $response->headers->get('Content-Security-Policy'));
-        $this->assertStringNotContainsString('<script', $response->getContent());
+        $this->assertOnlyTheThemeScript($response);
+
+        $content = $response->getContent();
+        $this->assertMatchesRegularExpression('#<link rel="stylesheet" href="/css/bootstrap\.css[^"]*">#', $content);
+        $this->assertDoesNotMatchRegularExpression('#(?:src|href)="(?:https?:)?//#', $content);
+        $this->assertStringContainsString('id="theme-toggle"', $content);
+        $this->assertStringContainsString('prefers-color-scheme: dark', $content);
+
+        // A fresh nonce for every request
+        $nonce = fn ($r) => preg_match("/nonce-([^']+)'/", $r->headers->get('Content-Security-Policy'), $m) ? $m[1] : null;
+        $this->assertNotSame($nonce($response), $nonce($this->get('/share/'.$link->token)));
     }
 
     public function test_bills_paid_more_than_once_are_marked_with_the_extra_amount(): void
@@ -151,34 +174,50 @@ class ShareTest extends TestCase
         }
     }
 
-    public function test_unknown_malformed_and_revoked_links_are_a_plain_404(): void
+    public function test_every_unavailable_link_gets_the_same_friendly_page(): void
     {
         $owner = $this->makeUser();
-        $this->get('/share/'.str_repeat('a', 48))->assertNotFound();
-        $this->get('/share/short')->assertNotFound();
+        $this->pay($owner, $this->bill($owner, ['invoice_number' => 'SECRET/INV']), '2025-02-05', 14673);
 
         $revoked = $this->link($owner);
         $this->get('/share/'.$revoked->token)->assertOk();
         $this->actingAs($owner)->deleteJson('/bills/shares/'.$revoked->id)->assertOk();
-        $this->get('/share/'.$revoked->token)->assertNotFound();
+
+        $pages = [
+            'expired' => $this->get('/share/'.$this->link($owner, ['expires_at' => now()->subDays(2)])->token),
+            'revoked' => $this->get('/share/'.$revoked->token),
+            'never existed' => $this->get('/share/'.str_repeat('a', 48)),
+            'too short' => $this->get('/share/short'),
+            'too long' => $this->get('/share/'.str_repeat('b', 200)),
+            'odd characters' => $this->get('/share/'.rawurlencode('<script>alert(1)</script>')),
+            'extra path' => $this->get('/share/'.str_repeat('c', 48).'/more/path'),
+            'no token' => $this->get('/share'),
+            'empty token' => $this->get('/share/'),
+        ];
+        $first = null;
+        foreach ($pages as $label => $response) {
+            $response->assertNotFound()->assertSee('Ez a link már nem érhető el')->assertSee('Kérj új linket');
+            $content = preg_replace('/nonce="[^"]+"/', 'nonce="N"', $response->getContent());
+            $first ??= $content;
+            $this->assertSame($first, $content, "$label looks different from the others");
+            $this->assertStringContainsString('noindex', $response->headers->get('X-Robots-Tag'), $label);
+            $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'), $label);
+            $this->assertOnlyTheThemeScript($response);
+            $this->assertStringContainsString('id="theme-toggle"', $content, $label);
+        }
+        // Nothing of the owner's data, no scripts, and none of the site's navigation or links
+        foreach (['SECRET/INV', '<a ', '<nav', 'owner@example.com'] as $absent) {
+            $this->assertStringNotContainsString($absent, $first, "found: $absent");
+        }
     }
 
-    public function test_an_expired_link_shows_a_friendly_message_and_no_data(): void
+    public function test_the_unavailable_page_follows_the_language_option_and_does_not_count_a_view(): void
     {
         $owner = $this->makeUser();
-        $this->pay($owner, $this->bill($owner, ['invoice_number' => 'SECRET/INV']), '2025-02-05', 14673);
-        $expired = $this->link($owner, ['expires_at' => now()->subDays(2)]);
+        $expired = $this->link($owner, ['expires_at' => now()->subDay()]);
 
-        $hu = $this->get('/share/'.$expired->token)->assertStatus(410)->assertSee('Ez a link lejárt')->assertSee('Kérj új linket');
-        $this->assertStringContainsString(now()->subDays(2)->format('Y. m. d.'), $hu->getContent());
-        $this->assertStringNotContainsString('SECRET/INV', $hu->getContent());
-        $this->assertStringContainsString('noindex', $hu->headers->get('X-Robots-Tag'));
-        $this->assertStringContainsString('no-store', $hu->headers->get('Cache-Control'));
-        $this->assertStringNotContainsString('<script', $hu->getContent());
-
-        $this->get('/share/'.$expired->token.'?lang=en')->assertStatus(410)->assertSee('This link has expired')->assertSee('ask the person who sent it');
-
-        // A visit to an expired link is not counted as a view
+        $this->get('/share/'.$expired->token.'?lang=en')->assertNotFound()
+            ->assertSee('This link is no longer available')->assertSee('ask the person who sent it');
         $this->assertSame(0, $expired->fresh()->view_count);
     }
 
@@ -186,7 +225,7 @@ class ShareTest extends TestCase
     {
         $owner = $this->makeUser();
         $this->get('/share/'.$this->link($owner, ['expires_at' => now()])->token)->assertOk();
-        $this->get('/share/'.$this->link($owner, ['expires_at' => now()->subDay()])->token)->assertStatus(410);
+        $this->get('/share/'.$this->link($owner, ['expires_at' => now()->subDay()])->token)->assertNotFound();
     }
 
     public function test_the_page_states_how_long_the_link_is_valid(): void
