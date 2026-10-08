@@ -16,6 +16,8 @@ const bill = (amount: number, fileModified: string | null, extra: Partial<Bill> 
     due_date: null,
     file_modified_at: fileModified,
     advance: false,
+    credit_applied: 0,
+    credit_source_id: null,
     amount,
     transaction_ids: [],
     ...extra,
@@ -140,5 +142,15 @@ describe('suggestMatches', () => {
     expect(within).toHaveLength(1);
     expect(within[0].fee).toBe(0);
     expect(suggestMatches([b], [tx('t1', '2025-02-10', 9790)], 3)).toEqual([]);
+  });
+
+  it('compares a transfer with what remains of a bill after a credit', () => {
+    // 32,186 Ft bill, 23,567 Ft of it already settled by credit: 8,619 Ft left to transfer, plus a 30 Ft fee
+    const credited = bill(32186, '2025-05-13', { credit_applied: 23567 });
+    const result = suggestMatches([credited], [tx('t1', '2025-05-13', 8649)], 3);
+    expect(result).toHaveLength(1);
+    expect(result[0].fee).toBe(30);
+    // The same transfer says nothing about the bill when there is no credit
+    expect(suggestMatches([bill(32186, '2025-05-13')], [tx('t1', '2025-05-13', 8649)], 3)).toEqual([]);
   });
 });

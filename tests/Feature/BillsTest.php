@@ -355,4 +355,48 @@ class BillsTest extends TestCase
         ]])->assertOk();
         $this->getJson('/bills/data')->assertJsonCount(0, 'analysis.water.overlaps');
     }
+
+    public function test_credit_applied_is_stored_encrypted_defaults_to_zero_and_can_be_cleared(): void
+    {
+        $this->actingAs($this->makeUser());
+        $id = $this->postJson('/bills', ['bills' => [$this->billPayload(['amount' => 32186, 'credit_applied' => 23567])]])
+            ->assertOk()->assertJsonPath('created.0.credit_applied', 23567)->json('created.0.id');
+        $this->assertStringStartsWith('eyJ', \DB::table('bills')->value('credit_applied'));
+        $this->assertSame(8619, Bill::first()->payableAmount());
+
+        // Not sent: kept. Sent as null: cleared.
+        $this->putJson("/bills/$id", $this->billPayload(['amount' => 32186]))->assertOk()->assertJsonPath('bill.credit_applied', 23567);
+        $this->putJson("/bills/$id", $this->billPayload(['amount' => 32186, 'credit_applied' => null]))->assertOk()->assertJsonPath('bill.credit_applied', 0);
+        $this->assertSame(32186, Bill::first()->payableAmount());
+    }
+
+    public function test_a_credit_cannot_exceed_the_bill_but_negative_amount_bills_are_still_fine(): void
+    {
+        $this->actingAs($this->makeUser());
+        $this->postJson('/bills', ['bills' => [$this->billPayload(['amount' => 1000, 'credit_applied' => 1001])]])->assertUnprocessable()->assertJsonValidationErrors('credit_applied');
+        $this->postJson('/bills', ['bills' => [$this->billPayload(['amount' => 1000, 'credit_applied' => -1])]])->assertUnprocessable();
+        $this->postJson('/bills', ['bills' => [$this->billPayload(['amount' => -99])]])->assertOk();
+        $this->assertSame(1, Bill::count());
+    }
+
+    public function test_the_credit_source_must_be_another_of_your_own_bills_and_means_nothing_without_a_credit(): void
+    {
+        $owner = $this->makeUser();
+        $this->actingAs($owner);
+        $source = $this->postJson('/bills', ['bills' => [$this->billPayload(['sha256' => str_repeat('1', 64), 'invoice_number' => 'SRC/1'])]])->json('created.0.id');
+        $target = $this->postJson('/bills', ['bills' => [$this->billPayload(['sha256' => str_repeat('2', 64), 'invoice_number' => 'TGT/1', 'amount' => 30000])]])->json('created.0.id');
+
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 5000, 'credit_source_id' => $source]))
+            ->assertOk()->assertJsonPath('bill.credit_source_id', $source);
+        // Kept when not sent, cleared with the credit
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 5000]))->assertOk()->assertJsonPath('bill.credit_source_id', $source);
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 0]))->assertOk()->assertJsonPath('bill.credit_source_id', null);
+
+        // Not itself, not a stranger's bill, not a made-up id
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 5000, 'credit_source_id' => $target]))->assertUnprocessable();
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 5000, 'credit_source_id' => (string) \Illuminate\Support\Str::uuid()]))->assertUnprocessable();
+        $stranger = $this->makeUser('stranger');
+        $theirs = Bill::create(['user_id' => $stranger->id, 'type' => 'water', 'period_start' => '2025-01-01', 'period_end' => '2025-01-31', 'amount' => 100]);
+        $this->putJson("/bills/$target", $this->billPayload(['amount' => 30000, 'credit_applied' => 5000, 'credit_source_id' => $theirs->id]))->assertUnprocessable();
+    }
 }

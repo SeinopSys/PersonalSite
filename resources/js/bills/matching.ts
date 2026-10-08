@@ -35,6 +35,9 @@ const dayNumber = (iso: string): number => {
 /** Differences up to this many Ft, either way, are treated as rounding (credits, rounded-up payments) and not worth flagging. */
 export const ROUNDING_TOLERANCE = 200;
 
+/** What had to be transferred for a bill: its amount less any credit carried over from an earlier overpayment. */
+export const payableAmount = (bill: Bill): number => bill.amount - (bill.credit_applied ?? 0);
+
 /** Transfer fees seen so far are around 0.2-0.4% with a small minimum; allow some slack above that. */
 export const maxFeeFor = (amount: number): number => Math.max(500, Math.round(amount * 0.02));
 
@@ -69,7 +72,7 @@ function paymentsOf(transactions: BankTransaction[], billById: Map<string, Bill>
       };
     })
     .filter(p => {
-      const remainder = p.amount - p.accountedAmount - p.linked.reduce((acc, b) => acc + b.amount, 0);
+      const remainder = p.amount - p.accountedAmount - p.linked.reduce((acc, b) => acc + payableAmount(b), 0);
       return p.linked.length === 0 ? remainder > 0 : remainder > maxFeeFor(p.amount);
     });
 }
@@ -110,7 +113,7 @@ export function suggestMatches(bills: Bill[], transactions: BankTransaction[], w
     let best: { subset: typeof candidates; fee: number; distance: number } | null = null;
     for (let mask = 1; mask < 2 ** candidates.length; mask += 1) {
       const subset = candidates.filter((_, i) => mask & (2 ** i)); // eslint-disable-line no-bitwise
-      const fee = available - subset.reduce((acc, c) => acc + c.bill.amount, 0);
+      const fee = available - subset.reduce((acc, c) => acc + payableAmount(c.bill), 0);
       // Bills adding up to slightly more than the payment still count: that is rounding, not a different payment
       if (fee >= -ROUNDING_TOLERANCE && fee <= feeLimit) {
         const total = subset.reduce((acc, c) => acc + c.distance, 0);

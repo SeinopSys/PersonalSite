@@ -13,6 +13,10 @@ export interface Bill {
   file_modified_at: string | null;
   /** Advance invoice (részszámla): an estimated charge inside the period a later settlement bill covers */
   advance: boolean;
+  /** Part of the amount settled by credit from an earlier overpayment, so not paid by transfer */
+  credit_applied: number;
+  /** The overpaid invoice this credit came from, so that overpayment counts as settled */
+  credit_source_id: string | null;
   amount: number;
   transaction_ids: string[];
 }

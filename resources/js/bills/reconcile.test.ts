@@ -56,7 +56,7 @@ describe('feePercentOf', () => {
 });
 
 const bill = (id: string, amount: number): Bill => ({
-  id, type: 'water', sha256: null, invoice_number: null, period_start: '2025-01-01', period_end: '2025-01-31', due_date: null, file_modified_at: null, advance: false, amount, transaction_ids: [],
+  id, type: 'water', sha256: null, invoice_number: null, period_start: '2025-01-01', period_end: '2025-01-31', due_date: null, file_modified_at: null, advance: false, credit_applied: 0, credit_source_id: null, amount, transaction_ids: [],
 });
 const member = (id: string, amount: number, billIds: string[], extra: Partial<BankTransaction> = {}): BankTransaction => ({
   id, date: '2025-04-29', amount, note: null, accounted: false, accounted_amount: null, group_id: 'g', bill_ids: billIds, ...extra,
@@ -81,5 +81,22 @@ describe('reconcileGroup', () => {
   it('reports the rest as unaccounted and skips groups with an accounted-for member', () => {
     expect(reconcileGroup([member('a', 44277, ['heat']), member('b', 8649, [])], billById)).toMatchObject({ unaccounted: 32370 });
     expect(reconcileGroup([member('a', 100, [], { accounted: true }), member('b', 50, [])], billById).skipped).toBe(true);
+  });
+});
+
+describe('credit applied', () => {
+  const credited = bill('elec', 32186);
+  credited.credit_applied = 23567;
+  const byId = new Map([[credited.id, credited]]);
+
+  it('counts only what had to be transferred when checking a payment', () => {
+    const result = reconcileGroup([member('p', 8649, ['elec'], { group_id: null })], byId);
+    expect(result).toMatchObject({ fee: 30, unaccounted: 0, excess: 0 });
+    expect(result.feePercent).toBeCloseTo(0.348, 2);
+  });
+
+  it('is not enough on its own without the credit', () => {
+    const plain = bill('elec', 32186);
+    expect(reconcileGroup([member('p', 8649, ['elec'], { group_id: null })], new Map([[plain.id, plain]]))).toMatchObject({ excess: 23537 });
   });
 });

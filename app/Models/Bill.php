@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property int $amount
  * @property CarbonInterface|null $file_modified_at
  * @property bool $advance
+ * @property int|null $credit_applied Part of the amount settled by credit from an earlier overpayment
+ * @property string|null $credit_source_id The overpaid invoice that credit came from
  * @property-read User $user
  * @property-read Collection|BankTransaction[] $transactions
  * @method static Builder|Bill whereUserId($value)
@@ -46,7 +48,7 @@ class Bill extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'user_id', 'type', 'sha256', 'invoice_number', 'period_start', 'period_end', 'due_date', 'amount', 'file_modified_at', 'advance',
+        'user_id', 'type', 'sha256', 'invoice_number', 'period_start', 'period_end', 'due_date', 'amount', 'file_modified_at', 'advance', 'credit_applied', 'credit_source_id',
     ];
 
     // All bill details are encrypted at rest with the app key
@@ -59,6 +61,7 @@ class Bill extends Model
         'due_date' => EncryptedDate::class,
         'file_modified_at' => EncryptedDate::class,
         'advance' => EncryptedBool::class,
+        'credit_applied' => EncryptedInt::class,
         'amount' => EncryptedInt::class,
     ];
 
@@ -69,6 +72,17 @@ class Bill extends Model
             $bill->sha256_index = BlindIndex::make($bill->sha256);
             $bill->invoice_number_index = BlindIndex::make($bill->invoice_number);
         });
+    }
+
+    /** What had to be paid by transfer: the amount less any credit carried over from an earlier overpayment. */
+    public function payableAmount(): int
+    {
+        return $this->amount - ($this->credit_applied ?? 0);
+    }
+
+    public function creditSource(): BelongsTo
+    {
+        return $this->belongsTo(Bill::class, 'credit_source_id');
     }
 
     public function user(): BelongsTo

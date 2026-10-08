@@ -46,7 +46,7 @@ class DataTransferTest extends TestCase
         $adv = Bill::create(['user_id' => $u->id, 'type' => 'water', 'sha256' => str_repeat('a', 64), 'invoice_number' => 'FVV/1',
             'period_start' => '2024-09-05', 'period_end' => '2024-10-29', 'due_date' => '2024-11-15', 'amount' => 2659, 'file_modified_at' => '2024-11-01', 'advance' => true]);
         $set = Bill::create(['user_id' => $u->id, 'type' => 'water', 'sha256' => str_repeat('b', 64), 'invoice_number' => 'FVV/2',
-            'period_start' => '2024-09-05', 'period_end' => '2025-03-04', 'amount' => 2880]);
+            'period_start' => '2024-09-05', 'period_end' => '2025-03-04', 'amount' => 2880, 'credit_applied' => 1000, 'credit_source_id' => $adv->id]);
         $heat = Bill::create(['user_id' => $u->id, 'type' => 'heating', 'invoice_number' => 'H1', 'period_start' => '2024-04-01', 'period_end' => '2024-04-30', 'amount' => 14644]);
 
         $t1 = BankTransaction::create(['user_id' => $u->id, 'date' => '2024-06-06', 'amount' => 33214, 'external_id' => 'BANK-1']);
@@ -237,5 +237,20 @@ class DataTransferTest extends TestCase
         } finally {
             putenv('BILLS_TRANSFER_PASSPHRASE');
         }
+    }
+
+    public function test_a_credit_on_a_bill_survives_the_round_trip(): void
+    {
+        $local = $this->makeUser('local');
+        $this->seedData($local);
+        $path = $this->export($local);
+        $this->wipe($local);
+        $prod = $this->makeUser('prod');
+        $this->artisan('bills:import', ['user' => $prod->email, 'file' => $path, '--passphrase-file' => "{$this->dir}/pass"])->assertSuccessful();
+
+        $credited = $prod->bills()->get()->first(fn ($b) => $b->invoice_number === 'FVV/2');
+        $this->assertSame(1000, $credited->credit_applied);
+        $this->assertSame($prod->bills()->get()->first(fn ($b) => $b->invoice_number === 'FVV/1')->id, $credited->credit_source_id);
+        $this->assertNull($prod->bills()->get()->first(fn ($b) => $b->invoice_number === 'H1')->credit_applied);
     }
 }

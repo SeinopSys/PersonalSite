@@ -174,6 +174,8 @@ export function BillsApp() {
             due_date: bill.due_date,
             file_modified_at: bill.file_modified_at,
             advance: bill.advance,
+            credit_applied: bill.credit_applied,
+            credit_source_id: bill.credit_source_id,
             amount: bill.amount,
           });
           if (response) await reload();

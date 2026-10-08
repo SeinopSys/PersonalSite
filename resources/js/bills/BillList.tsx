@@ -26,11 +26,16 @@ function statusOf(bill: Bill): 'paid' | 'overdue' | 'unpaid' {
 
 const STATUS_CLASS = { paid: 'bg-success', overdue: 'bg-danger', unpaid: 'bg-warning text-dark' };
 
-function EditRow({ bill, onSave, onCancel }: { bill: Bill; onSave: (b: Bill) => void; onCancel: () => void }) {
+function EditRow({
+  bill, bills, onSave, onCancel,
+}: { bill: Bill; bills: Bill[]; onSave: (b: Bill) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState({
-    start: bill.period_start, end: bill.period_end, due: bill.due_date ?? '', amount: String(bill.amount), invoice: bill.invoice_number ?? '', fileDate: bill.file_modified_at ?? '', advance: bill.advance,
+    start: bill.period_start, end: bill.period_end, due: bill.due_date ?? '', amount: String(bill.amount), invoice: bill.invoice_number ?? '', fileDate: bill.file_modified_at ?? '', advance: bill.advance, credit: bill.credit_applied ? String(bill.credit_applied) : '', creditSource: bill.credit_source_id ?? '',
   });
-  const valid = draft.start && draft.end && draft.end >= draft.start && /^-?\d+$/.test(draft.amount.trim());
+  // A credit comes from an invoice that was overpaid (paid more than once), or the one already chosen
+  const sourceOptions = bills.filter(b => b.id !== bill.id && (b.transaction_ids.length > 1 || b.id === bill.credit_source_id));
+  const creditValid = draft.credit.trim() === '' || (/^\d+$/.test(draft.credit.trim()) && Number(draft.credit.trim()) <= Number(draft.amount.trim()));
+  const valid = draft.start && draft.end && draft.end >= draft.start && /^-?\d+$/.test(draft.amount.trim()) && creditValid;
 
   return (
     <tr>
@@ -42,6 +47,30 @@ function EditRow({ bill, onSave, onCancel }: { bill: Bill; onSave: (b: Bill) => 
       </td>
       <td>
         <input type="text" inputMode="numeric" className="form-control form-control-sm" aria-label={t('amount')} value={draft.amount} onChange={e => setDraft({ ...draft, amount: e.currentTarget.value })} />
+        <input
+          type="text"
+          inputMode="numeric"
+          className={`form-control form-control-sm mt-1${creditValid ? '' : ' is-invalid'}`}
+          aria-label={t('credit-applied')}
+          placeholder={t('credit-applied')}
+          title={t('credit-applied-help')}
+          value={draft.credit}
+          onChange={e => setDraft({ ...draft, credit: e.currentTarget.value })}
+        />
+        {draft.credit.trim() !== '' && (
+          <select
+            className="form-select form-select-sm mt-1"
+            aria-label={t('credit-source')}
+            title={t('credit-source')}
+            value={draft.creditSource}
+            onChange={e => setDraft({ ...draft, creditSource: e.currentTarget.value })}
+          >
+            <option value="">{t('credit-source-none')}</option>
+            {sourceOptions.map(o => (
+              <option key={o.id} value={o.id}>{`${o.invoice_number ?? '—'} · ${t(`type-${o.type}`)}, ${formatPeriod(o)}`}</option>
+            ))}
+          </select>
+        )}
       </td>
       <td><input type="date" className="form-control form-control-sm" aria-label={t('due-date')} value={draft.due} onChange={e => setDraft({ ...draft, due: e.currentTarget.value })} /></td>
       <td><input type="text" className="form-control form-control-sm" aria-label={t('invoice-number')} value={draft.invoice} onChange={e => setDraft({ ...draft, invoice: e.currentTarget.value })} /></td>
@@ -70,6 +99,8 @@ function EditRow({ bill, onSave, onCancel }: { bill: Bill; onSave: (b: Bill) => 
             due_date: draft.due || null,
             file_modified_at: draft.fileDate || null,
             advance: draft.advance,
+            credit_applied: draft.credit.trim() === '' ? 0 : Number(draft.credit.trim()),
+            credit_source_id: draft.credit.trim() === '' || draft.creditSource === '' ? null : draft.creditSource,
             amount: Number(draft.amount.trim()),
             invoice_number: draft.invoice.trim() || null,
           })}
@@ -107,6 +138,9 @@ export function BillList({
   // A gap sits between two bills: above the newer one when oldest-first, below it when newest-first
   const gapBefore = new Map(info.gaps.map(g => [g.before, g]));
   const overlapping = new Set(info.overlaps.map(o => o.second));
+  const numberOf = (id: string) => bills.find(b => b.id === id)?.invoice_number ?? null;
+  // Bills whose credit came from this invoice's overpayment
+  const creditedFrom = (bill: Bill) => bills.filter(b => b.credit_source_id === bill.id && b.credit_applied > 0);
   // A bill that is not an advance itself but spans advance invoices is their settlement
   const advancesWithin = (bill: Bill) => typeBills.filter(a => a.advance && a.id !== bill.id && a.period_start >= bill.period_start && a.period_end <= bill.period_end);
   const unpaidCount = (type: BillType) => bills.filter(b => b.type === type && b.transaction_ids.length === 0).length;
@@ -169,6 +203,7 @@ export function BillList({
                     <EditRow
                       key={bill.id}
                       bill={bill}
+                      bills={bills}
                       onCancel={() => setEditing(null)}
                       onSave={async updated => {
                         if (await onUpdate(bill.id, updated)) setEditing(null);
@@ -184,7 +219,16 @@ export function BillList({
                         )}
                         {overlapping.has(bill.id) && <div className="small text-warning-emphasis fw-semibold">{t('overlap')}</div>}
                       </td>
-                      <td className="text-end">{formatMoney(bill.amount)}</td>
+                      <td className="text-end">
+                        {formatMoney(bill.amount)}
+                        {bill.credit_applied > 0 && (
+                          <div className="small text-body-secondary">
+                            {bill.credit_source_id && numberOf(bill.credit_source_id)
+                              ? t('credit-line-from', { amount: formatMoney(bill.credit_applied), invoice: numberOf(bill.credit_source_id) as string })
+                              : t('credit-line', { amount: formatMoney(bill.credit_applied) })}
+                          </div>
+                        )}
+                      </td>
                       <td>{bill.due_date ? formatDate(bill.due_date) : '—'}</td>
                       <td>{bill.invoice_number ?? '—'}</td>
                       <td>{bill.file_modified_at ? formatDate(bill.file_modified_at) : '—'}</td>
@@ -192,6 +236,9 @@ export function BillList({
                         <span className={`badge ${STATUS_CLASS[status]}`}>{t(`status-${status}`)}</span>
                         {bill.transaction_ids.length > 1 && (
                           <div className="small text-warning-emphasis fw-semibold">{t('paid-times', { count: bill.transaction_ids.length })}</div>
+                        )}
+                        {creditedFrom(bill).length > 0 && (
+                          <div className="small text-body-secondary">{t('overpayment-credited', { amount: formatMoney(creditedFrom(bill).reduce((acc, b) => acc + b.credit_applied, 0)), invoices: creditedFrom(bill).map(b => b.invoice_number ?? '—').join(', ') })}</div>
                         )}
                       </td>
                       <td className="text-nowrap">

@@ -4,6 +4,7 @@ import { findExisting } from './findBill';
 import {
   formatDate, formatMoney, formatPeriod, t, todayIso,
 } from './format';
+import { payableAmount } from './matching';
 import { ReviewTable } from './ReviewTable';
 import { BankTransaction, Bill, DraftBill } from './types';
 
@@ -26,7 +27,7 @@ const likelyTransactions = (bill: Bill, transactions: BankTransaction[]): BankTr
   if (!bill.file_modified_at) return [];
   const fileDay = dayNumber(bill.file_modified_at);
   return transactions
-    .filter(tx => !tx.bill_ids.includes(bill.id) && !tx.accounted && tx.amount >= bill.amount)
+    .filter(tx => !tx.bill_ids.includes(bill.id) && !tx.accounted && tx.amount >= payableAmount(bill))
     .map(tx => ({ tx, delta: dayNumber(tx.date) - fileDay }))
     .filter(({ delta }) => delta >= -3 && delta <= 30)
     .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))
@@ -193,6 +194,7 @@ export function FindBill({
             <Detail label={t('bill-type')}>{t(`type-${found.bill.type}`)}</Detail>
             <Detail label={t('period')}>{formatPeriod(found.bill)}</Detail>
             <Detail label={t('amount')}>{formatMoney(found.bill.amount)}</Detail>
+            {found.bill.credit_applied > 0 && <Detail label={t('credit-applied')}>{formatMoney(found.bill.credit_applied)}</Detail>}
             {found.bill.advance && <Detail label={t('invoice-kind')}>{t('advance-invoice-label')}</Detail>}
             <Detail label={t('due-date')}>{found.bill.due_date ? formatDate(found.bill.due_date) : '—'}</Detail>
             <Detail label={t('invoice-number')}>{found.bill.invoice_number ?? '—'}</Detail>

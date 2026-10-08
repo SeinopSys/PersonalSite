@@ -13,6 +13,8 @@ const bill = (id: string, extra: Partial<Bill> = {}): Bill => ({
   due_date: null,
   file_modified_at: null,
   advance: false,
+  credit_applied: 0,
+  credit_source_id: null,
   amount: 5000,
   transaction_ids: [],
   ...extra,

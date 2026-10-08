@@ -1,4 +1,4 @@
-import { maxFeeFor, ROUNDING_TOLERANCE } from './matching';
+import { maxFeeFor, payableAmount, ROUNDING_TOLERANCE } from './matching';
 import type { BankTransaction, Bill } from './types';
 
 export interface Reconciliation {
@@ -48,7 +48,10 @@ export function reconcileGroup(members: BankTransaction[], billById: Map<string,
   const billIds = Array.from(new Set(members.flatMap(m => m.bill_ids)));
   const result = reconcile(
     members.reduce((acc, m) => acc + m.amount, 0),
-    billIds.reduce((acc, id) => acc + (billById.get(id)?.amount ?? 0), 0),
+    billIds.reduce((acc, id) => {
+      const bill = billById.get(id);
+      return acc + (bill ? payableAmount(bill) : 0);
+    }, 0),
     billIds.length,
     members.reduce((acc, m) => acc + (m.accounted_amount ?? 0), 0),
   );

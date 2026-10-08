@@ -43,7 +43,7 @@
                     <td>{{ $period($row) }}</td>
                     <td class="text-end text-nowrap">{{ $money($row['amount']) }}</td>
                     <td>@foreach($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@endforeach</td>
-                    <td class="text-end text-nowrap text-danger-emphasis fw-semibold">{{ $money($row['extra']) }}</td>
+                    <td class="text-end text-nowrap text-danger-emphasis fw-semibold">{{ $money($row['extra']) }}@if($row['credited'] > 0)<div class="small fw-normal text-body-secondary">{{ __('share.already-credited', ['amount' => $money($row['credited'])]) }}</div>@endif</td>
                 </tr>
             @endforeach
             </tbody>
@@ -101,6 +101,8 @@
                         @elseif($row['status'] === 'overdue')<span class="badge text-bg-danger">{{ __('share.overdue') }}</span>
                         @else<span class="badge text-bg-warning">{{ __('share.unpaid') }}</span>@endif
                         @if($row['times_paid'] > 1)<span class="badge text-bg-danger ms-1">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</span>@endif
+                        @if($row['credit_applied'] > 0)<div class="small text-body-secondary">{{ $row['credit_source'] ? __('share.credit-from', ['amount' => $money($row['credit_applied']), 'invoice' => $row['credit_source']]) : __('share.credit', ['amount' => $money($row['credit_applied'])]) }}</div>@endif
+                        @if($row['credited_out'] > 0)<div class="small text-body-secondary">{{ __('share.overpayment-credited', ['amount' => $money($row['credited_out']), 'invoices' => implode(', ', $row['credited_to'])]) }}</div>@endif
                         @foreach($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@endforeach
                     </td>
                 </tr>
@@ -108,6 +110,36 @@
             </tbody>
         </table></div>
     @endforeach
+
+    @if($report['transfers'])
+        <h2 class="h4 mt-4 mb-1">{{ __('share.transfers-heading') }}</h2>
+        <p class="small text-body-secondary">{{ __('share.transfers-note') }}</p>
+        <div class="table-responsive"><table class="table table-bordered table-sm align-top">
+            <thead><tr><th>{{ __('share.transfer-date-amount') }}</th><th>{{ __('share.invoices-paid') }}</th></tr></thead>
+            <tbody>
+            @foreach($report['transfers'] as $t)
+                <tr>
+                    <td class="text-nowrap">
+                        {{-- Each date once, with the amounts transferred that day under it --}}
+                        @foreach(collect($t['payments'])->groupBy('date') as $day => $dayPayments)
+                            <div{!! $loop->first ? '' : ' class="mt-1"' !!}>{{ $date($day) }}</div>
+                            @foreach($dayPayments as $p)
+                                <div class="fw-bold">{{ $money($p['amount']) }}</div>
+                            @endforeach
+                        @endforeach
+                        @if(count($t['payments']) > 1)<div class="small text-body-secondary">{{ __('share.split-transfer', ['count' => count($t['payments']), 'total' => $money($t['amount'])]) }}</div>@endif
+                    </td>
+                    <td>
+                        @foreach($t['invoices'] as $inv)
+                            <div>{{ $inv['invoice_number'] ?? '—' }} <span class="text-body-secondary">· {{ __('share.type-'.$inv['type']) }}, {{ $date($inv['period_start']) }} – {{ $date($inv['period_end']) }}</span> · {{ $money($inv['amount']) }}@if($inv['credit_applied'] > 0)<span class="small text-body-secondary"> ({{ __('share.credit-short', ['amount' => $money($inv['credit_applied'])]) }})</span>@endif</div>
+                        @endforeach
+                        <div class="mt-1"><span class="small text-body-secondary">{{ $t['has_credit'] ? __('share.invoices-total-after-credit') : __('share.invoices-total') }}</span> <span class="fw-semibold">{{ $money($t['invoices_total']) }}</span></div>
+                    </td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table></div>
+    @endif
 
     <p class="mt-4 text-body-secondary small">{{ __('share.footnote') }}</p>
 </main>

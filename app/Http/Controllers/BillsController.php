@@ -10,6 +10,7 @@ use App\Util\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BillsController extends Controller
 {
@@ -22,6 +23,8 @@ class BillsController extends Controller
         'due_date' => 'nullable|date_format:Y-m-d',
         'file_modified_at' => 'nullable|date_format:Y-m-d',
         'advance' => 'sometimes|boolean',
+        'credit_applied' => 'sometimes|nullable|integer|min:0|max:2000000000',
+        'credit_source_id' => 'sometimes|nullable|uuid',
         'amount' => 'required|integer|between:-2000000000,2000000000',
     ];
 
@@ -37,6 +40,8 @@ class BillsController extends Controller
             'due_date' => $bill->due_date?->toDateString(),
             'file_modified_at' => $bill->file_modified_at?->toDateString(),
             'advance' => $bill->advance,
+            'credit_applied' => $bill->credit_applied ?? 0,
+            'credit_source_id' => $bill->credit_source_id,
             'amount' => $bill->amount,
             'transaction_ids' => $bill->relationLoaded('transactions') ? $bill->transactions->pluck('id')->values() : [],
         ];
@@ -88,6 +93,8 @@ class BillsController extends Controller
         }
         $validated = $request->validate($rules);
 
+        $validated['bills'] = array_map(fn (array $item) => $this->normaliseCredit($user, $item, null), $validated['bills']);
+
         $created = [];
         $duplicates = [];
         DB::transaction(function () use ($user, $validated, &$created, &$duplicates) {
@@ -137,8 +144,15 @@ class BillsController extends Controller
             return Response::Fail(__('bills.duplicate-'.$match['signal']));
         }
 
-        // Left alone when the client doesn't send it
+        // Left alone when the client doesn't send it; sending null clears the credit
         $validated['advance'] = $validated['advance'] ?? $bill->advance;
+        if (!array_key_exists('credit_applied', $validated)) {
+            $validated['credit_applied'] = $bill->credit_applied;
+        }
+        if (!array_key_exists('credit_source_id', $validated)) {
+            $validated['credit_source_id'] = $bill->credit_source_id;
+        }
+        $validated = $this->normaliseCredit($user, $validated, $bill->id);
         $bill->update($validated);
 
         return Response::Done(['bill' => self::billJson($bill->load('transactions:id'))]);
@@ -190,5 +204,25 @@ class BillsController extends Controller
             && $b->amount === (int) $item['amount']);
 
         return $bill === null ? null : ['signal' => 'period_amount', 'bill' => $bill];
+    }
+
+    /**
+     * Checks a bill's credit: it can't be bigger than the bill, its source must be another of the user's bills, and a
+     * source without a credit means nothing, so it is dropped.
+     */
+    private function normaliseCredit(User $user, array $item, ?string $selfId): array
+    {
+        $credit = $item['credit_applied'] ?? 0;
+        if ($credit > 0 && $credit > $item['amount']) {
+            throw ValidationException::withMessages(['credit_applied' => __('bills.credit-too-large')]);
+        }
+        $source = $item['credit_source_id'] ?? null;
+        if ($credit <= 0) {
+            $item['credit_source_id'] = null;
+        } elseif ($source !== null && ($source === $selfId || !$user->bills()->where('id', $source)->exists())) {
+            throw ValidationException::withMessages(['credit_source_id' => __('bills.credit-source-invalid')]);
+        }
+
+        return $item;
     }
 }

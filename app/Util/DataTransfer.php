@@ -46,6 +46,8 @@ final class DataTransfer
                 'amount' => $b->amount,
                 'file_modified_at' => $b->file_modified_at?->toDateString(),
                 'advance' => $b->advance,
+                'credit_applied' => $b->credit_applied,
+                'credit_source_id' => $b->credit_source_id,
                 'created_at' => $b->created_at?->toIso8601String(),
             ])->values()->all(),
             'transactions' => $transactions->map(fn (BankTransaction $t) => [
@@ -139,8 +141,18 @@ final class DataTransfer
                 'type' => $row['type'], 'sha256' => $row['sha256'] ?? null, 'invoice_number' => $row['invoice_number'] ?? null,
                 'period_start' => $row['period_start'], 'period_end' => $row['period_end'], 'due_date' => $row['due_date'] ?? null,
                 'amount' => $row['amount'], 'file_modified_at' => $row['file_modified_at'] ?? null, 'advance' => (bool) ($row['advance'] ?? false),
+                'credit_applied' => $row['credit_applied'] ?? null,
             ], 'bills', $counts);
             $billModels[$row['id']] = $bill;
+        }
+
+        // A credit points at the overpaid invoice by id; every bill exists now, so the ids can be mapped to the target's
+        foreach ($payload['bills'] as $row) {
+            $source = ($row['credit_source_id'] ?? null) !== null ? $billModels[$row['credit_source_id']]->id : null;
+            $bill = $billModels[$row['id']];
+            if ($bill->credit_source_id !== $source) {
+                $bill->forceFill(['credit_source_id' => $source])->save();
+            }
         }
 
         foreach ($payload['transactions'] as $row) {
@@ -249,6 +261,8 @@ final class DataTransfer
             'bills.*.amount' => 'required|integer',
             'bills.*.file_modified_at' => 'nullable|date_format:Y-m-d',
             'bills.*.advance' => 'nullable|boolean',
+            'bills.*.credit_applied' => 'nullable|integer|min:0',
+            'bills.*.credit_source_id' => 'nullable|uuid',
             'transactions' => 'present|array',
             'transactions.*.id' => 'required|uuid|distinct',
             'transactions.*.date' => 'required|date_format:Y-m-d',
@@ -265,6 +279,11 @@ final class DataTransfer
             throw new InvalidArgumentException('The export is invalid: '.$validator->errors()->first());
         }
         $billIds = array_flip(array_column($payload['bills'], 'id'));
+        foreach ($payload['bills'] as $row) {
+            if (($row['credit_source_id'] ?? null) !== null && !isset($billIds[$row['credit_source_id']])) {
+                throw new InvalidArgumentException('The export has a credit that points at a bill it does not contain.');
+            }
+        }
         foreach ($payload['transactions'] as $row) {
             foreach ($row['bill_ids'] as $id) {
                 if (!isset($billIds[$id])) {
