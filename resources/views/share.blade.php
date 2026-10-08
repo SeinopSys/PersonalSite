@@ -21,7 +21,7 @@
             <h1 class="h3 mb-1">{{ __('share.title') }}</h1>
             <div class="text-body-secondary">{{ __('share.as-of', ['date' => $date($report['generated'])]) }} · {{ __('share.invoice-count', ['count' => $report['bill_count']]) }}</div>
             @if($expiresAt)
-                <div class="small text-body-secondary">{{ __('share.valid-until', ['date' => $date($expiresAt)]) }}</div>
+                <div class="small text-body-secondary d-print-none">{{ __('share.valid-until', ['date' => $date($expiresAt)]) }}</div>
             @endif
         </div>
         @include('share-theme-toggle')
@@ -35,12 +35,11 @@
     @if($report['multiple'])
         <h3 class="h5 mt-3 text-danger-emphasis">{{ __('share.multiple-heading', ['count' => count($report['multiple']), 'extra' => $money($report['extra_paid'])]) }}</h3>
         <div class="table-responsive"><table class="table table-bordered table-sm align-top">
-            <thead><tr><th>{{ __('share.invoice') }}</th><th>{{ __('share.type') }}</th><th>{{ __('share.period') }}</th><th class="text-end text-nowrap">{{ __('share.amount') }}</th><th>{{ __('share.payments') }}</th><th class="text-end text-nowrap">{{ __('share.extra') }}</th></tr></thead>
+            <thead><tr><th>{{ __('share.invoice') }} / {{ __('share.type') }}</th><th>{{ __('share.period') }}</th><th class="text-end text-nowrap">{{ __('share.amount') }}</th><th>{{ __('share.payments') }}</th><th class="text-end text-nowrap">{{ __('share.extra') }}</th></tr></thead>
             <tbody>
             @foreach($report['multiple'] as $row)
                 <tr>
-                    <td>{{ $row['invoice_number'] ?? '—' }}</td>
-                    <td>{{ __('share.type-'.$row['type']) }}</td>
+                    <td>{{ $row['invoice_number'] ?? '—' }}<div class="small text-body-secondary">{{ __('share.type-'.$row['type']) }}</div></td>
                     <td>{{ $period($row) }}</td>
                     <td class="text-end text-nowrap">{{ $money($row['amount']) }}</td>
                     <td>@foreach($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@endforeach</td>
@@ -82,11 +81,11 @@
     @foreach($report['types'] as $type => $rows)
         <h3 class="h5 mt-3">{{ __('share.type-'.$type) }}</h3>
         <div class="table-responsive"><table class="table table-bordered table-sm align-top">
-            <thead><tr><th>{{ __('share.invoice') }}</th><th>{{ __('share.period') }}</th><th class="text-end text-nowrap">{{ __('share.amount') }}</th><th>{{ __('share.due') }}</th><th>{{ __('share.status') }}</th><th>{{ __('share.payments') }}</th></tr></thead>
+            <thead><tr><th>{{ __('share.invoice') }}</th><th>{{ __('share.period') }}</th><th>{{ __('share.due') }}</th><th>{{ __('share.amount-and-payment') }}</th></tr></thead>
             <tbody>
             @foreach($rows as $row)
                 @if($row['gap_before'])
-                    <tr><td colspan="6" class="text-danger-emphasis fw-semibold">{{ __('share.missing-invoice', ['from' => $date($row['gap_before']['from']), 'to' => $date($row['gap_before']['to'])]) }}</td></tr>
+                    <tr><td colspan="4" class="text-danger-emphasis fw-semibold">{{ __('share.missing-invoice', ['from' => $date($row['gap_before']['from']), 'to' => $date($row['gap_before']['to'])]) }}</td></tr>
                 @endif
                 <tr>
                     <td>
@@ -95,15 +94,15 @@
                         @if($row['settlement_covers'] > 0)<div class="text-body-secondary small">{{ __('share.settlement', ['count' => $row['settlement_covers']]) }}</div>@endif
                     </td>
                     <td>{{ $period($row) }}@if($row['overlaps'])<div class="text-warning-emphasis fw-semibold small">{{ __('share.overlap') }}</div>@endif</td>
-                    <td class="text-end text-nowrap">{{ $money($row['amount']) }}</td>
                     <td>{{ $date($row['due_date']) }}</td>
                     <td>
-                        @if($row['status'] === 'paid')<span class="text-success-emphasis">{{ __('share.paid') }}</span>
-                        @elseif($row['status'] === 'overdue')<span class="text-danger-emphasis fw-semibold">{{ __('share.overdue') }}</span>
-                        @else<span class="text-warning-emphasis fw-semibold">{{ __('share.unpaid') }}</span>@endif
-                        @if($row['times_paid'] > 1)<div class="text-danger-emphasis fw-semibold small">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</div>@endif
+                        <span class="fw-semibold me-1">{{ $money($row['amount']) }}</span>
+                        @if($row['status'] === 'paid')<span class="badge text-bg-success">{{ __('share.paid') }}</span>
+                        @elseif($row['status'] === 'overdue')<span class="badge text-bg-danger">{{ __('share.overdue') }}</span>
+                        @else<span class="badge text-bg-warning">{{ __('share.unpaid') }}</span>@endif
+                        @if($row['times_paid'] > 1)<span class="badge text-bg-danger ms-1">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</span>@endif
+                        @foreach($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@endforeach
                     </td>
-                    <td>@forelse($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@empty<span class="text-body-secondary">—</span>@endforelse</td>
                 </tr>
             @endforeach
             </tbody>

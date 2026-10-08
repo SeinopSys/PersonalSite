@@ -258,4 +258,70 @@ class ShareTest extends TestCase
         $this->assertSame(now()->addDays(30)->toDateString(), $link['expires_at']);
         $this->postJson('/bills/shares', ['expires_in_days' => 5])->assertUnprocessable();
     }
+
+    public function test_the_validity_line_and_theme_toggle_are_hidden_when_printing(): void
+    {
+        $owner = $this->makeUser();
+        $page = $this->get('/share/'.$this->link($owner, ['expires_at' => now()->addDays(3)])->token)->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#<button[^>]*id="theme-toggle"[^>]*d-print-none#', $page);
+        $this->assertMatchesRegularExpression('#<div class="[^"]*d-print-none[^"]*">Link érvényes eddig#u', $page);
+        // The page prints in the light theme and goes back to the chosen one afterwards
+        $this->assertStringContainsString("'beforeprint'", $page);
+        $this->assertStringContainsString("'afterprint'", $page);
+
+        $gone = $this->get('/share/'.str_repeat('z', 48))->getContent();
+        $this->assertMatchesRegularExpression('#<button[^>]*id="theme-toggle"[^>]*d-print-none#', $gone);
+    }
+
+    public function test_the_repeat_payment_table_shows_invoice_number_and_type_in_one_column(): void
+    {
+        $owner = $this->makeUser();
+        $bill = $this->bill($owner, ['invoice_number' => 'REPEAT/9']);
+        $this->pay($owner, $bill, '2025-02-05', 14673);
+        $this->pay($owner, $bill, '2025-03-05', 14673);
+
+        $page = $this->get('/share/'.$this->link($owner)->token)->assertOk()->getContent();
+        // One header cell for both, with the type under the invoice number, and no cell of its own
+        $this->assertStringContainsString('Számla sorszáma / Típus', $page);
+        $this->assertMatchesRegularExpression('#<td>REPEAT/9<div class="small text-body-secondary">Fűtés \+ melegvíz</div></td>#u', $page);
+        $this->assertStringNotContainsString('<th>Típus</th>', $page);
+        $header = substr($page, strpos($page, '<thead>'), strpos($page, '</thead>') - strpos($page, '<thead>'));
+        $this->assertSame(5, preg_match_all('/<th[ >]/', $header), 'invoice/type, period, amount, payments, extra');
+    }
+
+    public function test_amount_status_and_payments_share_one_column_with_a_status_badge(): void
+    {
+        $owner = $this->makeUser();
+        $paid = $this->bill($owner, ['invoice_number' => 'PAID/1', 'period_start' => '2025-01-01', 'period_end' => '2025-01-31']);
+        $this->pay($owner, $paid, '2025-02-05', 14673);
+        $this->pay($owner, $paid, '2025-03-05', 14673);
+        $this->bill($owner, ['invoice_number' => 'FUTURE/1', 'period_start' => '2025-02-01', 'period_end' => '2025-02-28', 'due_date' => '2099-01-01', 'amount' => 5000]);
+        $this->bill($owner, ['invoice_number' => 'LATE/1', 'period_start' => '2025-03-01', 'period_end' => '2025-03-31', 'due_date' => '2020-01-01', 'amount' => 6000]);
+
+        $page = $this->get('/share/'.$this->link($owner)->token)->assertOk()->getContent();
+        $table = substr($page, strpos($page, '<h3 class="h5 mt-3">Fűtés + melegvíz</h3>'));
+
+        // One combined header, no separate amount or status cell
+        $this->assertStringContainsString('<th>Összeg és kifizetés</th>', $table);
+        $this->assertStringNotContainsString('<th>Állapot', $table);
+        $header = substr($table, 0, strpos($table, '</thead>'));
+        $this->assertSame(4, preg_match_all('/<th[ >]/', $header), 'invoice, period, due date, amount and payment');
+        $this->assertStringNotContainsString('class="text-end text-nowrap">'.$this->money(14644), $table);
+
+        // The amount leads the cell, then the Bootstrap badges, then the payments
+        $this->assertMatchesRegularExpression('#<span class="fw-semibold me-1">'.preg_quote($this->money(14644), '#').'</span>\s*<span class="badge text-bg-success">Kifizetve</span>\s*<span class="badge text-bg-danger ms-1">2 alkalommal kifizetve</span>\s*<div>2025\. 02\. 05\.#u', $table);
+        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(5000), '#').'</span>\s*<span class="badge text-bg-warning">Kifizetetlen</span>#u', $table);
+        $this->assertMatchesRegularExpression('#'.preg_quote($this->money(6000), '#').'</span>\s*<span class="badge text-bg-danger">Lejárt</span>#u', $table);
+    }
+
+    public function test_the_theme_toggle_is_a_plain_link_style_button(): void
+    {
+        $owner = $this->makeUser();
+        foreach ([$this->get('/share/'.$this->link($owner)->token), $this->get('/share/'.str_repeat('q', 48))] as $response) {
+            $page = $response->getContent();
+            $this->assertMatchesRegularExpression('#<button[^>]*class="btn btn-link [^"]*"[^>]*id="theme-toggle"|<button[^>]*id="theme-toggle"[^>]*class="btn btn-link #', $page);
+            $this->assertStringNotContainsString('btn-outline', $page);
+        }
+    }
 }

@@ -38,4 +38,5 @@ return [
     'gone-body' => 'It may have expired, been withdrawn, or the address may have been mistyped.',
     'gone-help' => 'Please ask the person who sent it to you for a new link.',
     'theme-toggle' => 'Switch between light and dark mode',
+    'amount-and-payment' => 'Amount and payment',
 ];

@@ -38,4 +38,5 @@ return [
     'gone-body' => 'Lehet, hogy lejárt, visszavonták, vagy elgépelődött a cím.',
     'gone-help' => 'Kérj új linket attól, aki ezt küldte neked.',
     'theme-toggle' => 'Világos/sötét mód váltása',
+    'amount-and-payment' => 'Összeg és kifizetés',
 ];
