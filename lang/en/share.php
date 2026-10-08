@@ -33,4 +33,8 @@ return [
     'type-electricity' => 'Electricity',
     'type-water' => 'Water',
     'footnote' => 'This overview only shows the invoices and the dates and amounts of the payments linked to them.',
+    'valid-until' => 'Link valid until :date',
+    'expired-title' => 'This link has expired',
+    'expired-body' => 'This share link expired on :date, so the overview is no longer available.',
+    'expired-help' => 'Please ask the person who sent it to you for a new link.',
 ];

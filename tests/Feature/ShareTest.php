@@ -151,22 +151,53 @@ class ShareTest extends TestCase
         }
     }
 
-    public function test_unknown_malformed_expired_and_revoked_links_are_all_a_404(): void
+    public function test_unknown_malformed_and_revoked_links_are_a_plain_404(): void
     {
         $owner = $this->makeUser();
         $this->get('/share/'.str_repeat('a', 48))->assertNotFound();
         $this->get('/share/short')->assertNotFound();
 
-        $expired = $this->link($owner, ['expires_at' => now()->subDays(2)]);
-        $this->get('/share/'.$expired->token)->assertNotFound();
-
-        $today = $this->link($owner, ['expires_at' => now()]);
-        $this->get('/share/'.$today->token)->assertOk();
-
         $revoked = $this->link($owner);
         $this->get('/share/'.$revoked->token)->assertOk();
         $this->actingAs($owner)->deleteJson('/bills/shares/'.$revoked->id)->assertOk();
         $this->get('/share/'.$revoked->token)->assertNotFound();
+    }
+
+    public function test_an_expired_link_shows_a_friendly_message_and_no_data(): void
+    {
+        $owner = $this->makeUser();
+        $this->pay($owner, $this->bill($owner, ['invoice_number' => 'SECRET/INV']), '2025-02-05', 14673);
+        $expired = $this->link($owner, ['expires_at' => now()->subDays(2)]);
+
+        $hu = $this->get('/share/'.$expired->token)->assertStatus(410)->assertSee('Ez a link lejárt')->assertSee('Kérj új linket');
+        $this->assertStringContainsString(now()->subDays(2)->format('Y. m. d.'), $hu->getContent());
+        $this->assertStringNotContainsString('SECRET/INV', $hu->getContent());
+        $this->assertStringContainsString('noindex', $hu->headers->get('X-Robots-Tag'));
+        $this->assertStringContainsString('no-store', $hu->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('<script', $hu->getContent());
+
+        $this->get('/share/'.$expired->token.'?lang=en')->assertStatus(410)->assertSee('This link has expired')->assertSee('ask the person who sent it');
+
+        // A visit to an expired link is not counted as a view
+        $this->assertSame(0, $expired->fresh()->view_count);
+    }
+
+    public function test_a_link_works_through_its_last_day_and_stops_the_day_after(): void
+    {
+        $owner = $this->makeUser();
+        $this->get('/share/'.$this->link($owner, ['expires_at' => now()])->token)->assertOk();
+        $this->get('/share/'.$this->link($owner, ['expires_at' => now()->subDay()])->token)->assertStatus(410);
+    }
+
+    public function test_the_page_states_how_long_the_link_is_valid(): void
+    {
+        $owner = $this->makeUser();
+        $until = now()->addDays(10);
+        $with = $this->get('/share/'.$this->link($owner, ['expires_at' => $until])->token)->assertOk()->assertSee('Link érvényes eddig:');
+        $this->assertStringContainsString($until->format('Y. m. d.'), $with->getContent());
+
+        $this->get('/share/'.$this->link($owner, ['expires_at' => $until])->token.'?lang=en')->assertSee('Link valid until');
+        $this->get('/share/'.$this->link($owner)->token)->assertOk()->assertDontSee('Link érvényes eddig:');
     }
 
     public function test_only_the_owner_can_list_or_revoke_a_link(): void

@@ -33,4 +33,8 @@ return [
     'type-electricity' => 'Villany',
     'type-water' => 'Víz',
     'footnote' => 'Ez az áttekintés csak a számlákat és a hozzájuk kötött kifizetések dátumát és összegét mutatja.',
+    'valid-until' => 'Link érvényes eddig: :date',
+    'expired-title' => 'Ez a link lejárt',
+    'expired-body' => 'Ez a megosztási link :date napon lejárt, ezért az áttekintés már nem érhető el.',
+    'expired-help' => 'Kérj új linket attól, aki ezt küldte neked.',
 ];
