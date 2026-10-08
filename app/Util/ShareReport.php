@@ -28,7 +28,14 @@ class ShareReport
      */
     public static function build(User $user, string $today): array
     {
-        $bills = $user->bills()->with(['transactions' => fn ($q) => $q->withCount('bills')])->get();
+        $bills = $user->bills()->with('transactions')->get();
+        $units = self::units($user);
+        $unitOf = [];
+        foreach ($units as $key => $unit) {
+            foreach ($unit['members'] as $t) {
+                $unitOf[$t->id] = $key;
+            }
+        }
 
         $report = [
             'generated' => $today,
@@ -39,7 +46,7 @@ class ShareReport
             'overlaps' => [],
             'unpaid' => [],
             'extra_paid' => 0,
-            'transfers' => self::transfers($user),
+            'transfers' => self::transfers($units),
         ];
 
         // An overpayment settled by credit: what each invoice's overpayment has been credited towards, and where a
@@ -77,11 +84,16 @@ class ShareReport
 
             $rows = [];
             foreach ($typed as $bill) {
-                $payments = $bill->transactions->sortBy(fn ($t) => $t->date->toDateString())->map(fn ($t) => [
-                    'date' => $t->date->toDateString(),
-                    'transfer' => $t->amount,
-                    'invoices' => $t->bills_count,
-                ])->values()->all();
+                // One payment per transfer unit (instalments in a group are one payment), as the landlord received it
+                $payments = $bill->transactions->groupBy(fn ($t) => $unitOf[$t->id])->map(function ($linked, $key) use ($units) {
+                    $unit = $units[$key];
+
+                    return [
+                        'date' => $unit['members'][0]->date->toDateString(),
+                        'transfer' => $unit['received'],
+                        'invoices' => $unit['bills']->count(),
+                    ];
+                })->sortBy('date')->values()->all();
                 $times = count($payments);
                 $due = $bill->due_date?->toDateString();
                 $status = $times > 0 ? 'paid' : ($due !== null && $due < $today ? 'overdue' : 'unpaid');
@@ -129,31 +141,58 @@ class ShareReport
     }
 
     /**
-     * Payments that the linked bills cover in full, one entry per payment. Transfers in a group (a bill paid in
-     * instalments) are one payment. Anything marked as accounted for, with an accounted-for amount, without bills, or
-     * only partly explained by bills is left out: those aren't utility payments the landlord's invoices account for.
+     * Every transfer unit (a lone transfer, or a group of instalments) with the bills it pays, what the landlord
+     * received (the bank fee taken off whenever the bills explain the transfer) and whether the bills cover it in full.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array<string, array<string, mixed>>
      */
-    private static function transfers(User $user): array
+    private static function units(User $user): array
     {
-        $units = $user->bankTransactions()->with('bills')->get()->groupBy(fn ($t) => $t->group_id ?? $t->id);
-
-        $transfers = [];
-        foreach ($units as $members) {
+        $units = [];
+        foreach ($user->bankTransactions()->with('bills')->get()->groupBy(fn ($t) => $t->group_id ?? $t->id) as $key => $members) {
             $members = $members->sort(fn ($a, $b) => [$a->date->toDateString(), $a->amount] <=> [$b->date->toDateString(), $b->amount])->values();
-            if ($members->contains(fn ($t) => $t->accounted || ($t->accounted_amount ?? 0) > 0)) {
-                continue;
-            }
             $bills = $members->flatMap(fn ($t) => $t->bills)->unique('id')->sort(fn (Bill $a, Bill $b) => [$a->period_start->toDateString(), $a->type]
                 <=> [$b->period_start->toDateString(), $b->type])->values();
             $amount = $members->sum('amount');
             // What had to be transferred: bills less any credit carried over from an earlier overpayment
             $payable = $bills->sum(fn (Bill $b) => $b->payableAmount());
-            if ($bills->isEmpty() || !Reconciliation::isWhollyCoveredByBills($amount, $payable)) {
+            $flagged = $members->contains(fn ($t) => $t->accounted || ($t->accounted_amount ?? 0) > 0);
+            $covered = !$flagged && $bills->isNotEmpty() && Reconciliation::isWhollyCoveredByBills($amount, $payable);
+
+            $units[$key] = [
+                'members' => $members,
+                'bills' => $bills,
+                'amount' => $amount,
+                'payable' => $payable,
+                'covered' => $covered,
+                'fee' => $covered ? max(0, $amount - $payable) : 0,
+                'received' => $covered ? $amount - max(0, $amount - $payable) : $amount,
+            ];
+        }
+
+        return $units;
+    }
+
+    /**
+     * Payments that the linked bills cover in full, one entry per payment. Anything marked as accounted for, with an
+     * accounted-for amount, without bills, or only partly explained by bills is left out: those aren't utility
+     * payments the landlord's invoices account for.
+     *
+     * @param array<string, array<string, mixed>> $units
+     * @return array<int, array<string, mixed>>
+     */
+    private static function transfers(array $units): array
+    {
+        $transfers = [];
+        foreach ($units as $unit) {
+            if (!$unit['covered']) {
                 continue;
             }
-
+            $members = $unit['members'];
+            $bills = $unit['bills'];
+            $amount = $unit['amount'];
+            $fee = $unit['fee'];
+            $payable = $unit['payable'];
             // The landlord's statement shows what arrived, not what left the account: take the bank fee off, spread over
             // the instalments in proportion (the last one absorbs rounding)
             $fee = max(0, $amount - $payable);

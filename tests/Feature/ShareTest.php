@@ -400,6 +400,25 @@ class ShareTest extends TestCase
         $this->assertStringContainsString('2 átutalásra bontva (összesen '.$this->money(50630).')', $section);
     }
 
+    public function test_the_invoice_list_shows_what_arrived_with_instalments_as_one_payment(): void
+    {
+        $owner = $this->makeUser();
+        $bill = $this->bill($owner, ['invoice_number' => 'NET/1', 'amount' => 50630]);
+        $first = $this->pay($owner, $bill, '2024-09-08', 41759);
+        $second = BankTransaction::create(['user_id' => $owner->id, 'date' => '2024-09-08', 'amount' => 8972]);
+        BankTransaction::whereIn('id', [$first->id, $second->id])->update(['group_id' => (string) Str::uuid()]);
+        $single = $this->bill($owner, ['invoice_number' => 'NET/2', 'amount' => 14644, 'period_start' => '2025-02-01', 'period_end' => '2025-02-28']);
+        $this->pay($owner, $single, '2025-03-03', 14673);
+
+        $page = $this->get('/share/'.$this->link($owner)->token)->assertOk()->getContent();
+        $list = substr($page, 0, strpos($page, 'Átutalások részletezése'));
+
+        $this->assertStringContainsString('2024. 09. 08.: '.$this->money(50630), $list);
+        $this->assertStringContainsString('2025. 03. 03.: '.$this->money(14644), $list);
+        $this->assertStringNotContainsString($this->money(41759), $list);
+        $this->assertStringNotContainsString($this->money(14673), $list);
+    }
+
     public function test_a_bill_paid_twice_appears_under_each_transfer_in_date_order(): void
     {
         $owner = $this->makeUser();
