@@ -51,4 +51,5 @@ return [
     'already-credited' => 'of which already credited: :amount',
     'credit-from' => 'Credit: :amount (from the overpayment of :invoice)',
     'overpayment-credited' => 'Overpayment credited: :amount (:invoices)',
+    'paid-times-settled' => 'Paid :count times, settled by credit',
 ];

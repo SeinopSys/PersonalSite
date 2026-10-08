@@ -153,5 +153,6 @@ return [
     'credit-source-none' => '(credit from an invoice not listed)',
     'credit-line-from' => 'Credit: :amount (from the overpayment of :invoice)',
     'overpayment-credited' => 'Overpayment credited: :amount (:invoices)',
+    'paid-times-settled' => 'Paid :count times, settled by credit',
     'days' => 'days',
 ];

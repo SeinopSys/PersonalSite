@@ -100,7 +100,10 @@
                         @if($row['status'] === 'paid')<span class="badge text-bg-success">{{ __('share.paid') }}</span>
                         @elseif($row['status'] === 'overdue')<span class="badge text-bg-danger">{{ __('share.overdue') }}</span>
                         @else<span class="badge text-bg-warning">{{ __('share.unpaid') }}</span>@endif
-                        @if($row['times_paid'] > 1)<span class="badge text-bg-danger ms-1">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</span>@endif
+                        @if($row['times_paid'] > 1)
+                            @if($row['net_extra'] > 0)<span class="badge text-bg-danger ms-1">{{ __('share.paid-times', ['count' => $row['times_paid']]) }}</span>
+                            @else<span class="badge text-bg-secondary ms-1">{{ __('share.paid-times-settled', ['count' => $row['times_paid']]) }}</span>@endif
+                        @endif
                         @if($row['credit_applied'] > 0)<div class="small text-body-secondary">{{ $row['credit_source'] ? __('share.credit-from', ['amount' => $money($row['credit_applied']), 'invoice' => $row['credit_source']]) : __('share.credit', ['amount' => $money($row['credit_applied'])]) }}</div>@endif
                         @if($row['credited_out'] > 0)<div class="small text-body-secondary">{{ __('share.overpayment-credited', ['amount' => $money($row['credited_out']), 'invoices' => implode(', ', $row['credited_to'])]) }}</div>@endif
                         @foreach($row['payments'] as $p)<div>{{ $date($p['date']) }}: {{ $money($p['transfer']) }}@if($p['invoices'] > 1)<span class="text-body-secondary small"> ({{ __('share.covers', ['count' => $p['invoices']]) }})</span>@endif</div>@endforeach

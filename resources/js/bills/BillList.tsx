@@ -141,6 +141,8 @@ export function BillList({
   const numberOf = (id: string) => bills.find(b => b.id === id)?.invoice_number ?? null;
   // Bills whose credit came from this invoice's overpayment
   const creditedFrom = (bill: Bill) => bills.filter(b => b.credit_source_id === bill.id && b.credit_applied > 0);
+  // What was paid beyond the invoice, less what has been credited towards another bill
+  const stillOverpaid = (bill: Bill) => Math.max(0, bill.amount * (bill.transaction_ids.length - 1) - creditedFrom(bill).reduce((acc, b) => acc + b.credit_applied, 0));
   // A bill that is not an advance itself but spans advance invoices is their settlement
   const advancesWithin = (bill: Bill) => typeBills.filter(a => a.advance && a.id !== bill.id && a.period_start >= bill.period_start && a.period_end <= bill.period_end);
   const unpaidCount = (type: BillType) => bills.filter(b => b.type === type && b.transaction_ids.length === 0).length;
@@ -235,7 +237,9 @@ export function BillList({
                       <td>
                         <span className={`badge ${STATUS_CLASS[status]}`}>{t(`status-${status}`)}</span>
                         {bill.transaction_ids.length > 1 && (
-                          <div className="small text-warning-emphasis fw-semibold">{t('paid-times', { count: bill.transaction_ids.length })}</div>
+                          stillOverpaid(bill) > 0
+                            ? <div className="small text-warning-emphasis fw-semibold">{t('paid-times', { count: bill.transaction_ids.length })}</div>
+                            : <div className="small text-body-secondary">{t('paid-times-settled', { count: bill.transaction_ids.length })}</div>
                         )}
                         {creditedFrom(bill).length > 0 && (
                           <div className="small text-body-secondary">{t('overpayment-credited', { amount: formatMoney(creditedFrom(bill).reduce((acc, b) => acc + b.credit_applied, 0)), invoices: creditedFrom(bill).map(b => b.invoice_number ?? '—').join(', ') })}</div>

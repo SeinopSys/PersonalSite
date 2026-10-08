@@ -51,4 +51,5 @@ return [
     'already-credited' => 'ebből már jóváírva: :amount',
     'credit-from' => 'Jóváírás: :amount (a(z) :invoice számla túlfizetéséből)',
     'overpayment-credited' => 'Túlfizetés jóváírva: :amount (:invoices)',
+    'paid-times-settled' => ':count alkalommal kifizetve, jóváírással rendezve',
 ];

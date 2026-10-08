@@ -486,7 +486,9 @@ class ShareTest extends TestCase
         // Still visible where it belongs: on both invoices
         $this->assertStringContainsString('Túlfizetés jóváírva: '.$this->money(23567).' (NEXT/1)', $page);
         $this->assertStringContainsString('Jóváírás: '.$this->money(23567).' (a(z) TWICE/1 számla túlfizetéséből)', $page);
-        $this->assertStringContainsString('2 alkalommal kifizetve', $page);
+        // The badge stays, but muted and saying why, instead of the red "paid twice" warning
+        $this->assertStringContainsString('<span class="badge text-bg-secondary ms-1">2 alkalommal kifizetve, jóváírással rendezve</span>', $page);
+        $this->assertStringNotContainsString('<span class="badge text-bg-danger ms-1">2 alkalommal kifizetve</span>', $page);
     }
 
     public function test_a_partly_credited_overpayment_stays_listed_with_what_is_left(): void
@@ -504,6 +506,9 @@ class ShareTest extends TestCase
         $this->assertSame(10000, $report['multiple'][0]['credited']);
         $page = $this->get('/share/'.$this->link($owner)->token)->assertOk()->getContent();
         $this->assertStringContainsString('ebből már jóváírva: '.$this->money(10000), $page);
+        // Still something outstanding, so the red badge stays
+        $this->assertStringContainsString('<span class="badge text-bg-danger ms-1">3 alkalommal kifizetve</span>', $page);
+        $this->assertStringNotContainsString('jóváírással rendezve', $page);
     }
 
     public function test_a_credit_without_a_source_does_not_offset_any_overpayment(): void

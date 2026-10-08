@@ -106,12 +106,13 @@ class ShareReport
                     'overlaps' => $overlapping->has($bill->id),
                     'gap_before' => isset($gapBefore[$bill->id]) ? ['from' => $gapBefore[$bill->id]['from'], 'to' => $gapBefore[$bill->id]['to']] : null,
                 ];
+                // What was paid beyond the invoice, less whatever the landlord has already credited towards another bill
+                $gross = $times > 1 ? $bill->amount * ($times - 1) : 0;
+                $net = max(0, $gross - $row['credited_out']);
+                $row['net_extra'] = $net;
                 $rows[] = $row;
 
                 if ($times > 1) {
-                    // What was paid beyond the invoice, less whatever the landlord has already credited towards another bill
-                    $gross = $bill->amount * ($times - 1);
-                    $net = max(0, $gross - $row['credited_out']);
                     if ($net > 0) {
                         $report['extra_paid'] += $net;
                         $report['multiple'][] = $row + ['type' => $type, 'extra' => $net, 'credited' => min($row['credited_out'], $gross)];
