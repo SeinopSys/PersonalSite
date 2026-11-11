@@ -1,0 +1,108 @@
+name: Publish container images
+
+# Publishes the two images (fpm, web), multi-arch, to ghcr.io for EVERY push to main, tagged <sha7> and
+# sha-<sha7>. There are no version tags, no `latest` and no git tags: the commit is the version.
+#
+# The sha-<sha7> tag is what Argo CD Image Updater follows. It is added to both manifest lists as the very last
+# registry step, so it never exists on a partial set (fpm/web of one commit appear together).
+#
+# Each architecture is built natively on its own runner (no qemu emulation, which makes the PHP extension compile
+# take far too long), pushed as <sha7>-<arch>, then merged into one multi-arch tag per image.
+on:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: ci-images-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: 'Build ${{ matrix.arch }}'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out names and tags
+        id: meta
+        run: |
+          echo "sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA:0:7}-${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
+          echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "date=$(git log -1 --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        env:
+          REGISTRY: ${{ steps.meta.outputs.registry }}
+          TAGS: ${{ steps.meta.outputs.tag }}
+          GIT_COMMIT_HASH: ${{ github.sha }}
+          GIT_COMMIT_DATE: ${{ steps.meta.outputs.date }}
+        with:
+          files: docker/docker-bake.hcl
+          push: true
+          set: |
+            *.platform=linux/${{ matrix.arch }}
+            *.cache-from=type=gha,scope=${{ matrix.arch }}
+            *.cache-to=type=gha,scope=${{ matrix.arch }},mode=max
+
+  publish:
+    name: 'Publish multi-arch tags'
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge per-arch images into multi-arch tags
+        run: |
+          registry="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          sha="${GITHUB_SHA:0:7}"
+          for image in fpm web; do
+            repo="$registry/personalsite-$image"
+            docker buildx imagetools create -t "$repo:$sha" "$repo:$sha-amd64" "$repo:$sha-arm64"
+          done
+
+      # Last registry step: only now that both multi-arch manifest lists exist is the tag Image Updater follows
+      # added (re-pointing the already-pushed manifest list, no rebuild), so it never exists on a partial set.
+      - name: Add sha- tag to both images
+        run: |
+          registry="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          sha="${GITHUB_SHA:0:7}"
+          for image in fpm web; do
+            repo="$registry/personalsite-$image"
+            docker buildx imagetools inspect "$repo:$sha" > /dev/null
+          done
+          for image in fpm web; do
+            repo="$registry/personalsite-$image"
+            docker buildx imagetools create -t "$repo:sha-$sha" "$repo:$sha"
+          done

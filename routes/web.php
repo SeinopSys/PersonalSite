@@ -17,6 +17,8 @@ use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\UploadFoldersController;
 use App\Http\Controllers\UploadsController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +32,16 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('/health', function () {
+    try {
+        DB::select('select 1');
+        Redis::ping();
+    } catch (Throwable) {
+        return response('unavailable', 503)->header('Content-Type', 'text/plain');
+    }
+
+    return response('ok')->header('Content-Type', 'text/plain');
+});
 Route::get('/', [AboutController::class, 'index'])->name('about');
 Route::get('/about', [AboutController::class, 'gotoIndex']);
 Route::get('/lang/{lang}', [LanguageController::class, 'switchLang'])->name('lang.switch');

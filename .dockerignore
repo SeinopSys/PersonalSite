@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+node_modules
+vendor
+coverage
+storage/logs/*
+storage/*.key
+storage/rootCA.*
+storage/framework/*/*
+bootstrap/cache/*
+public/storage
+public/img/uploads
+public/files
+.idea

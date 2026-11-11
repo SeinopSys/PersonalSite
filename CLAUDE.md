@@ -15,3 +15,14 @@ composer docs:export
 **Do not** run `php artisan scramble:export` directly — it will bake in your local `.env`'s `APP_URL`/`APP_NAME` instead of production's, producing a diff that fails CI (`.github/workflows/ci.yml` re-runs `composer docs:export` and fails the build if `api.json` doesn't match).
 
 Run `php artisan scramble:analyze` first if you want to check for documentation-generation errors without writing the file.
+
+## Running in the Kubernetes cluster
+
+Two images from `docker/Dockerfile` (targets `fpm`, `web`), published multi-arch by `.github/workflows/images.yml` as `ghcr.io/<owner>/personalsite-{fpm,web}:sha-<sha7>`. The web pod runs both side by side (nginx on `:8080`, php-fpm on `127.0.0.1:9000`). No worker and no scheduler are needed.
+
+- **Health:** `GET /health` returns 200 when Postgres and Valkey answer, else 503.
+- **Env var names** (values from a Secret/ConfigMap, never in git): `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_NAME`, `APP_LRC_SITE_URL`, `PRIMARY_DOMAIN`, `SECONDARY_DOMAIN`, `SESSION_DOMAIN`, `SESSION_DRIVER`, `CACHE_DRIVER`, `QUEUE_CONNECTION`, `LOG_CHANNEL`, `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_PREFIX`, `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `CAPTCHA_ENABLED`, `FRIENDLYCAPTCHA_SITEKEY`, `FRIENDLYCAPTCHA_API_KEY`, `UPLOAD_QUOTA_BYTES`.
+- **Volumes:** the uploads volume at `public/storage` (both containers; `storage/app/public` is a symlink to it), writable by `www-data` (uid 33) in fpm, read-only in nginx. `public/files` is a symlink into the same volume (`_legacy/files`; create that directory on the volume). Optional: `storage/` files `rootCA.pem`/`rootCA.key`/`rootCA.srl` (used by the self-signed certificate tool, gitignored) mounted from a Secret.
+- **Migrations:** `php artisan migrate --force` as a separate Job/PreSync hook using the fpm image. No `config:cache`/`optimize` at build; config comes from env at runtime.
+- **After deploys:** `php artisan app:clear-redis` drops the cached footer commit info (1 h TTL otherwise).
+- Safe to run several replicas. External services: Postgres, Valkey (Redis protocol), SMTP, Friendly Captcha.
