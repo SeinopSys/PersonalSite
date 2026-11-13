@@ -47,6 +47,10 @@ class ContentSecurityPolicyTest extends TestCase
         $this->assertStringContainsString("script-src-attr 'none'", $policy);
         $this->assertStringContainsString("object-src 'none'", $policy);
         $this->assertStringContainsString('https://api.friendlycaptcha.com', $policy);
+        // every host a Gravatar URL is built with (the navbar avatar uses s., the about page the bare domain)
+        foreach (['https://gravatar.com', 'https://www.gravatar.com', 'https://s.gravatar.com'] as $host) {
+            $this->assertMatchesRegularExpression('/img-src [^;]*' . preg_quote($host, '/') . '(?: |;|$)/', $policy);
+        }
         $this->assertStringContainsString('report-uri https://csp.example/r; report-to csp-endpoint', $policy);
         $this->assertStringNotContainsString("'unsafe-eval'", $policy);
         $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $policy);

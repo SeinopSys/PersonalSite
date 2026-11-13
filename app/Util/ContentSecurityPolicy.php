@@ -51,7 +51,8 @@ final class ContentSecurityPolicy
             implode(' ', ["script-src 'self' https://cdnjs.cloudflare.com 'wasm-unsafe-eval'", ...$scriptHashes]),
             "script-src-attr 'none'",
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
-            "img-src 'self' data: https://gravatar.com https://www.gravatar.com",
+            // s.gravatar.com: the navbar avatar of a logged-in user (User::getGravatar), gravatar.com: the about page
+            "img-src 'self' data: https://gravatar.com https://www.gravatar.com https://s.gravatar.com",
             "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
             "connect-src 'self' https://api.friendlycaptcha.com https://eu-api.friendlycaptcha.eu",
             "worker-src 'self' blob:",
