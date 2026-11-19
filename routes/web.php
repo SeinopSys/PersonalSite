@@ -79,12 +79,17 @@ Route::get('/share/{token?}', [ShareController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('share.show');
 
-// Uploads folders shared through a secret link: whoever holds it can see and download the files; throttled like the bills overview
-Route::group(['middleware' => ['throttle:60,1'], 'where' => ['token' => '[^/]+', 'uploadId' => '[^/]+']], function () {
-    Route::get('/s/{token}/zip', [PublicSharedFolderController::class, 'zip'])->name('shared.zip');
-    Route::get('/s/{token}/{uploadId}/thumb', [PublicSharedFolderController::class, 'thumbnail'])->name('shared.thumbnail');
-    Route::get('/s/{token}/{uploadId}', [PublicSharedFolderController::class, 'download'])->name('shared.download');
-    Route::get('/s/{token}', [PublicSharedFolderController::class, 'show'])->name('shared.show');
+// Uploads folders shared through a secret link: whoever holds it can see and download the files. The page and the zip
+// are throttled like the bills overview; the files themselves (thumbnails, the viewer's pictures and the many range
+// requests of a video) get a far higher allowance, since one gallery page alone loads dozens of them.
+Route::group(['where' => ['token' => '[^/]+', 'uploadId' => '[^/]+']], function () {
+    Route::get('/s/{token}', [PublicSharedFolderController::class, 'show'])->middleware('throttle:shared-page')->name('shared.show');
+    Route::get('/s/{token}/zip', [PublicSharedFolderController::class, 'zip'])->middleware('throttle:shared-zip')->name('shared.zip');
+    Route::middleware('throttle:shared-files')->group(function () {
+        Route::get('/s/{token}/{uploadId}/view', [PublicSharedFolderController::class, 'view'])->name('shared.view');
+        Route::get('/s/{token}/{uploadId}/thumb', [PublicSharedFolderController::class, 'thumbnail'])->name('shared.thumbnail');
+        Route::get('/s/{token}/{uploadId}', [PublicSharedFolderController::class, 'download'])->name('shared.download');
+    });
 });
 
 // These require login

@@ -22,6 +22,11 @@ class PublicSharedFolderController extends Controller
 {
     use PrivateSharePage;
 
+    private const VIEW_TYPES = [
+        'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'bmp' => 'image/bmp',
+        'webp' => 'image/webp', 'webm' => 'video/webm', 'mp4' => 'video/mp4',
+    ];
+
     /**
      * The shared folder and, per folder in its subtree, the uploads in it. Sections are keyed by the folder's path
      * below the shared one ('' for the shared folder itself) and sorted by it.
@@ -90,6 +95,24 @@ class PublicSharedFolderController extends Controller
         }
 
         return $this->forDownload(response()->download($path, self::downloadName($upload), ['Content-Type' => 'application/octet-stream']));
+    }
+
+    /** What the gallery viewer shows: the original file inline, with Range support so videos can be played and seeked. */
+    public function view(Request $request, string $token, string $uploadId)
+    {
+        $upload = $this->findUpload($request, $token, $uploadId);
+        // Only the types an upload can be, each with its own fixed type: whatever the file claims is never trusted
+        $type = $upload === null ? null : self::VIEW_TYPES[$upload->extension] ?? null;
+        $path = $upload === null ? null : UploadUtil::getUploadDirectory().'/'.$upload->getFilenames()['full'];
+        if ($type === null || !is_file($path)) {
+            return $this->gone();
+        }
+
+        $response = $this->forDownload(response()->file($path, ['Content-Type' => $type, 'Content-Disposition' => 'inline']));
+        // Navigating back and forth in the viewer shouldn't fetch the same file again, but a link taken away stops soon
+        $response->headers->set('Cache-Control', 'private, max-age=300');
+
+        return $response;
     }
 
     /** The generated thumbnail, a PNG made by this site. */

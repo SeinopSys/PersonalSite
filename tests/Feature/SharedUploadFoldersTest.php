@@ -182,4 +182,60 @@ class SharedUploadFoldersTest extends TestCase
         auth()->logout();
         $this->get($folder->shareUrl())->assertNotFound();
     }
+
+    public function test_the_viewer_gets_files_inline_with_range_support_and_only_through_the_link(): void
+    {
+        $user = $this->makeUser();
+        $folder = $this->folder($user, 'Trip');
+        $upload = $this->upload($user, $folder, 'photo.png');
+        $other = $this->upload($user, $this->folder($user, 'Other'), 'secret.png');
+        $folder = $this->share($user, $folder);
+        $base = $folder->shareUrl();
+
+        $response = $this->get("$base/{$upload->id}/view")->assertOk();
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline', $response->headers->get('Content-Disposition'));
+        $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        $this->assertStringContainsString('max-age=300', $response->headers->get('Cache-Control'));
+
+        // Videos are played by seeking, which is a Range request
+        $this->withHeaders(['Range' => 'bytes=0-9'])->get("$base/{$upload->id}/view")->assertStatus(206);
+
+        $this->get("$base/{$other->id}/view")->assertNotFound();
+        $this->get('/s/'.str_repeat('a', 48)."/{$upload->id}/view")->assertNotFound();
+    }
+
+    public function test_the_page_wires_up_the_viewer_and_allows_what_it_needs(): void
+    {
+        $user = $this->makeUser();
+        $folder = $this->folder($user, 'Trip');
+        $upload = $this->upload($user, $folder, 'photo.png');
+        $folder = $this->share($user, $folder);
+
+        $response = $this->get($folder->shareUrl())->assertOk()
+            ->assertSee('id="gallery"', false)
+            ->assertSee("/s/{$folder->share_token}/{$upload->id}/view", false)
+            ->assertSee('share-gallery.js', false);
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("media-src 'self'", $csp);
+        $this->assertStringContainsString("img-src 'self'", $csp);
+        $this->assertMatchesRegularExpression("/script-src 'nonce-([^']+)'/", $csp);
+        preg_match("/script-src 'nonce-([^']+)'/", $csp, $m);
+        $this->assertStringContainsString('nonce="'.$m[1].'" src=', $response->getContent());
+    }
+
+    public function test_loading_the_files_of_a_gallery_does_not_use_up_the_pages_own_allowance(): void
+    {
+        $user = $this->makeUser();
+        $folder = $this->folder($user, 'Trip');
+        $upload = $this->upload($user, $folder, 'photo.png');
+        $folder = $this->share($user, $folder);
+        $base = $folder->shareUrl();
+
+        // More file requests in a minute than the page allows for itself
+        for ($i = 0; $i < 70; $i++) {
+            $this->get("$base/{$upload->id}/thumb")->assertOk();
+        }
+        $this->get($base)->assertOk();
+    }
 }
