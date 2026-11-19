@@ -376,7 +376,11 @@ function initToolbarActions() {
               Dialog.fail(false, data.message);
               return;
             }
-            Dialog.close(() => loadFolders(data.id));
+            // The new folder becomes the selected one, so the list has to switch to it (an empty one) as well
+            Dialog.close(() => {
+              loadFolders(data.id);
+              onFolderChange(data.id ?? null);
+            });
           }));
         });
       },
