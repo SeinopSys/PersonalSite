@@ -46,13 +46,19 @@
         </div>
     @endif
 
-    <form method="post" action="/shared-folders/{{ $folder->id }}/files" enctype="multipart/form-data" class="mb-1">
+    <form method="post" action="/shared-folders/{{ $folder->id }}/files" enctype="multipart/form-data" class="mb-1" id="shared-upload-form" data-max-bytes="{{ $maxFileBytes }}"
+          data-msg-waiting="{{ __('shared.queue-waiting') }}" data-msg-done="{{ __('shared.queue-done') }}"
+          data-msg-failed="{{ __('shared.queue-failed') }}" data-msg-too-large="{{ __('shared.queue-too-large', ['max' => $maxFileSize]) }}">
         @csrf
+        <div class="p-3 rounded border border-secondary-subtle" style="border-width:2px;border-style:dashed" id="shared-dropzone">
+        <p class="mb-2 text-body-secondary">{{ __('shared.drop-help') }}</p>
         <div class="input-group">
-            <input type="file" name="files[]" class="form-control" multiple required>
+            <input type="file" name="files[]" id="shared-file-input" class="form-control" multiple required>
             <button type="submit" class="btn btn-primary"><x-fa icon="upload" first></x-fa> {{ __('shared.upload') }}</button>
         </div>
+        </div>
     </form>
+    <ul class="list-unstyled small mb-1" id="shared-queue" role="status"></ul>
     <p class="small text-body-secondary">{{ __('shared.limits', ['max' => $maxFileSize, 'used' => $usedSpace, 'quota' => $quota]) }}</p>
 
     <h3 class="h5 mt-4">{{ __('shared.settings') }}</h3>

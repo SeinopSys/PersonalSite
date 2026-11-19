@@ -150,7 +150,7 @@ class Upload extends Model
     }
 
     public function isVideo(): bool {
-        return $this->extension === 'webm';
+        return in_array($this->extension, ['webm', 'mp4'], true);
     }
 
     public function calculateFileSizes(?array $file_paths = null): void {

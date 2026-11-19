@@ -224,7 +224,7 @@ class UploadsController extends Controller
         // Video can't be read/processed by Intervention (GD) at all - kept as-is unconditionally,
         // the same way GIFs skip re-encoding, but also skipping thumbnail/jpeg-copy generation
         // regardless of folder settings since there's nothing capable of producing them.
-        $isVideo = $extension === 'webm';
+        $isVideo = in_array($extension, ['webm', 'mp4'], true);
         $not_animated = $extension !== 'gif';
         if ($not_animated && !$disableConversion && !$isVideo) {
             $extension = 'png';
@@ -284,9 +284,9 @@ class UploadsController extends Controller
     }
 
     #[BodyParameter('upload_key', 'Secret upload key from your account settings.', required: true, type: 'string')]
-    #[BodyParameter('file', 'Image or WebM video file to upload. GIFs and WebM videos are kept as-is; all other formats are re-encoded as PNG.', required: true)]
+    #[BodyParameter('file', 'Image, WebM or MP4 video file to upload. GIFs, WebM and MP4 videos are kept as-is; all other formats are re-encoded as PNG.', required: true)]
     #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and WebM uploads. full_jpg and preview fall back to the full file URL for WebM uploads (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and video uploads. full_jpg and preview fall back to the full file URL for video uploads (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
     public function upload(Request $request)
@@ -294,7 +294,7 @@ class UploadsController extends Controller
         $validation_rules = [
             'upload_key' => 'bail|required|string',
             'domain' => 'string',
-            'file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm',
+            'file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm,mp4',
         ];
         $validator = Validator::make($request->all(array_keys($validation_rules)), $validation_rules);
         if ($validator->fails()) {
@@ -331,8 +331,8 @@ class UploadsController extends Controller
     }
 
     #[PathParameter('key', 'Secret upload key from your account settings, or from one of your folders. Uploading to a folder\'s key automatically places the file in that folder - no other parameters are needed, just POST the file to this URL (similar to an AWS pre-signed URL).', type: 'string')]
-    #[BodyParameter('file', 'Image or WebM video file to upload. GIFs and WebM videos are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled.', required: true)]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and WebM uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled or the file is a WebM video (no JPEG copy is generated). preview falls back to the full file URL when the target folder has thumbnails disabled or the file is a WebM video (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
+    #[BodyParameter('file', 'Image, WebM or MP4 video file to upload. GIFs, WebM and MP4 videos are kept as-is; all other formats are re-encoded as PNG unless the target folder has conversion disabled.', required: true)]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and video uploads and for uploads into a folder with conversion disabled (full then keeps the original format/extension). full_jpg is null when the target folder has conversion disabled or the file is a video (no JPEG copy is generated). preview falls back to the full file URL when the target folder has thumbnails disabled or the file is a video (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or unrecognized key.')]
     #[ApiResponse(status: 422, description: 'Uploading the file would exceed the account\'s storage quota.')]
@@ -349,7 +349,7 @@ class UploadsController extends Controller
         $folder = $upload_allowed->folder;
         $secondary_domain = $folder->secondary_domain ?? false;
 
-        $validator = Validator::make($request->all(['file']), ['file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm']);
+        $validator = Validator::make($request->all(['file']), ['file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm,mp4']);
         if ($validator->fails()) {
             return response()->json($validator->messages(), 400);
         }
@@ -384,7 +384,7 @@ class UploadsController extends Controller
         }
 
         $validator = Validator::make($request->all(['file', 'folder']), [
-            'file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm',
+            'file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm,mp4|max:'.intdiv(UploadUtil::maxFileBytes(), 1024),
             'folder' => 'nullable|string',
         ]);
         if ($validator->fails()) {

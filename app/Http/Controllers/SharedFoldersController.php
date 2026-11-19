@@ -6,6 +6,7 @@ use App\Models\SharedFile;
 use App\Models\SharedFolder;
 use App\Models\User;
 use App\Util\Core;
+use App\Util\UploadUtil;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -19,9 +20,6 @@ use Illuminate\Validation\ValidationException;
  */
 class SharedFoldersController extends Controller
 {
-    /** Largest single file, in KB (the validation unit). Matches the PHP and nginx upload limits in docker/. */
-    private const MAX_FILE_KB = 20480;
-
     private const EXPIRY_DAYS = [7, 30, 90, 365];
 
     private function user(): User
@@ -78,7 +76,8 @@ class SharedFoldersController extends Controller
             'folder' => $folder,
             'files' => $folder->files()->get(),
             'expiryDays' => self::EXPIRY_DAYS,
-            'maxFileSize' => Core::ReadableFilesize(self::MAX_FILE_KB * 1024),
+            'maxFileBytes' => UploadUtil::maxFileBytes(),
+            'maxFileSize' => Core::ReadableFilesize(UploadUtil::maxFileBytes()),
             'usedSpace' => Core::ReadableFilesize($this->usedBytes()),
             'quota' => Core::ReadableFilesize((int) config('app.upload_quota_bytes')),
         ]);
@@ -126,7 +125,7 @@ class SharedFoldersController extends Controller
         $folder = $this->folderOf($id);
         $request->validate([
             'files' => 'required|array|min:1|max:50',
-            'files.*' => 'required|file|max:'.self::MAX_FILE_KB,
+            'files.*' => 'required|file|max:'.intdiv(UploadUtil::maxFileBytes(), 1024),
         ]);
 
         /** @var list<UploadedFile> $files */
@@ -146,6 +145,11 @@ class SharedFoldersController extends Controller
                 'storage_name' => $storageName,
                 'size' => $file->getSize(),
             ]);
+        }
+
+        // The page sends one file per request (so each stays under the request size limit) and reads the result as JSON
+        if ($request->expectsJson()) {
+            return response()->json(['status' => true, 'count' => count($files)]);
         }
 
         return redirect("/shared-folders/{$folder->id}")->with('status', trans_choice('shared.uploaded', count($files), ['count' => count($files)]));

@@ -68,9 +68,9 @@
         </div>
 
         <h3>{{ __('uploads.upload-heading') }}</h3>
-        <div class="mb-4">
+        <div class="mb-4 p-3 rounded border border-secondary-subtle" style="border-width:2px;border-style:dashed" id="upload-dropzone" data-max-bytes="{{ \App\Util\UploadUtil::maxFileBytes() }}">
             <label class="btn btn-primary mb-1" for="upload-file-input"><x-fa icon="upload" first></x-fa> {{ __('uploads.upload-button') }}</label>
-            <input type="file" id="upload-file-input" class="d-none" multiple accept="image/jpeg,image/png,image/gif,image/bmp,image/webp,video/webm">
+            <input type="file" id="upload-file-input" class="d-none" multiple accept="image/jpeg,image/png,image/gif,image/bmp,image/webp,video/webm,video/mp4">
             <span id="upload-status" class="ms-2" role="status"></span>
             <div class="form-text">{{ __('uploads.upload-help') }}</div>
         </div>
@@ -137,5 +137,6 @@
         'upload-progress',
         'upload-done',
         'upload-partial',
+        'upload-too-large',
     ]) !!}
 @endsection

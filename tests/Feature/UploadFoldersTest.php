@@ -147,6 +147,25 @@ class UploadFoldersTest extends TestCase
         $this->assertFileDoesNotExist("$dir/{$upload->filename}p.png");
     }
 
+    public function test_mp4_upload_is_kept_as_is_from_the_uploads_page_too()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+        // Just the file type box of an MP4: enough for the type detection, nothing here needs to be playable
+        $mp4 = UploadedFile::fake()->createWithContent('clip.mp4', "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom".str_repeat("\x00", 64));
+
+        $json = $this->actingAs($user)->postJson('/uploads/upload', ['file' => $mp4])->assertJson(['status' => true])->json('upload');
+        $this->trackUploadFiles($json);
+
+        $upload = Upload::findOrFail($json['id']);
+        $this->assertSame('mp4', $upload->extension);
+        $this->assertTrue($upload->isVideo());
+        $this->assertNull($json['full_png']);
+        $this->assertNull($json['full_jpg']);
+        $this->assertSame($json['full'], $json['preview']);
+        $this->assertFileExists(UploadUtil::getUploadDirectory()."/{$upload->filename}.mp4");
+    }
+
     public function test_non_image_non_webm_file_is_rejected()
     {
         $user = $this->makeUser();

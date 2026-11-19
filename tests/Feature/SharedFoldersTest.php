@@ -166,4 +166,19 @@ class SharedFoldersTest extends TestCase
         $this->assertSame('Renamed', $folder->fresh()->name);
         $this->assertTrue($folder->fresh()->expires_at->isSameDay(now()->addDays(30)));
     }
+
+    public function test_the_page_uploads_one_file_per_request_and_reads_json(): void
+    {
+        $user = $this->makeUser();
+        $folder = SharedFolder::create(['user_id' => $user->id, 'name' => 'F', 'token' => SharedFolder::makeToken()]);
+
+        $this->actingAs($user)->postJson("/shared-folders/{$folder->id}/files", ['files' => [UploadedFile::fake()->create('a.bin', 1)]])
+            ->assertOk()->assertJson(['status' => true, 'count' => 1]);
+        $this->actingAs($user)->postJson("/shared-folders/{$folder->id}/files", ['files' => [UploadedFile::fake()->create('b.bin', 1)]])->assertOk();
+        $this->assertSame(2, SharedFile::count());
+
+        config(['app.upload_max_file_kb' => 1]); // lowers the limit below PHP's
+        $this->actingAs($user)->postJson("/shared-folders/{$folder->id}/files", ['files' => [UploadedFile::fake()->create('big.bin', 5)]])->assertStatus(422);
+        $this->assertSame(2, SharedFile::count());
+    }
 }

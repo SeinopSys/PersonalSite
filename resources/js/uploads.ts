@@ -45,7 +45,7 @@ function wipeUpload($link: JQuery, requireConfirm: boolean) {
   const $image = $link.closest('.image');
   const id = ($image.attr('id') || '').replace(/^upload-/, '');
   const href = $link.siblings().first().attr('href') || '';
-  const $preview = /\.webm(\?|$)/i.test(href)
+  const $preview = /\.(webm|mp4)(\?|$)/i.test(href)
     ? $(document.createElement('video')).attr({
       src: href, muted: 'muted', controls: 'controls', playsinline: 'playsinline',
     })
@@ -136,16 +136,20 @@ function fetchListPage(page: number, orderby: string | null) {
 }
 
 /** Uploads the chosen files one request at a time into the current folder, then reloads the list. */
-$('#upload-file-input').on('change', async function onFilesChosen() {
-  const input = this as HTMLInputElement;
-  const files = Array.from(input.files || []);
-  input.value = '';
-  if (files.length === 0) return;
+let uploading = false;
+async function uploadFiles(files: File[]) {
+  if (files.length === 0 || uploading) return;
+  uploading = true;
 
   const $status = $('#upload-status');
   const errors: string[] = [];
   let ok = 0;
+  const maxBytes = Number($('#upload-dropzone').attr('data-max-bytes')) || Infinity;
   for (let i = 0; i < files.length; i += 1) {
+    if (files[i].size > maxBytes) {
+      errors.push(translatePlaceholders(window.Laravel.jsLocales['upload-too-large'], { name: files[i].name, max: `${Math.round(maxBytes / 1048576)} MB` }));
+      continue; // eslint-disable-line no-continue
+    }
     $status.text(translatePlaceholders(window.Laravel.jsLocales['upload-progress'], { done: i + 1, total: files.length }));
     const body = new FormData();
     body.append('file', files[i]);
@@ -169,7 +173,44 @@ $('#upload-file-input').on('change', async function onFilesChosen() {
     ? translatePlaceholders(window.Laravel.jsLocales['upload-done'], { count: ok })
     : translatePlaceholders(window.Laravel.jsLocales['upload-partial'], { ok, total: files.length, errors: errors.join('; ') }));
   fetchListPage(1, orderby);
+  uploading = false;
+}
+
+$('#upload-file-input').on('change', function onFilesChosen() {
+  const input = this as HTMLInputElement;
+  const files = Array.from(input.files || []);
+  input.value = '';
+  uploadFiles(files);
 });
+
+// Files dropped anywhere on the page are uploaded; the zone only highlights to show where they go.
+// Without a handler on drop, the browser would navigate away to the dropped file.
+const dropZone = document.getElementById('upload-dropzone');
+if (dropZone) {
+  const isFileDrag = (e: DragEvent) => Array.from(e.dataTransfer?.types || []).includes('Files');
+  let dragDepth = 0;
+  const highlight = (on: boolean) => dropZone.classList.toggle('border-primary', on);
+  window.addEventListener('dragenter', e => {
+    if (!isFileDrag(e)) return;
+    dragDepth += 1;
+    highlight(true);
+  });
+  window.addEventListener('dragleave', e => {
+    if (!isFileDrag(e)) return;
+    dragDepth = Math.max(dragDepth - 1, 0);
+    if (dragDepth === 0) highlight(false);
+  });
+  window.addEventListener('dragover', e => {
+    if (isFileDrag(e)) e.preventDefault();
+  });
+  window.addEventListener('drop', e => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    highlight(false);
+    uploadFiles(Array.from(e.dataTransfer?.files || []));
+  });
+}
 
 export function navigateToFolder(folderId: string | null): void {
   currentFolderId = folderId;

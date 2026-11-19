@@ -37,7 +37,8 @@ return [
 
     'upload-heading' => 'Upload images',
     'upload-button' => 'Choose files…',
-    'upload-help' => 'Images and WebM videos; they go into the folder currently selected below.',
+    'upload-help' => 'Images, WebM and MP4 videos; choose files or drop them anywhere on this page. They go into the folder currently selected below.',
+    'upload-too-large' => ':name is over the :max limit.',
     'upload-progress' => 'Uploading :done of :total…',
     'upload-done' => 'Uploaded :count file(s).',
     'upload-partial' => 'Uploaded :ok of :total; failed: :errors',

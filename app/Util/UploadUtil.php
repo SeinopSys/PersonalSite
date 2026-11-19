@@ -9,6 +9,36 @@ use Intervention\Image\Laravel\Facades\Image;
 
 class UploadUtil
 {
+    /**
+     * The largest single file that can be uploaded: what PHP accepts (the smaller of upload_max_filesize and
+     * post_max_size, the latter only counting when set), or UPLOAD_MAX_FILE_KB when that is lower still. The web
+     * server's own limit (nginx client_max_body_size) can't be read from here and has to be at least this much.
+     */
+    public static function maxFileBytes(): int
+    {
+        $limits = array_filter([self::iniBytes('upload_max_filesize'), self::iniBytes('post_max_size')], fn (int $b) => $b > 0);
+        if (config('app.upload_max_file_kb')) {
+            $limits[] = (int) config('app.upload_max_file_kb') * 1024;
+        }
+
+        return $limits ? min($limits) : PHP_INT_MAX;
+    }
+
+    /** A php.ini size such as "100M" or "512K" in bytes (0 for unset or unlimited). */
+    private static function iniBytes(string $name): int
+    {
+        $value = trim((string) ini_get($name));
+        $number = (int) $value;
+        $unit = strtolower(substr($value, -1));
+
+        return match ($unit) {
+            'g' => $number * 1024 ** 3,
+            'm' => $number * 1024 ** 2,
+            'k' => $number * 1024,
+            default => $number,
+        };
+    }
+
     public static function reencodeAsPng(string $full_file_path)
     {
         $image = Image::read($full_file_path);

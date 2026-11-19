@@ -48,7 +48,7 @@ FROM php-base AS fpm
 ARG GIT_COMMIT_HASH=unknown
 ARG GIT_COMMIT_DATE=unknown
 RUN { echo "memory_limit = 256M"; echo "expose_php = Off"; \
-      echo "upload_max_filesize = 20M"; echo "post_max_size = 24M"; \
+      echo "upload_max_filesize = 100M"; echo "post_max_size = 104M"; \
       echo "opcache.enable=1"; echo "opcache.validate_timestamps=0"; echo "opcache.memory_consumption=96"; \
       echo "opcache.max_accelerated_files=20000"; } > /usr/local/etc/php/conf.d/99-app.ini
 COPY docker/www.conf /usr/local/etc/php-fpm.d/zz-app.conf

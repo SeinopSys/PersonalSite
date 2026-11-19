@@ -37,7 +37,8 @@ return [
 
     'upload-heading' => 'Képek feltöltése',
     'upload-button' => 'Fájlok kiválasztása…',
-    'upload-help' => 'Képek és WebM videók; az alul jelenleg kiválasztott mappába kerülnek.',
+    'upload-help' => 'Képek, WebM és MP4 videók; válassz fájlokat, vagy húzd őket az oldal bármely pontjára. Az alul jelenleg kiválasztott mappába kerülnek.',
+    'upload-too-large' => ':name meghaladja a(z) :max korlátot.',
     'upload-progress' => 'Feltöltés: :done / :total…',
     'upload-done' => ':count fájl feltöltve.',
     'upload-partial' => ':ok / :total feltöltve; hibák: :errors',
