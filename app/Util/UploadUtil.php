@@ -2,6 +2,8 @@
 
 namespace App\Util;
 
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Intervention\Image\Colors\Rgb\Color;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\Encoders\PngEncoder;
@@ -49,6 +51,45 @@ class UploadUtil
     {
         $image = Image::read($full_file_path);
         $image->pad($dimensions, $dimensions, new Color(0, 0, 0, 0))->encode(new PngEncoder())->save($output);
+    }
+
+    /**
+     * Writes the thumbnail of a video (its first second, or first frame if it is shorter) the same way image
+     * thumbnails are made, and returns the video's dimensions. Null when no frame could be taken: ffmpeg is not
+     * installed, or the file is not a video it can read. The upload is fine without a thumbnail.
+     *
+     * @return array{0: int, 1: int}|null width, height
+     */
+    public static function createVideoPreview(string $video_path, string $output): ?array
+    {
+        $frame = tempnam(sys_get_temp_dir(), 'vframe');
+        unlink($frame);
+        $frame .= '.png';
+
+        try {
+            foreach (['1', '0'] as $seek) {
+                try {
+                    $result = Process::timeout(60)->run([config('app.ffmpeg_binary'), '-v', 'error', '-y', '-ss', $seek, '-i', $video_path, '-frames:v', '1', $frame]);
+                } catch (\Throwable $e) {
+                    Log::warning('Could not run ffmpeg for a video preview: '.$e->getMessage());
+
+                    return null;
+                }
+                if ($result->successful() && is_file($frame) && filesize($frame) > 0) {
+                    $image = Image::read($frame);
+                    $width = $image->width();
+                    $height = $image->height();
+                    self::createPreviewImage($frame, min($width, $height, 300), $output);
+
+                    return [$width, $height];
+                }
+            }
+            Log::warning("No frame could be taken from $video_path for a preview: ".($result->errorOutput() ?? ''));
+
+            return null;
+        } finally {
+            @unlink($frame);
+        }
     }
 
     public static function createJpegCopy(string $full_file_path, string $output)

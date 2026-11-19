@@ -153,6 +153,15 @@ class Upload extends Model
         return in_array($this->extension, ['webm', 'mp4'], true);
     }
 
+    /** Removes the original and every generated file (JPEG copy, thumbnail) from disk; the row is left to the caller. */
+    public function deleteFiles(): void
+    {
+        $dir = UploadUtil::getUploadDirectory();
+        foreach ($this->getFilenames() as $filename) {
+            @unlink("$dir/$filename");
+        }
+    }
+
     public function calculateFileSizes(?array $file_paths = null): void {
         if ($file_paths === null) {
             $file_paths = $this->getFilePaths(UploadUtil::getUploadDirectory(), $this->getFilenames());

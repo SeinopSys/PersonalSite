@@ -161,14 +161,10 @@ class UploadFoldersController extends Controller
         $allUserFolders = $user->uploadFolders()->get();
         $subtreeIds = $folder->descendantIdsIncludingSelf($allUserFolders);
 
-        $uploadsFolderPath = UploadUtil::getUploadDirectory();
-
-        DB::transaction(function () use ($user, $subtreeIds, $uploadsFolderPath, $folder) {
+        DB::transaction(function () use ($user, $subtreeIds, $folder) {
             $uploads = $user->uploads()->whereIn('folder_id', $subtreeIds)->get();
             foreach ($uploads as $upload) {
-                @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
-                @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
-                @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+                $upload->deleteFiles();
                 $upload->delete();
             }
 

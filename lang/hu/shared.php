@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'works-until' => 'Működik eddig: :date.',
+    'works-until' => 'Megosztási link érvényessége: :date.',
     'public-count' => ':count fájl, :size|:count fájl, :size',
     'public-empty' => 'Ebben a mappában nincsenek fájlok.',
-    'download-all' => 'Mindet letölti (zip)',
+    'download-all' => 'Összes letöltése (zip)',
 ];

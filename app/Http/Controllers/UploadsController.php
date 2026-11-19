@@ -186,9 +186,7 @@ class UploadsController extends Controller
                 // directory here, destroying every user's uploads).
                 DB::transaction(function () use ($user, $uploadsFolderPath) {
                     foreach ($user->uploads()->get() as $upload) {
-                        @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
-                        @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
-                        @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+                        $upload->deleteFiles();
                     }
                     $user->uploads()->delete();
                     $user->uploadFolders()->delete();
@@ -222,8 +220,7 @@ class UploadsController extends Controller
 
         $extension = strtolower($file->getClientOriginalExtension());
         // Video can't be read/processed by Intervention (GD) at all - kept as-is unconditionally,
-        // the same way GIFs skip re-encoding, but also skipping thumbnail/jpeg-copy generation
-        // regardless of folder settings since there's nothing capable of producing them.
+        // the same way GIFs skip re-encoding, and gets no JPEG copy. Its thumbnail is a frame taken by ffmpeg.
         $isVideo = in_array($extension, ['webm', 'mp4'], true);
         $not_animated = $extension !== 'gif';
         if ($not_animated && !$disableConversion && !$isVideo) {
@@ -255,6 +252,10 @@ class UploadsController extends Controller
         if (!$disableThumbnails && !$isVideo) {
             UploadUtil::createPreviewImage($file_paths['full'], $upload->getPreviewDimensions(), $file_paths['preview']);
         }
+        if (!$disableThumbnails && $isVideo) {
+            // A video's thumbnail is a frame of it; without one (no ffmpeg, unreadable file) the list shows a placeholder
+            [$upload->width, $upload->height] = UploadUtil::createVideoPreview($file_paths['full'], $file_paths['preview']) ?? [null, null];
+        }
         if (!$disableConversion && !$isVideo) {
             UploadUtil::createJpegCopy($file_paths['full'], $file_paths['jpeg']);
         }
@@ -278,7 +279,7 @@ class UploadsController extends Controller
             'full' => $full,
             'full_png' => ($not_animated && !$disableConversion && !$isVideo) ? "{$upload->host}/{$filenames['full']}" : null,
             'full_jpg' => $hasJpegCopy ? "{$upload->host}/{$filenames['jpeg']}" : null,
-            'preview' => ($disableThumbnails || $isVideo) ? $full : "{$upload->host}/{$filenames['preview']}",
+            'preview' => is_file($file_paths['preview']) ? "{$upload->host}/{$filenames['preview']}" : $full,
             'delete_url' => route('uploads.delete', ['deleteKey' => $upload->delete_key]),
         ];
     }
@@ -286,7 +287,7 @@ class UploadsController extends Controller
     #[BodyParameter('upload_key', 'Secret upload key from your account settings.', required: true, type: 'string')]
     #[BodyParameter('file', 'Image, WebM or MP4 video file to upload. GIFs, WebM and MP4 videos are kept as-is; all other formats are re-encoded as PNG.', required: true)]
     #[BodyParameter('domain', 'Optional secondary domain to serve the image from.', required: false, type: 'string')]
-    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and video uploads. full_jpg and preview fall back to the full file URL for video uploads (no thumbnail is generated for video). delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
+    #[ApiResponse(status: 200, type: 'array{id: string, full: string, full_png: string|null, full_jpg: string|null, preview: string, delete_url: string}', description: 'URLs for the uploaded file and its preview thumbnail. full_png is null for GIF and video uploads. full_jpg is null for video uploads; preview is a frame of the video, or the full file URL when no frame could be taken. delete_url is a one-time-secret URL - send it an HTTP DELETE request (no body/auth needed) to permanently remove this file.')]
     #[ApiResponse(status: 400, type: 'array<string, list<string>>', description: 'Validation errors keyed by field name.')]
     #[ApiResponse(status: 401, description: 'Invalid or missing upload key.')]
     public function upload(Request $request)
@@ -424,9 +425,7 @@ class UploadsController extends Controller
         }
 
         $uploadsFolderPath = UploadUtil::getUploadDirectory();
-        @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
-        @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
-        @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+        $upload->deleteFiles();
         $upload->delete();
 
         return response()->json(['message' => 'File deleted.']);
@@ -447,12 +446,9 @@ class UploadsController extends Controller
 
         /** @var $user User */
         $user = $uploads->first()->uploader()->first();
-        $uploadsFolderPath = UploadUtil::getUploadDirectory();
 
         foreach ($uploads as $upload) {
-            @unlink("$uploadsFolderPath/{$upload->filename}.{$upload->extension}");
-            @unlink("$uploadsFolderPath/{$upload->filename}.jpg");
-            @unlink("$uploadsFolderPath/{$upload->filename}p.{$upload->extension}");
+            $upload->deleteFiles();
             $upload->delete();
         }
 

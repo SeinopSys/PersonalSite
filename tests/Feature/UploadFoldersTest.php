@@ -116,6 +116,7 @@ class UploadFoldersTest extends TestCase
 
     public function test_webm_upload_is_kept_as_is_with_no_thumbnail_or_conversion()
     {
+        config(['app.ffmpeg_binary' => '/nonexistent/ffmpeg']); // no way to take a frame: the upload still works
         $user = $this->makeUser();
         $key = $this->enableUploads($user);
 
@@ -149,6 +150,7 @@ class UploadFoldersTest extends TestCase
 
     public function test_mp4_upload_is_kept_as_is_from_the_uploads_page_too()
     {
+        config(['app.ffmpeg_binary' => '/nonexistent/ffmpeg']);
         $user = $this->makeUser();
         $this->enableUploads($user);
         // Just the file type box of an MP4: enough for the type detection, nothing here needs to be playable
@@ -458,5 +460,73 @@ class UploadFoldersTest extends TestCase
         config(['app.upload_quota_bytes' => 1]);
         $this->actingAs($user)->postJson('/uploads/upload', ['file' => UploadedFile::fake()->image('big.png', 50, 50)])->assertJson(['status' => false]);
         $this->assertSame(0, Upload::count());
+    }
+
+    public function test_video_gets_a_thumbnail_and_dimensions_from_a_frame_and_deleting_removes_it()
+    {
+        if (trim((string) shell_exec('command -v ffmpeg')) === '') {
+            $this->markTestSkipped('ffmpeg is not installed');
+        }
+        $user = $this->makeUser();
+        $key = $this->enableUploads($user);
+
+        $json = $this->postJson('/api/upload', [
+            'upload_key' => $key->upload_key,
+            'domain' => config('app.secondary_domain'),
+            'file' => UploadedFile::fake()->createWithContent('clip.webm', file_get_contents(base_path('tests/Fixtures/test.webm'))),
+        ])->assertOk()->json();
+        $this->trackUploadFiles($json);
+
+        $upload = Upload::findOrFail($json['id']);
+        $preview = UploadUtil::getUploadDirectory()."/{$upload->filename}p.png";
+        $this->assertFileExists($preview);
+        $this->assertStringEndsWith('p.png', $json['preview']);
+        $this->assertNotNull($upload->width);
+        $this->assertNotNull($upload->height);
+        $this->assertTrue($upload->hasPreviewFile());
+        $size = getimagesize($preview);
+        $this->assertSame($size[0], $size[1], 'square, like every other thumbnail');
+        $this->assertGreaterThan($upload->original_size, $upload->size, 'the thumbnail counts towards the size');
+
+        $this->deleteJson('/api/upload/'.basename(parse_url($json['delete_url'], PHP_URL_PATH)))->assertOk();
+        $this->assertFileDoesNotExist($preview);
+    }
+
+    public function test_a_folder_with_thumbnails_off_makes_no_video_thumbnail()
+    {
+        if (trim((string) shell_exec('command -v ffmpeg')) === '') {
+            $this->markTestSkipped('ffmpeg is not installed');
+        }
+        $user = $this->makeUser();
+        $folder = UploadFolder::create(['user_id' => $user->id, 'name' => 'Raw', 'disable_thumbnails' => true]);
+        $key = new ImageUploadKey(['user_id' => $user->id, 'folder_id' => $folder->id]);
+        $key->generateUploadKey();
+        $key->save();
+
+        $json = $this->postJson('/api/upload/'.$key->upload_key, [
+            'file' => UploadedFile::fake()->createWithContent('clip.webm', file_get_contents(base_path('tests/Fixtures/test.webm'))),
+        ])->assertOk()->json();
+        $this->trackUploadFiles($json);
+
+        $this->assertFalse(Upload::findOrFail($json['id'])->hasPreviewFile());
+        $this->assertSame($json['full'], $json['preview']);
+    }
+
+    public function test_the_list_marks_videos_with_an_icon_with_or_without_a_thumbnail()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+        config(['app.ffmpeg_binary' => '/nonexistent/ffmpeg']);
+        $json = $this->actingAs($user)->postJson('/uploads/upload', [
+            'file' => UploadedFile::fake()->createWithContent('clip.webm', file_get_contents(base_path('tests/Fixtures/test.webm'))),
+        ])->json('upload');
+        $this->trackUploadFiles($json);
+
+        $html = view('partials.uploads-imagelist', [
+            'images' => $user->uploads()->paginate(25), 'haveResults' => true, 'havePreviousPages' => false,
+        ])->render();
+        $this->assertStringContainsString('video-badge', $html);
+        $this->assertStringContainsString('video-placeholder', $html);
+        $this->assertStringNotContainsString('<video', $html);
     }
 }

@@ -13,6 +13,7 @@ RUN install-php-extensions bcmath exif gd intl opcache pcntl pdo_pgsql redis zip
 FROM ${PHP_IMAGE} AS php-base
 COPY --from=ghcr.io/mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions bcmath exif gd intl opcache pcntl pdo_pgsql redis zip \
+ && apt-get update && apt-get install -y --no-install-recommends ffmpeg \
  && rm -rf /var/lib/apt/lists/* /tmp/*
 
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS node-bin

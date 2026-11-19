@@ -21,6 +21,8 @@ return [
 
     // Optional cap on a single upload, in KB, below what PHP allows (see UploadUtil::maxFileBytes); empty means PHP's limit
     'upload_max_file_kb' => env('UPLOAD_MAX_FILE_KB') ? (int) env('UPLOAD_MAX_FILE_KB') : null,
+    // ffmpeg, for the preview image of uploaded videos; without it videos simply have no thumbnail
+    'ffmpeg_binary' => env('FFMPEG_BINARY', 'ffmpeg'),
     'upload_quota_bytes' => (int) env('UPLOAD_QUOTA_BYTES', 524288000),
 
     'lrc_site_url' => env('APP_LRC_SITE_URL', null),

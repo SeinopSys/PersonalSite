@@ -35,6 +35,7 @@ return [
 
     'apidocs-link' => 'API dokumentáció',
 
+    'video' => 'Videó',
     'upload-heading' => 'Képek feltöltése',
     'upload-button' => 'Fájlok kiválasztása…',
     'upload-help' => 'Képek, WebM és MP4 videók; válassz fájlokat, vagy húzd őket az oldal bármely pontjára. Az alul jelenleg kiválasztott mappába kerülnek.',

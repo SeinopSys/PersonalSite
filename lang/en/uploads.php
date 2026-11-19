@@ -35,6 +35,7 @@ return [
 
     'apidocs-link' => 'API documentation',
 
+    'video' => 'Video',
     'upload-heading' => 'Upload images',
     'upload-button' => 'Choose files…',
     'upload-help' => 'Images, WebM and MP4 videos; choose files or drop them anywhere on this page. They go into the folder currently selected below.',

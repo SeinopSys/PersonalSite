@@ -77,6 +77,26 @@ $images-per-row: 5;
             @extend %checker-background;
         }
 
+        // Videos: the thumbnail is square like the others; without one, a plain square keeps the grid even
+        > .video-placeholder {
+            width: 100%;
+            aspect-ratio: 1;
+            background: rgba($border, .15);
+        }
+
+        > .video-badge {
+            position: absolute;
+            left: 6px;
+            bottom: 6px;
+            padding: 5px 7px;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1;
+            color: #fff;
+            background: rgba(0, 0, 0, .65);
+            pointer-events: none;
+        }
+
         > .info, > .actions {
             position: absolute;
             left: 0;

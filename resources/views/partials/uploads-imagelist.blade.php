@@ -17,7 +17,13 @@
                 $fullUrl = "$image->host/{$image->filename}.{$image->extension}";
             @endphp
             @if($image->isVideo())
-                <video src="{{ $fullUrl }}" muted loop playsinline controls preload="metadata"></video>
+                {{-- A frame of the video when one could be taken, a plain square otherwise; the icon tells videos apart either way --}}
+                @if($image->hasPreviewFile())
+                    <img src="{{ "$image->host/{$image->filename}p.png" }}" alt="{{ $image->orig_filename }}">
+                @else
+                    <div class="video-placeholder" role="img" aria-label="{{ $image->orig_filename }}"></div>
+                @endif
+                <span class="video-badge fa fa-video" title="{{ __('uploads.video') }}"></span>
             @elseif($image->hasPreviewFile())
                 <img src="{{ "$image->host/{$image->filename}p.png" }}" alt="{{ $image->orig_filename }}">
             @else
