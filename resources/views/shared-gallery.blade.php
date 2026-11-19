@@ -60,6 +60,19 @@
     @else
         @if($all->count() > 1)
             <p class="mt-3"><a class="btn btn-primary" href="{{ $base.'/zip'.$langQuery }}">{{ __('shared.download-all') }}</a></p>
+            {{-- The same options as the uploads page; plain links, so it works without scripts --}}
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+                <strong>{{ __('uploads.sorting') }}:</strong>
+                <div class="btn-group" role="group">
+                    @foreach(\App\Http\Controllers\PublicSharedFolderController::ORDERINGS as $field)
+                        @foreach(['asc', 'desc'] as $dir)
+                            @php $query = array_filter(['lang' => request()->query('lang') ? $lang : null, 'orderby' => "$field $dir"]); @endphp
+                            <a href="{{ $base.'?'.http_build_query($query) }}" class="btn btn-sm btn-outline-secondary{{ $ordering === [$field, $dir] ? ' active' : '' }}"
+                               @if($ordering === [$field, $dir]) aria-current="true" @endif>{{ __("uploads.sort$dir-$field") }}</a>
+                        @endforeach
+                    @endforeach
+                </div>
+            </div>
         @endif
         <div id="gallery"
              data-label-close="{{ __('shared.viewer-close') }}" data-label-prev="{{ __('shared.viewer-prev') }}"

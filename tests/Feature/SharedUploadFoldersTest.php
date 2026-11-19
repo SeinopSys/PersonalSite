@@ -238,4 +238,30 @@ class SharedUploadFoldersTest extends TestCase
         }
         $this->get($base)->assertOk();
     }
+
+    public function test_files_are_newest_first_by_default_and_can_be_ordered_like_the_uploads_page(): void
+    {
+        $user = $this->makeUser();
+        $folder = $this->folder($user, 'Trip');
+        $old = $this->upload($user, $folder, 'oldest.png');
+        $mid = $this->upload($user, $folder, 'middle.png');
+        $new = $this->upload($user, $folder, 'newest.png');
+        $dates = [$old->id => '2024-01-01 10:00:00', $mid->id => '2024-06-01 10:00:00', $new->id => '2025-01-01 10:00:00'];
+        foreach ($dates as $id => $at) {
+            Upload::where('id', $id)->update(['uploaded_at' => $at]);
+        }
+        // Sizes in the opposite order to the dates: the middle one is the smallest, the oldest the largest
+        Upload::where('id', $old->id)->update(['size' => 9000, 'additional_size' => 0]);
+        Upload::where('id', $mid->id)->update(['size' => 1000, 'additional_size' => 0]);
+        Upload::where('id', $new->id)->update(['size' => 5000, 'additional_size' => 0]);
+        $base = $this->share($user, $folder)->shareUrl();
+
+        $this->get($base)->assertSeeInOrder(['newest.png', 'middle.png', 'oldest.png']);
+        $this->get("$base?orderby=uploaded_at+asc")->assertSeeInOrder(['oldest.png', 'middle.png', 'newest.png']);
+        $this->get("$base?orderby=size+asc")->assertSeeInOrder(['middle.png', 'newest.png', 'oldest.png']);
+        $this->get("$base?orderby=size+desc")->assertSeeInOrder(['oldest.png', 'newest.png', 'middle.png']);
+        // Anything else falls back to the default, and the chosen option is marked
+        $this->get("$base?orderby=password+desc")->assertSeeInOrder(['newest.png', 'middle.png', 'oldest.png']);
+        $this->get("$base?orderby=size+asc&lang=en")->assertSee('aria-current="true"', false)->assertSee('Smallest first');
+    }
 }

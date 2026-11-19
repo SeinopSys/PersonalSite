@@ -22,10 +22,24 @@ class PublicSharedFolderController extends Controller
 {
     use PrivateSharePage;
 
+    /** The same options as the uploads page (UploadsController::ORDERING), newest first by default. */
+    public const ORDERINGS = ['uploaded_at', 'size'];
+
     private const VIEW_TYPES = [
         'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'bmp' => 'image/bmp',
         'webp' => 'image/webp', 'webm' => 'video/webm', 'mp4' => 'video/mp4',
     ];
+
+    /** [field, direction] from ?orderby=uploaded_at+desc, the default when it is missing or not one of the options. */
+    public static function ordering(Request $request): array
+    {
+        $given = str_replace('+', ' ', strtolower((string) $request->query('orderby')));
+        if (preg_match('/^('.implode('|', self::ORDERINGS).') (asc|desc)$/', $given, $m)) {
+            return [$m[1], $m[2]];
+        }
+
+        return ['uploaded_at', 'desc'];
+    }
 
     /**
      * The shared folder and, per folder in its subtree, the uploads in it. Sections are keyed by the folder's path
@@ -56,7 +70,11 @@ class PublicSharedFolderController extends Controller
             return implode(' / ', $names);
         };
 
-        $sections = Upload::whereIn('folder_id', $ids)->orderBy('uploaded_at')->get()
+        // Size is what the page shows for a file: the file itself, without the thumbnail and the JPEG copy
+        [$field, $dir] = self::ordering($request);
+        $query = Upload::whereIn('folder_id', $ids);
+        $field === 'size' ? $query->orderByRaw("(size - additional_size) $dir") : $query->orderBy($field, $dir);
+        $sections = $query->orderBy('filename')->get()
             ->groupBy(fn (Upload $u) => $pathOf($byId->get($u->folder_id)))
             ->sortKeys();
 
@@ -80,6 +98,7 @@ class PublicSharedFolderController extends Controller
             'folder' => $folder,
             'sections' => $sections,
             'lang' => App::getLocale(),
+            'ordering' => self::ordering($request),
             'expiresAt' => $folder->share_expires_at?->toDateString(),
             'nonce' => $nonce,
         ]));
