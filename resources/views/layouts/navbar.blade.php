@@ -18,6 +18,7 @@
                 @if(Auth::check())
                     {!! \App\Util\Core::NavbarItem('dashboard') !!}
                     {!! \App\Util\Core::NavbarItem('uploads') !!}
+                    {!! \App\Util\Core::NavbarItem('shared-folders') !!}
                     {!! \App\Util\Core::NavbarItem('bills') !!}
                 @endif
                 <li class="nav-item dropdown">

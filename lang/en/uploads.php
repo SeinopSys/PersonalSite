@@ -35,6 +35,14 @@ return [
 
     'apidocs-link' => 'API documentation',
 
+    'upload-heading' => 'Upload images',
+    'upload-button' => 'Choose files…',
+    'upload-help' => 'Images and WebM videos; they go into the folder currently selected below.',
+    'upload-progress' => 'Uploading :done of :total…',
+    'upload-done' => 'Uploaded :count file(s).',
+    'upload-partial' => 'Uploaded :ok of :total; failed: :errors',
+    'upload-over-quota' => 'Uploading this would exceed the :max maximum uploadable amount. Delete some images and try again.',
+
     'folder-not-found' => 'Could not find the specified folder.',
     'folder-name-taken' => 'A folder with this name already exists here.',
     'folder-heading' => 'Folders',

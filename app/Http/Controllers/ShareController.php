@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PrivateSharePage;
 use App\Models\ShareLink;
 use App\Util\ShareReport;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\App;
 
 /**
@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\App;
  */
 class ShareController extends Controller
 {
+    use PrivateSharePage;
+
     public function show(Request $request, string $token = '')
     {
         // The person reading this is usually not the site owner, so the owner's language settings don't apply
@@ -37,24 +39,5 @@ class ShareController extends Controller
             'expiresAt' => $link->expires_at?->toDateString(),
             'nonce' => $nonce,
         ]));
-    }
-
-    /**
-     * Builds the response with a fresh nonce and the headers for a private page. The policy allows this site's own
-     * stylesheet and the single inline theme script (by nonce); everything else, including any other script, is blocked.
-     *
-     * @param  callable(string): Response  $make
-     */
-    private function withSafeHeaders(callable $make): Response
-    {
-        $nonce = base64_encode(random_bytes(16));
-
-        return $make($nonce)->withHeaders([
-            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
-            'Cache-Control' => 'no-store, private',
-            'Referrer-Policy' => 'no-referrer',
-            'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'nonce-$nonce'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-        ]);
     }
 }

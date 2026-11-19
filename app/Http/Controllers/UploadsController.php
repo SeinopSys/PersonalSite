@@ -371,6 +371,48 @@ class UploadsController extends Controller
         return $this->_processSingleUpload($file, $user, $folder, $secondary_domain);
     }
 
+    /**
+     * Upload from the signed-in uploads page (no key needed, the session is the authorization). One file per request,
+     * into the folder given as `folder` (root when absent). Same processing and quota as the key-based endpoints.
+     */
+    public function adminUpload(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if ($user->rootImageUploadKey()->first() === null) {
+            return Response::Fail(__('uploads.noperm'));
+        }
+
+        $validator = Validator::make($request->all(['file', 'folder']), [
+            'file' => 'bail|required|mimes:jpg,jpeg,png,gif,bmp,webp,webm',
+            'folder' => 'nullable|string',
+        ]);
+        if ($validator->fails()) {
+            return Response::Fail($validator->errors()->first());
+        }
+
+        $folder = null;
+        if ($request->filled('folder')) {
+            $folder = UploadFolder::where('id', $request->input('folder'))->where('user_id', $user->id)->first();
+            if ($folder === null) {
+                return Response::Fail(__('uploads.folder-not-found'));
+            }
+        }
+
+        $uploaddir = UploadUtil::getUploadDirectory();
+        if (!@mkdir($uploaddir, 0777, true) && !is_dir($uploaddir)) {
+            return Response::Fail('Could not create upload directory');
+        }
+
+        $file = $request->file('file');
+        $quota = config('app.upload_quota_bytes');
+        if ($this->_usedSpaceInBytes($user) + $file->getSize() > $quota) {
+            return Response::Fail(__('uploads.upload-over-quota', ['max' => Core::ReadableFilesize($quota)]));
+        }
+
+        return Response::Done(['upload' => $this->_processSingleUpload($file, $user, $folder, $folder->secondary_domain ?? false)]);
+    }
+
     #[PathParameter('deleteKey', "The delete_url secret returned when the file was uploaded.", type: 'string')]
     #[ApiResponse(status: 200, description: 'The file was permanently deleted.')]
     #[ApiResponse(status: 404, description: 'No file found for this delete key (already deleted, or the key is invalid).')]

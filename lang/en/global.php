@@ -15,6 +15,7 @@ return [
     'account' => 'Account',
     'uploads' => 'Uploads',
     'bills' => 'Bills',
+    'shared-folders' => 'Shared folders',
     'tools' => 'Tools',
     'networking' => 'Networking Calculators',
     'selfsigned' => 'Self-Signed SSL Certificate',

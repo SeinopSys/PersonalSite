@@ -395,4 +395,49 @@ class UploadFoldersTest extends TestCase
         $this->assertDatabaseMissing('image_upload_keys', ['user_id' => $userA->id]);
         $this->assertDatabaseHas('image_upload_keys', ['user_id' => $userB->id]);
     }
+
+    public function test_admin_upload_requires_login_and_enabled_uploads()
+    {
+        $file = UploadedFile::fake()->image('test.png', 10, 10);
+        $this->postJson('/uploads/upload', ['file' => $file])->assertUnauthorized();
+
+        $user = $this->makeUser();
+        $this->actingAs($user)->postJson('/uploads/upload', ['file' => $file])->assertJson(['status' => false]);
+        $this->assertSame(0, Upload::count());
+    }
+
+    public function test_admin_upload_stores_into_the_given_own_folder_without_a_key()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+        $folder = UploadFolder::create(['user_id' => $user->id, 'name' => 'Mine']);
+        $foreign = UploadFolder::create(['user_id' => $this->makeUser('other')->id, 'name' => 'Theirs']);
+
+        $json = $this->actingAs($user)->postJson('/uploads/upload', [
+            'file' => UploadedFile::fake()->image('a.png', 10, 10), 'folder' => $folder->id,
+        ])->assertOk()->assertJson(['status' => true])->json('upload');
+        $this->trackUploadFiles($json);
+        $this->assertSame($folder->id, Upload::findOrFail($json['id'])->folder_id);
+
+        $json = $this->actingAs($user)->postJson('/uploads/upload', ['file' => UploadedFile::fake()->image('b.png', 10, 10)])->json('upload');
+        $this->trackUploadFiles($json);
+        $this->assertNull(Upload::findOrFail($json['id'])->folder_id);
+
+        $this->actingAs($user)->postJson('/uploads/upload', [
+            'file' => UploadedFile::fake()->image('c.png', 10, 10), 'folder' => $foreign->id,
+        ])->assertJson(['status' => false]);
+        $this->assertSame(2, Upload::count());
+    }
+
+    public function test_admin_upload_rejects_non_images_and_respects_the_quota()
+    {
+        $user = $this->makeUser();
+        $this->enableUploads($user);
+
+        $this->actingAs($user)->postJson('/uploads/upload', ['file' => UploadedFile::fake()->create('x.pdf', 1, 'application/pdf')])->assertJson(['status' => false]);
+
+        config(['app.upload_quota_bytes' => 1]);
+        $this->actingAs($user)->postJson('/uploads/upload', ['file' => UploadedFile::fake()->image('big.png', 50, 50)])->assertJson(['status' => false]);
+        $this->assertSame(0, Upload::count());
+    }
 }

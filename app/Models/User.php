@@ -122,6 +122,11 @@ class User extends Authenticatable
         return $this->hasMany(Bill::class);
     }
 
+    public function sharedFolders()
+    {
+        return $this->hasMany(SharedFolder::class);
+    }
+
     public function shareLinks()
     {
         return $this->hasMany(ShareLink::class);

@@ -15,6 +15,7 @@ return [
     'account' => 'Fiók',
     'uploads' => 'Feltöltések',
     'bills' => 'Számlák',
+    'shared-folders' => 'Megosztott mappák',
     'tools' => 'Eszközök',
     'networking' => 'Hálózatszámoló Űrlapok',
     'selfsigned' => 'Ön-aláírt SSL Tanúsítvány',

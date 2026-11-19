@@ -67,6 +67,14 @@
             </div>
         </div>
 
+        <h3>{{ __('uploads.upload-heading') }}</h3>
+        <div class="mb-4">
+            <label class="btn btn-primary mb-1" for="upload-file-input"><x-fa icon="upload" first></x-fa> {{ __('uploads.upload-button') }}</label>
+            <input type="file" id="upload-file-input" class="d-none" multiple accept="image/jpeg,image/png,image/gif,image/bmp,image/webp,video/webm">
+            <span id="upload-status" class="ms-2" role="status"></span>
+            <div class="form-text">{{ __('uploads.upload-help') }}</div>
+        </div>
+
         <?php   /** @var $images \Illuminate\Pagination\LengthAwarePaginator */ ?>
         <h3>
             {{ __('uploads.listheading') }}
@@ -126,5 +134,8 @@
         'folder-settings-secondary-domain',
         'folder-empty',
         'folder-root',
+        'upload-progress',
+        'upload-done',
+        'upload-partial',
     ]) !!}
 @endsection

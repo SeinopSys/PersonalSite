@@ -135,6 +135,42 @@ function fetchListPage(page: number, orderby: string | null) {
   });
 }
 
+/** Uploads the chosen files one request at a time into the current folder, then reloads the list. */
+$('#upload-file-input').on('change', async function onFilesChosen() {
+  const input = this as HTMLInputElement;
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if (files.length === 0) return;
+
+  const $status = $('#upload-status');
+  const errors: string[] = [];
+  let ok = 0;
+  for (let i = 0; i < files.length; i += 1) {
+    $status.text(translatePlaceholders(window.Laravel.jsLocales['upload-progress'], { done: i + 1, total: files.length }));
+    const body = new FormData();
+    body.append('file', files[i]);
+    if (currentFolderId) body.append('folder', currentFolderId);
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const data = await $.ajax({
+        url: '/uploads/upload', method: 'POST', data: body, processData: false, contentType: false,
+      }) as { status: boolean; message?: string };
+      if (data.status) ok += 1;
+      else errors.push(`${files[i].name}: ${data.message}`);
+    } catch (e) {
+      const xhr = e as JQuery.jqXHR;
+      const detail = xhr.status === 413 ? 'too large' : (xhr.responseJSON?.message || xhr.statusText || 'error');
+      errors.push(`${files[i].name}: ${detail}`);
+    }
+  }
+
+  const { orderby } = currentPageParams();
+  $status.text(errors.length === 0
+    ? translatePlaceholders(window.Laravel.jsLocales['upload-done'], { count: ok })
+    : translatePlaceholders(window.Laravel.jsLocales['upload-partial'], { ok, total: files.length, errors: errors.join('; ') }));
+  fetchListPage(1, orderby);
+});
+
 export function navigateToFolder(folderId: string | null): void {
   currentFolderId = folderId;
   fetchListPage(1, currentPageParams().orderby);

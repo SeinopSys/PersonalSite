@@ -35,6 +35,14 @@ return [
 
     'apidocs-link' => 'API dokumentáció',
 
+    'upload-heading' => 'Képek feltöltése',
+    'upload-button' => 'Fájlok kiválasztása…',
+    'upload-help' => 'Képek és WebM videók; az alul jelenleg kiválasztott mappába kerülnek.',
+    'upload-progress' => 'Feltöltés: :done / :total…',
+    'upload-done' => ':count fájl feltöltve.',
+    'upload-partial' => ':ok / :total feltöltve; hibák: :errors',
+    'upload-over-quota' => 'Ennek a feltöltésével túllépnéd a(z) :max feltölthető maximumot. Törölj néhány képet, és próbáld újra.',
+
     'folder-not-found' => 'A megadott mappa nem található.',
     'folder-name-taken' => 'Már létezik ilyen nevű mappa itt.',
     'folder-heading' => 'Mappák',
