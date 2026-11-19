@@ -11,6 +11,9 @@ export interface UploadFolderData {
   upload_count: number;
   upload_key: string;
   upload_url: string;
+  share_url: string | null;
+  share_expires_at: string | null;
+  share_expired: boolean;
 }
 
 interface FolderTreeProps {

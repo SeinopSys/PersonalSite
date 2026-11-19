@@ -29,6 +29,9 @@ class UploadFoldersController extends Controller
             'upload_count' => $folder->uploads()->count(),
             'upload_key' => $key,
             'upload_url' => $key ? route('uploads.uploadByKey', ['key' => $key]) : null,
+            'share_url' => $folder->shareUrl(),
+            'share_expires_at' => $folder->share_expires_at?->toDateString(),
+            'share_expired' => $folder->isShared() && $folder->isShareExpired(),
         ];
     }
 
@@ -196,5 +199,46 @@ class UploadFoldersController extends Controller
         $key->save();
 
         return Response::Done(['upload_key' => $key->upload_key, 'upload_url' => route('uploads.uploadByKey', ['key' => $key->upload_key])]);
+    }
+
+    /**
+     * Starts sharing the folder (and its subfolders) through a secret link, or replaces the link with a new one and
+     * a new expiry; the old link stops working immediately.
+     */
+    public function share(Request $request, string $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $folder = $this->_findOwned($user, $id);
+        if ($folder === null) {
+            return Response::Fail(__('uploads.folder-not-found'));
+        }
+
+        $validated = $request->validate(['expires_in_days' => 'nullable|integer|in:7,30,90,365']);
+
+        $folder->share_token = UploadFolder::makeShareToken();
+        $folder->share_expires_at = !empty($validated['expires_in_days']) ? now()->addDays((int) $validated['expires_in_days'])->startOfDay() : null;
+        $folder->save();
+
+        return Response::Done($this->_folderJson($folder));
+    }
+
+    /** Stops sharing: the link stops working. */
+    public function unshare(string $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $folder = $this->_findOwned($user, $id);
+        if ($folder === null) {
+            return Response::Fail(__('uploads.folder-not-found'));
+        }
+
+        $folder->share_token = null;
+        $folder->share_expires_at = null;
+        $folder->save();
+
+        return Response::Done($this->_folderJson($folder));
     }
 }

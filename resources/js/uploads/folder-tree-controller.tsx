@@ -20,6 +20,9 @@ interface FolderMutationResponse {
   secondary_domain?: boolean;
   upload_key?: string;
   upload_url?: string;
+  share_url?: string | null;
+  share_expires_at?: string | null;
+  share_expired?: boolean;
 }
 
 interface FolderTreeControllerOptions {
@@ -110,6 +113,9 @@ function renderPanel() {
       $(document.createElement('span')).addClass('fa fa-spinner fa-spin ms-2 d-none').attr('id', 'folder-settings-spinner'),
     ),
   );
+  // buildSharePanel is a hoisted declaration below that calls back into renderPanel
+  // eslint-disable-next-line no-use-before-define
+  $content.append(buildSharePanel(folder));
   $panel.empty().append($content);
 
   let url = folder.upload_url;
@@ -220,6 +226,117 @@ function renderPanel() {
       },
     });
   });
+}
+
+const SHARE_EXPIRY_DAYS = [7, 30, 90, 365];
+
+function shareLocale(key: string): string {
+  return window.Laravel.jsLocales[`folder-share-${key}`] || key;
+}
+
+/** Select for the expiry of a new share link; the empty value means it never expires. */
+function buildExpirySelect(): JQuery<HTMLElement> {
+  const $select = $(document.createElement('select')).addClass('form-select').attr('id', 'folder-share-expiry');
+  $select.append($(document.createElement('option')).attr('value', '').text(shareLocale('never')));
+  SHARE_EXPIRY_DAYS.forEach(days => {
+    $select.append($(document.createElement('option')).attr('value', days).text(shareLocale('in-days').replace(':count', String(days))));
+  });
+  return $select;
+}
+
+/** The share section of the folder panel. Nothing is shared until the button here is pressed. */
+function buildSharePanel(folder: UploadFolderData): JQuery<HTMLElement> {
+  const $section = $(document.createElement('div')).addClass('mt-4').attr('id', 'folder-share');
+  $section.append(
+    $(document.createElement('h4')).text(shareLocale('heading')),
+    $(document.createElement('p')).addClass('text-muted small').text(shareLocale('help')),
+  );
+
+  const saveShare = (days: string) => {
+    Dialog.wait(false);
+    $.post(`/uploads/folders/${folder.id}/share`, { expires_in_days: days }, mkAjaxHandler((data: FolderMutationResponse) => {
+      if (!data.status) {
+        Dialog.fail(false, data.message);
+        return;
+      }
+      Object.assign(folder, {
+        share_url: data.share_url || null,
+        share_expires_at: data.share_expires_at || null,
+        share_expired: Boolean(data.share_expired),
+      });
+      Dialog.close(() => renderPanel());
+    }));
+  };
+
+  const askExpiry = (title: string, text: string) => {
+    const $select = buildExpirySelect();
+    const $form = $<HTMLElement>(document.createElement('form')).attr('id', 'folder-share-form').append(
+      $(document.createElement('p')).text(text),
+      $(document.createElement('label')).addClass('form-label').attr('for', 'folder-share-expiry').text(shareLocale('expiry')),
+      $select,
+    );
+    Dialog.request({
+      title,
+      content: $form,
+      callback: () => {
+        $form.on('submit', e => {
+          e.preventDefault();
+          saveShare(String($select.val() || ''));
+        });
+      },
+    });
+  };
+
+  if (!folder.share_url) {
+    $section.append(
+      $(document.createElement('button')).addClass('btn btn-success').attr({ type: 'button', id: 'folder-share-create' })
+        .append($(document.createElement('span')).addClass('fa fa-share-nodes me-1'), document.createTextNode(shareLocale('create')))
+        .on('click', () => askExpiry(shareLocale('create'), shareLocale('help'))),
+    );
+    return $section;
+  }
+
+  const expiry = folder.share_expired
+    ? shareLocale('expired').replace(':date', folder.share_expires_at || '')
+    : (folder.share_expires_at ? shareLocale('until').replace(':date', folder.share_expires_at) : shareLocale('no-expiry'));
+  $section.append(
+    $(document.createElement('div')).addClass('input-group mb-1').append(
+      $(document.createElement('input')).attr({ type: 'text', readonly: 'readonly', id: 'folder-share-url' }).addClass('form-control').val(folder.share_url)
+        .on('focus', function select() { (this as HTMLInputElement).select(); }),
+      $(document.createElement('button')).addClass('btn btn-secondary').attr({ type: 'button', title: shareLocale('copy') })
+        .append($(document.createElement('span')).addClass('fa fa-copy'))
+        .on('click', e => copy(folder.share_url || '', e)),
+    ),
+    $(document.createElement('p')).addClass(`small ${folder.share_expired ? 'text-danger' : 'text-muted'}`).text(expiry),
+    $(document.createElement('button')).addClass('btn btn-sm btn-warning me-2').attr('type', 'button')
+      .append($(document.createElement('span')).addClass('fa fa-sync me-1'), document.createTextNode(shareLocale('new')))
+      .on('click', () => askExpiry(shareLocale('new'), shareLocale('new-text'))),
+    $(document.createElement('button')).addClass('btn btn-sm btn-danger').attr('type', 'button')
+      .append($(document.createElement('span')).addClass('fa fa-ban me-1'), document.createTextNode(shareLocale('stop')))
+      .on('click', () => {
+        Dialog.confirm({
+          title: shareLocale('stop'),
+          content: shareLocale('stop-text'),
+          handlerFunc: sure => {
+            if (!sure) return;
+            Dialog.wait(false);
+            $.ajax({
+              url: `/uploads/folders/${folder.id}/share`,
+              method: 'DELETE',
+              success: mkAjaxHandler((data: FolderMutationResponse) => {
+                if (!data.status) {
+                  Dialog.fail(false, data.message);
+                  return;
+                }
+                Object.assign(folder, { share_url: null, share_expires_at: null, share_expired: false });
+                Dialog.close(() => renderPanel());
+              }),
+            });
+          },
+        });
+      }),
+  );
+  return $section;
 }
 
 function loadFolders(selectAfter?: string | null) {

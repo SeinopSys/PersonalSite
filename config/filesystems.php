@@ -55,16 +55,6 @@ return [
             'visibility' => 'public',
         ],
 
-        // Files in shared folders. Never served by the web server directly: only the controllers read them, after the
-        // secret link has been checked. The default location is inside the uploads volume (which keeps it across
-        // deploys), where nginx refuses to serve it.
-        'shared' => [
-            'driver' => 'local',
-            'root' => env('SHARED_FILES_PATH', storage_path('app/public/_shared')),
-            'visibility' => 'private',
-            'throw' => false,
-        ],
-
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

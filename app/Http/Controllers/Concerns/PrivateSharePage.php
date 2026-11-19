@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Headers for pages opened through a secret link: never cached or indexed, no referrer sent on (the token is in the
- * URL), and a policy that allows this site's own stylesheet and the single inline theme script (by nonce) only.
+ * URL), and a policy that allows this site's own stylesheet and images and the single inline theme script (by nonce) only.
  */
 trait PrivateSharePage
 {
@@ -23,7 +23,7 @@ trait PrivateSharePage
             'Cache-Control' => 'no-store, private',
             'Referrer-Policy' => 'no-referrer',
             'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'nonce-$nonce'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+            'Content-Security-Policy' => "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self'; script-src 'nonce-$nonce'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
         ]);
     }
 }

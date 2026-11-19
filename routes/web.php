@@ -14,7 +14,6 @@ use App\Http\Controllers\PublicSharedFolderController;
 use App\Http\Controllers\SelfsignedController;
 use App\Http\Controllers\ShareController;
 use App\Http\Controllers\ShareLinksController;
-use App\Http\Controllers\SharedFoldersController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\UploadFoldersController;
@@ -80,10 +79,11 @@ Route::get('/share/{token?}', [ShareController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('share.show');
 
-// Shared folders: whoever holds the secret link can list and download the files; throttled like the bills overview
-Route::group(['middleware' => ['throttle:60,1'], 'where' => ['token' => '.*']], function () {
+// Uploads folders shared through a secret link: whoever holds it can see and download the files; throttled like the bills overview
+Route::group(['middleware' => ['throttle:60,1'], 'where' => ['token' => '[^/]+', 'uploadId' => '[^/]+']], function () {
     Route::get('/s/{token}/zip', [PublicSharedFolderController::class, 'zip'])->name('shared.zip');
-    Route::get('/s/{token}/{fileId}', [PublicSharedFolderController::class, 'download'])->name('shared.download');
+    Route::get('/s/{token}/{uploadId}/thumb', [PublicSharedFolderController::class, 'thumbnail'])->name('shared.thumbnail');
+    Route::get('/s/{token}/{uploadId}', [PublicSharedFolderController::class, 'download'])->name('shared.download');
     Route::get('/s/{token}', [PublicSharedFolderController::class, 'show'])->name('shared.show');
 });
 
@@ -107,14 +107,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::delete('/uploads/folders/{id}', [UploadFoldersController::class, 'destroy']);
     Route::post('/uploads/folders/{id}/regen', [UploadFoldersController::class, 'regenKey']);
 
-    Route::get('/shared-folders', [SharedFoldersController::class, 'index']);
-    Route::post('/shared-folders', [SharedFoldersController::class, 'store']);
-    Route::get('/shared-folders/{id}', [SharedFoldersController::class, 'show']);
-    Route::put('/shared-folders/{id}', [SharedFoldersController::class, 'update']);
-    Route::delete('/shared-folders/{id}', [SharedFoldersController::class, 'destroy']);
-    Route::post('/shared-folders/{id}/regen', [SharedFoldersController::class, 'regen']);
-    Route::post('/shared-folders/{id}/files', [SharedFoldersController::class, 'upload']);
-    Route::delete('/shared-folders/{id}/files/{fileId}', [SharedFoldersController::class, 'destroyFile']);
+    Route::post('/uploads/folders/{id}/share', [UploadFoldersController::class, 'share']);
+    Route::delete('/uploads/folders/{id}/share', [UploadFoldersController::class, 'unshare']);
 });
 
 // Bills and bank transactions are personal data; every user only ever sees their own

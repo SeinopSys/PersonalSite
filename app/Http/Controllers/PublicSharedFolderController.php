@@ -3,77 +3,116 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\PrivateSharePage;
-use App\Models\SharedFolder;
-use App\Util\Core;
+use App\Models\Upload;
+use App\Models\UploadFolder;
+use App\Util\UploadUtil;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * What a visitor with a shared folder's secret link can do: see the file list, download one file or all of them as a
- * zip. A link that cannot be used (expired, revoked, mistyped, or no such file) gets one and the same page, so nothing
- * can be learned from it about whether a link ever existed.
+ * What a visitor with a shared uploads folder's secret link can do: see the files in the folder and its subfolders,
+ * download one or all of them as a zip. A link that cannot be used (expired, stopped, replaced, mistyped, or no such
+ * file) gets one and the same page, so nothing can be learned from it about whether a link ever existed.
+ * Files are always handed out through here (never as the image host's public URL) so the page works on its own.
  */
 class PublicSharedFolderController extends Controller
 {
     use PrivateSharePage;
 
-    private function resolve(Request $request, string $token): ?SharedFolder
+    /**
+     * The shared folder and, per folder in its subtree, the uploads in it. Sections are keyed by the folder's path
+     * below the shared one ('' for the shared folder itself) and sorted by it.
+     *
+     * @return array{0: UploadFolder, 1: Collection<string, Collection<int, Upload>>}|null
+     */
+    private function resolve(Request $request, string $token): ?array
     {
         // The person opening the link is usually not the site owner, so the owner's language settings don't apply
         $lang = in_array($request->query('lang'), ['hu', 'en'], true) ? $request->query('lang') : 'hu';
         App::setLocale($lang);
 
-        $folder = preg_match('/^[A-Za-z0-9]{'.SharedFolder::TOKEN_LENGTH.'}$/', $token) === 1 ? SharedFolder::findByToken($token) : null;
+        $folder = preg_match('/^[A-Za-z0-9]{'.UploadFolder::SHARE_TOKEN_LENGTH.'}$/', $token) === 1 ? UploadFolder::findByShareToken($token) : null;
+        if ($folder === null || $folder->isShareExpired()) {
+            return null;
+        }
 
-        return $folder === null || $folder->isExpired() ? null : $folder;
+        $all = UploadFolder::where('user_id', $folder->user_id)->get();
+        $ids = $folder->descendantIdsIncludingSelf($all);
+        $byId = $all->keyBy('id');
+        $pathOf = function (UploadFolder $f) use ($folder, $byId): string {
+            $names = [];
+            for ($current = $f; $current !== null && $current->id !== $folder->id; $current = $byId->get($current->parent_id)) {
+                array_unshift($names, $current->name);
+            }
+
+            return implode(' / ', $names);
+        };
+
+        $sections = Upload::whereIn('folder_id', $ids)->orderBy('uploaded_at')->get()
+            ->groupBy(fn (Upload $u) => $pathOf($byId->get($u->folder_id)))
+            ->sortKeys();
+
+        return [$folder, $sections];
     }
 
-    private function gone(Request $request): Response
+    private function gone(): Response
     {
         return $this->withSafeHeaders(fn (string $nonce) => response()->view('share-gone', ['lang' => App::getLocale(), 'nonce' => $nonce], 404));
     }
 
     public function show(Request $request, string $token)
     {
-        $folder = $this->resolve($request, $token);
-        if ($folder === null) {
-            return $this->gone($request);
+        $resolved = $this->resolve($request, $token);
+        if ($resolved === null) {
+            return $this->gone();
         }
+        [$folder, $sections] = $resolved;
 
-        return $this->withSafeHeaders(fn (string $nonce) => response()->view('shared-folder-public', [
+        return $this->withSafeHeaders(fn (string $nonce) => response()->view('shared-gallery', [
             'folder' => $folder,
-            'files' => $folder->files()->get(),
+            'sections' => $sections,
             'lang' => App::getLocale(),
-            'expiresAt' => $folder->expires_at?->toDateString(),
+            'expiresAt' => $folder->share_expires_at?->toDateString(),
             'nonce' => $nonce,
         ]));
     }
 
-    public function download(Request $request, string $token, string $fileId)
+    /** The original file, always as a download so the browser never renders it on this site's origin. */
+    public function download(Request $request, string $token, string $uploadId)
     {
-        $folder = $this->resolve($request, $token);
-        $file = $folder === null || !Str::isUuid($fileId) ? null : $folder->files()->where('id', $fileId)->first();
-        $disk = Storage::disk('shared');
-        if ($file === null || !$disk->exists($file->storage_name)) {
-            return $this->gone($request);
+        $upload = $this->findUpload($request, $token, $uploadId);
+        $path = $upload === null ? null : UploadUtil::getUploadDirectory().'/'.$upload->getFilenames()['full'];
+        if ($path === null || !is_file($path)) {
+            return $this->gone();
         }
 
-        // Always a download of opaque bytes, never rendered by the browser on this site's origin
-        return $this->forDownload($disk->download($file->storage_name, $file->name, ['Content-Type' => 'application/octet-stream']));
+        return $this->forDownload(response()->download($path, self::downloadName($upload), ['Content-Type' => 'application/octet-stream']));
+    }
+
+    /** The generated thumbnail, a PNG made by this site. */
+    public function thumbnail(Request $request, string $token, string $uploadId)
+    {
+        $upload = $this->findUpload($request, $token, $uploadId);
+        $path = $upload === null ? null : UploadUtil::getUploadDirectory().'/'.$upload->getFilenames()['preview'];
+        if ($path === null || !is_file($path)) {
+            return $this->gone();
+        }
+
+        return $this->forDownload(response()->file($path, ['Content-Type' => 'image/png', 'Content-Disposition' => 'inline']));
     }
 
     public function zip(Request $request, string $token)
     {
-        $folder = $this->resolve($request, $token);
-        $files = $folder?->files()->get();
-        if ($folder === null || $files->isEmpty()) {
-            return $this->gone($request);
+        $resolved = $this->resolve($request, $token);
+        if ($resolved === null || $resolved[1]->flatten()->isEmpty()) {
+            return $this->gone();
         }
+        [$folder, $sections] = $resolved;
 
-        $disk = Storage::disk('shared');
+        $dir = UploadUtil::getUploadDirectory();
         $path = tempnam(sys_get_temp_dir(), 'shared-zip');
         $zip = new \ZipArchive();
         if ($zip->open($path, \ZipArchive::OVERWRITE) !== true) {
@@ -81,13 +120,16 @@ class PublicSharedFolderController extends Controller
             abort(500);
         }
         $used = [];
-        foreach ($files as $file) {
-            if (!$disk->exists($file->storage_name)) {
-                continue;
+        foreach ($sections as $section => $uploads) {
+            foreach ($uploads as $upload) {
+                $file = "$dir/".$upload->getFilenames()['full'];
+                if (!is_file($file)) {
+                    continue;
+                }
+                $entry = self::uniqueEntryName(($section === '' ? '' : str_replace(' / ', '/', $section).'/').self::downloadName($upload), $used);
+                $zip->addFile($file, $entry);
+                $zip->setCompressionName($entry, \ZipArchive::CM_STORE); // images and video are compressed already
             }
-            $entry = self::uniqueEntryName($file->name, $used);
-            $zip->addFile($disk->path($file->storage_name), $entry);
-            $zip->setCompressionName($entry, \ZipArchive::CM_STORE); // already-compressed formats are the usual case
         }
         $zip->close();
 
@@ -96,14 +138,33 @@ class PublicSharedFolderController extends Controller
         return $this->forDownload(response()->download($path, "$name.zip", ['Content-Type' => 'application/zip'])->deleteFileAfterSend());
     }
 
-    /** Two files in a folder can share a name; the zip needs distinct entries. */
+    private function findUpload(Request $request, string $token, string $uploadId): ?Upload
+    {
+        $resolved = $this->resolve($request, $token);
+        if ($resolved === null || !Str::isUuid($uploadId)) {
+            return null;
+        }
+
+        return $resolved[1]->flatten()->firstWhere('id', $uploadId);
+    }
+
+    /** The name it was uploaded under, with the extension it has now (uploads are re-encoded as PNG, for one). */
+    public static function downloadName(Upload $upload): string
+    {
+        $base = pathinfo(basename(str_replace('\\', '/', $upload->orig_filename)), PATHINFO_FILENAME);
+        $base = trim(preg_replace('/[\x00-\x1F\x7F]+/u', '', $base) ?? '');
+
+        return ($base === '' ? 'file' : mb_substr($base, 0, 200)).'.'.$upload->extension;
+    }
+
+    /** Two files can share a name; the zip needs distinct entries. */
     private static function uniqueEntryName(string $name, array &$used): string
     {
         $candidate = $name;
         $n = 1;
         while (isset($used[$candidate])) {
             $dot = strrpos($name, '.');
-            $candidate = $dot > 0 ? substr($name, 0, $dot)." (".++$n.")".substr($name, $dot) : $name.' ('.++$n.')';
+            $candidate = $dot > 0 ? substr($name, 0, $dot).' ('.++$n.')'.substr($name, $dot) : $name.' ('.++$n.')';
         }
         $used[$candidate] = true;
 

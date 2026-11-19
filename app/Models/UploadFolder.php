@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Util\BlindIndex;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property bool $disable_thumbnails
  * @property bool $disable_conversion
  * @property bool $secondary_domain
+ * @property string|null $share_token Secret of the share link, null while the folder isn't shared
+ * @property \Carbon\CarbonInterface|null $share_expires_at Last day the share link works
  * @property-read User $user
  * @property-read UploadFolder|null $parent
  * @property-read Collection|UploadFolder[] $children
@@ -42,6 +45,7 @@ class UploadFolder extends Model
 
     protected $fillable = [
         'user_id', 'parent_id', 'name', 'disable_thumbnails', 'disable_conversion', 'secondary_domain',
+        'share_token', 'share_expires_at',
     ];
 
     protected $attributes = [
@@ -54,7 +58,45 @@ class UploadFolder extends Model
         'disable_thumbnails' => 'bool',
         'disable_conversion' => 'bool',
         'secondary_domain' => 'bool',
+        'share_token' => 'encrypted',
+        'share_expires_at' => 'date',
     ];
+
+    public const SHARE_TOKEN_LENGTH = 48;
+
+    protected static function booted(): void
+    {
+        static::saving(function (UploadFolder $folder) {
+            $folder->share_token_index = BlindIndex::make($folder->share_token);
+        });
+    }
+
+    public static function makeShareToken(): string
+    {
+        return \Illuminate\Support\Str::random(self::SHARE_TOKEN_LENGTH);
+    }
+
+    public static function findByShareToken(string $token): ?self
+    {
+        $index = BlindIndex::make($token);
+
+        return $index === null ? null : static::where('share_token_index', $index)->first();
+    }
+
+    public function isShared(): bool
+    {
+        return $this->share_token !== null;
+    }
+
+    public function isShareExpired(): bool
+    {
+        return $this->share_expires_at !== null && now()->startOfDay()->gt($this->share_expires_at);
+    }
+
+    public function shareUrl(): ?string
+    {
+        return $this->share_token === null ? null : url('/s/'.$this->share_token);
+    }
 
     public function user(): BelongsTo
     {
