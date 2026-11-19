@@ -18,7 +18,7 @@ Run `php artisan scramble:analyze` first if you want to check for documentation-
 
 ## Running in the Kubernetes cluster
 
-Two images from `docker/Dockerfile` (targets `fpm`, `web`), published multi-arch by `.github/workflows/images.yml` as `ghcr.io/<owner>/personalsite-{fpm,web}:sha-<sha7>`. The web pod runs both side by side (nginx on `:8080`, php-fpm on `127.0.0.1:9000`). No worker and no scheduler are needed.
+Two images from `docker/Dockerfile` (targets `fpm`, `web`), published multi-arch by `.github/workflows/images.yml` as `ghcr.io/<owner>/personalsite-{fpm,web}:sha-<sha7>`. The web pod runs both side by side (nginx on `:8080`, php-fpm on `127.0.0.1:9000`). No worker and no scheduler are needed. A rebuild without a code change (e.g. a new PHP security release in the base image) is the `images.yml` workflow's Run workflow button (`gh workflow run images.yml --ref main`).
 
 - **Health:** `GET /health` returns 200 when Postgres and Valkey answer, else 503.
 - **Env var names** (values from a Secret/ConfigMap, never in git): `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL`, `APP_NAME`, `APP_LRC_SITE_URL`, `PRIMARY_DOMAIN`, `SECONDARY_DOMAIN`, `SESSION_DOMAIN`, `SESSION_DRIVER`, `CACHE_DRIVER`, `QUEUE_CONNECTION`, `LOG_CHANNEL`, `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_PREFIX`, `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, `CAPTCHA_ENABLED`, `FRIENDLYCAPTCHA_SITEKEY`, `FRIENDLYCAPTCHA_API_KEY`, `UPLOAD_QUOTA_BYTES`.
